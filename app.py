@@ -382,8 +382,8 @@ st.markdown("""
 # Beautiful Header
 st.markdown("""
 <div class="header-container">
-    <div class="main-title">🎨 AM AI Studio</div>
-    <div class="sub-title">Transform Ideas into Beautiful Presentations & YouTube Scripts</div>
+    <div class="main-title">📊 TEXT to PPT Generator</div>
+    <div class="sub-title">Transform Your Text into Beautiful PowerPoint Presentations</div>
 </div>
 """, unsafe_allow_html=True)
 

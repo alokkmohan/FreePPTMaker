@@ -335,6 +335,8 @@ if st.session_state.get('main_menu'):
             st.session_state['input_method'] = 'paste'
 
     st.markdown("")
+    
+    # Initialize script_content outside conditionals
     script_content = None
 
     if st.session_state.get('input_method') == 'upload':
@@ -414,6 +416,9 @@ if st.session_state.get('main_menu'):
                 st.success(f"✅ Content confirmed ({len(article_input)} characters)")
             
             script_content = st.session_state.get('confirmed_content') if not st.session_state.get('confirmed_content', '').startswith('TOPIC:') else None
+else:
+    # Initialize script_content if no input method selected
+    script_content = None
 
 # Process if content is available
 if script_content and st.session_state.get('main_menu'):

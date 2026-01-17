@@ -322,10 +322,14 @@ elif st.session_state.get('input_method') == 'paste':
     st.markdown("")
     
     if st.session_state.get('content_type') == 'topic':
-        topic = st.text_input(
-            "🎯 Enter your topic:",
-            placeholder="Example: Artificial Intelligence in Healthcare",
-            help="AI will generate a complete article on this topic"
+        st.markdown("### 🎯 Enter Your Topic")
+        st.markdown("AI will generate a detailed article and create presentation from your topic")
+        topic = st.text_area(
+            "",
+            placeholder="Example:\n• Artificial Intelligence in Healthcare\n• Climate Change and Its Effects\n• Future of Electric Vehicles\n• Digital Marketing Strategies 2025",
+            help="Enter any topic - AI will create comprehensive content",
+            height=150,
+            label_visibility="collapsed"
         )
         
         if topic:

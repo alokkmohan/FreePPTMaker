@@ -324,27 +324,37 @@ elif st.session_state.get('input_method') == 'paste':
     if st.session_state.get('content_type') == 'topic':
         st.markdown("### 🎯 Enter Your Topic")
         st.markdown("AI will generate a detailed article and create presentation from your topic")
-        topic = st.text_area(
+        topic_input = st.text_area(
             "",
             placeholder="Example:\n• Artificial Intelligence in Healthcare\n• Climate Change and Its Effects\n• Future of Electric Vehicles\n• Digital Marketing Strategies 2025",
             help="Enter any topic - AI will create comprehensive content",
             height=150,
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            key="topic_text"
         )
         
-        if topic:
-            st.info(f"💡 Topic: **{topic}** - AI will create detailed content and presentation")
-            script_content = f"TOPIC:{topic}"
+        if topic_input and st.button("✅ Confirm Topic and Proceed", type="primary", use_container_width=True):
+            st.session_state['confirmed_content'] = f"TOPIC:{topic_input}"
+            st.info(f"💡 Topic: **{topic_input}** - AI will create detailed content and presentation")
+        
+        script_content = st.session_state.get('confirmed_content') if st.session_state.get('confirmed_content', '').startswith('TOPIC:') else None
+        
     elif st.session_state.get('content_type') == 'article':
-        script_content = st.text_area(
-            "📝 Paste your complete article/script:",
+        st.markdown("### 📝 Paste Your Content")
+        article_input = st.text_area(
+            "",
             height=300,
-            placeholder="Paste your content here...\nSupports multiple languages including Hindi, English, etc.",
-            help="Paste your ready-to-convert content"
+            placeholder="Paste your content here...\nYou can paste in multiple parts - the text will accumulate.\nSupports multiple languages including Hindi, English, etc.",
+            help="Paste your ready-to-convert content. You can paste multiple times before submitting.",
+            label_visibility="collapsed",
+            key="article_text"
         )
-    
-        if script_content:
-            st.success(f"✅ Content received ({len(script_content)} characters)")
+        
+        if article_input and st.button("✅ Confirm Content and Proceed", type="primary", use_container_width=True):
+            st.session_state['confirmed_content'] = article_input
+            st.success(f"✅ Content confirmed ({len(article_input)} characters)")
+        
+        script_content = st.session_state.get('confirmed_content') if not st.session_state.get('confirmed_content', '').startswith('TOPIC:') else None
 
 # Process if content is available
 if script_content:

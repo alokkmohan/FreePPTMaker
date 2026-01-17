@@ -315,6 +315,71 @@ st.markdown("""
         font-size: 1.1rem;
         font-family: 'Courier New', monospace;
     }
+    
+    /* Reset button styling */
+    .stButton > button[data-testid="baseButton-secondary"].reset-btn {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+        color: white !important;
+        border: 2px solid #f5576c !important;
+        font-weight: 600 !important;
+        padding: 0.6rem 1.2rem !important;
+        border-radius: 12px !important;
+        box-shadow: 0 6px 15px rgba(245, 87, 108, 0.25) !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .stButton > button[data-testid="baseButton-secondary"].reset-btn:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 20px rgba(245, 87, 108, 0.35) !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Sidebar with Reset Button
+with st.sidebar:
+    st.markdown("### 🔧 Controls")
+    st.markdown("")
+    
+    if st.button("🔄 Reset App", key="reset_btn", use_container_width=True, help="Clear all data and start fresh"):
+        # Clear all session state
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
+    
+    st.markdown("---")
+    st.markdown("### ℹ️ About")
+    st.markdown("""
+    **AM AI Studio** helps you:
+    - 📊 Create beautiful PowerPoint presentations
+    - 🎥 Generate engaging YouTube scripts
+    - 🤖 Use AI to enhance your content
+    
+    **Features:**
+    - Multiple design themes
+    - Hindi & English support
+    - AI-powered content generation
+    - Session persistence
+    """)
+    
+    st.markdown("---")
+    st.markdown("<p style='text-align: center; color: #718096; font-size: 0.85rem;'>Made with ❤️ by AM AI Studio</p>", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+    /* Hide default sidebar header */
+    section[data-testid="stSidebar"] > div:first-child {
+        padding-top: 2rem;
+    }
+    
+    /* Sidebar styling */
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #f8f9ff 0%, #ffffff 100%);
+    }
+    
+    section[data-testid="stSidebar"] h3 {
+        color: #667eea;
+        font-weight: 700;
+    }
 </style>
 """, unsafe_allow_html=True)
 

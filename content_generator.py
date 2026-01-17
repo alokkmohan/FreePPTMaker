@@ -136,20 +136,30 @@ Write the complete article now:"""
                 "stream": False,
                 "options": {
                     "temperature": 0.7,
-                    "num_predict": 4000
+                    "num_predict": 8000
                 }
             },
-            timeout=120
+            timeout=180
         )
         
         if response.status_code == 200:
             result = response.json()
-            return result.get("response", "").strip()
+            content = result.get("response", "").strip()
+            
+            if len(content) < 500:
+                print(f"⚠️ Ollama returned insufficient content ({len(content)} chars)")
+                return None
+                
+            print(f"✅ Ollama generated {len(content)} characters of content")
+            return content
         else:
+            print(f"⚠️ Ollama API returned status code: {response.status_code}")
             return None
             
     except Exception as e:
-        print(f"Ollama generation failed: {e}")
+        print(f"❌ Ollama generation failed: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def generate_with_groq(topic, user_instructions=""):
@@ -239,36 +249,56 @@ Write the complete, detailed article now (2000-2500 words):"""
                 {"role": "system", "content": "You are an expert researcher and technical writer who creates highly detailed, factual, well-researched articles with specific data, real examples, and professional depth. You have extensive knowledge across all domains."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.6,
-            max_tokens=4000
+            temperature=0.7,
+            max_tokens=8000
         )
         
         content = response.choices[0].message.content.strip()
+        
+        # Validate that we got substantial content
+        if len(content) < 500:
+            print(f"⚠️ Groq returned insufficient content ({len(content)} chars)")
+            return None
+            
+        print(f"✅ Groq generated {len(content)} characters of content")
         return content
         
     except Exception as e:
-        print(f"Groq generation failed: {e}")
+        print(f"❌ Groq generation failed: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def generate_content_from_topic(topic, user_instructions=""):
     """Generate detailed article content from a topic using multiple AI sources"""
     
+    print(f"\n{'='*60}")
+    print(f"📝 Content Generation Request")
+    print(f"Topic: {topic}")
+    print(f"Instructions: {user_instructions if user_instructions else 'None'}")
+    print(f"{'='*60}\n")
+    
     # Try Ollama first if available (better local knowledge)
     if check_ollama_available():
         print("🤖 Using Ollama for enhanced content generation...")
         content = generate_with_ollama(topic, user_instructions)
-        if content:
+        if content and len(content) > 500:
+            print(f"✅ Ollama success: {len(content)} characters generated")
             return content
-        print("⚠️ Ollama failed, falling back to Groq...")
+        print("⚠️ Ollama failed or returned insufficient content, falling back to Groq...")
+    else:
+        print("ℹ️ Ollama not available, using Groq API...")
     
     # Fallback to Groq API
     print("🤖 Using Groq API for content generation...")
     content = generate_with_groq(topic, user_instructions)
-    if content:
+    if content and len(content) > 500:
+        print(f"✅ Groq success: {len(content)} characters generated")
         return content
     
     # Final fallback
-    print("⚠️ All AI services failed, using basic template...")
+    print("\n❌ ERROR: All AI services failed!")
+    print("⚠️ Using basic template as last resort...\n")
     return generate_basic_content(topic)
 
 def generate_basic_content(topic):

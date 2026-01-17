@@ -521,6 +521,10 @@ if script_content and st.session_state.get('main_menu'):
                 if success:
                     st.success("✅ PowerPoint created successfully!")
                     
+                    # Store in session state for persistence
+                    st.session_state['ppt_generated'] = True
+                    st.session_state['ppt_path'] = ppt_path
+                    
                     with open(ppt_path, "rb") as f:
                         st.download_button(
                             label="📥 Download PowerPoint (PPTX)",
@@ -534,6 +538,10 @@ if script_content and st.session_state.get('main_menu'):
                     with st.spinner("🖼️ Converting slides to images..."):
                         img_success = ppt_to_images(ppt_path, output_dir=output_folder)
                         images = sorted([f for f in os.listdir(output_folder) if f.startswith("slide_") and f.endswith(".png")])
+                        
+                        # Store images in session state
+                        st.session_state['slide_images'] = images
+                        st.session_state['images_folder'] = output_folder
                         
                         if images:
                             st.success(f"✅ Generated {len(images)} slide images!")
@@ -603,6 +611,11 @@ if script_content and st.session_state.get('main_menu'):
                 doc.save(doc_path)
                 st.success("✅ YouTube script created!")
                 
+                # Store in session state
+                st.session_state['youtube_generated'] = True
+                st.session_state['youtube_path'] = doc_path
+                st.session_state['youtube_script'] = youtube_script
+                
                 with st.expander("📺 Preview YouTube Script"):
                     st.markdown(youtube_script)
                 
@@ -614,6 +627,64 @@ if script_content and st.session_state.get('main_menu'):
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                         use_container_width=True
                     )
+
+# Display previously generated files if they exist (after page refresh from download)
+if st.session_state.get('ppt_generated') and os.path.exists(st.session_state.get('ppt_path', '')):
+    st.markdown("---")
+    st.markdown('<div class="step-indicator">📥 Previously Generated Files</div>', unsafe_allow_html=True)
+    
+    # Add clear button
+    if st.button("🔄 Start New Generation", type="secondary", use_container_width=True):
+        # Clear all session state
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
+    
+    st.markdown("")
+    
+    ppt_path = st.session_state['ppt_path']
+    with open(ppt_path, "rb") as f:
+        st.download_button(
+            label="📥 Re-download PowerPoint (PPTX)",
+            data=f,
+            file_name="presentation.pptx",
+            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            use_container_width=True,
+            key="redownload_ppt"
+        )
+    
+    # Show slide images if available
+    if st.session_state.get('slide_images'):
+        images = st.session_state['slide_images']
+        images_folder = st.session_state['images_folder']
+        
+        with st.expander(f"🖼️ View {len(images)} Slide Images", expanded=False):
+            cols = st.columns(3)
+            for idx, img in enumerate(images):
+                with cols[idx % 3]:
+                    img_path = os.path.join(images_folder, img)
+                    if os.path.exists(img_path):
+                        st.image(img_path, caption=f"Slide {idx+1}", use_column_width=True)
+
+if st.session_state.get('youtube_generated') and os.path.exists(st.session_state.get('youtube_path', '')):
+    if not st.session_state.get('ppt_generated'):
+        st.markdown("---")
+        st.markdown('<div class="step-indicator">📥 Previously Generated Files</div>', unsafe_allow_html=True)
+    
+    youtube_path = st.session_state['youtube_path']
+    with open(youtube_path, "rb") as f:
+        st.download_button(
+            label="📥 Re-download YouTube Script (DOCX)",
+            data=f,
+            file_name="youtube_script.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            use_container_width=True,
+            key="redownload_youtube"
+        )
+    
+    if st.session_state.get('youtube_script'):
+        with st.expander("📺 View YouTube Script", expanded=False):
+            st.markdown(st.session_state['youtube_script'])
 
 # Footer
 st.markdown("""

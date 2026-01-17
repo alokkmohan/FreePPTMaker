@@ -29,7 +29,7 @@ def get_groq_client():
         return Groq(api_key=GROQ_API_KEY)
     return None
 
-def structure_content_with_ai(script_text, user_instructions=""):
+def structure_content_with_ai(script_text, user_instructions="", min_slides=10, max_slides=20):
     """Use Groq AI to structure script into presentation format"""
     
     client = get_groq_client()
@@ -89,8 +89,8 @@ Script:
 IMPORTANT REQUIREMENTS:
 - Extract a clear TITLE from the script content (first line or main topic)
 - Create a relevant SUBTITLE based on script theme
-- MINIMUM 10 slides (excluding title)
-- MAXIMUM 20 slides total
+- MINIMUM {min_slides} slides (excluding title)
+- MAXIMUM {max_slides} slides total
 - Break the script into logical sections
 - Each section gets a clear, descriptive title
 - Convert each section's content into 4-6 bullet points
@@ -599,7 +599,7 @@ class ModernPPTDesigner:
         """Save presentation"""
         self.prs.save(filepath)
 
-def generate_ppt_from_template(script_text, output_path, template_path, use_ai=True, ai_instructions="", original_topic=None):
+def generate_ppt_from_template(script_text, output_path, template_path, use_ai=True, ai_instructions="", original_topic=None, min_slides=10, max_slides=20):
     """
     Generate PPT using a template file
     
@@ -610,13 +610,15 @@ def generate_ppt_from_template(script_text, output_path, template_path, use_ai=T
         use_ai: Use AI for content structuring
         ai_instructions: Additional instructions for AI (optional)
         original_topic: Original topic title to use (optional)
+        min_slides: Minimum number of slides (optional)
+        max_slides: Maximum number of slides (optional)
     """
     print(f"📋 Using template: {template_path}")
     
     # Structure content
     if use_ai:
         print("🤖 Using AI to structure content...")
-        content = structure_content_with_ai(script_text, ai_instructions)
+        content = structure_content_with_ai(script_text, ai_instructions, min_slides, max_slides)
     else:
         print("📝 Using basic structuring...")
         content = structure_content_basic(script_text)
@@ -691,7 +693,7 @@ def generate_ppt_from_template(script_text, output_path, template_path, use_ai=T
     
     return True
 
-def generate_beautiful_ppt(script_text, output_path, color_scheme="corporate", use_ai=True, ai_instructions="", original_topic=None, template_path=None):
+def generate_beautiful_ppt(script_text, output_path, color_scheme="corporate", use_ai=True, ai_instructions="", original_topic=None, template_path=None, min_slides=10, max_slides=20):
     """
     Generate beautiful PPT from script
     
@@ -703,17 +705,19 @@ def generate_beautiful_ppt(script_text, output_path, color_scheme="corporate", u
         ai_instructions: Additional instructions for AI (optional)
         original_topic: Original topic title to use (optional)
         template_path: Path to template PPTX file (optional)
+        min_slides: Minimum number of slides (optional, default 10)
+        max_slides: Maximum number of slides (optional, default 20)
     """
-    print(f"DEBUG: Function called with original_topic={original_topic}, template_path={template_path}")
+    print(f"DEBUG: Function called with original_topic={original_topic}, template_path={template_path}, slides={min_slides}-{max_slides}")
     
     # If template is provided, use template-based generation
     if template_path and os.path.exists(template_path):
-        return generate_ppt_from_template(script_text, output_path, template_path, use_ai, ai_instructions, original_topic)
+        return generate_ppt_from_template(script_text, output_path, template_path, use_ai, ai_instructions, original_topic, min_slides, max_slides)
     
     # Structure content
     if use_ai:
         print("🤖 Using AI to structure content...")
-        content = structure_content_with_ai(script_text, ai_instructions)
+        content = structure_content_with_ai(script_text, ai_instructions, min_slides, max_slides)
     else:
         print("📝 Using basic structuring...")
         content = structure_content_basic(script_text)

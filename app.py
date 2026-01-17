@@ -610,6 +610,48 @@ if script_content and st.session_state.get('main_menu'):
     use_ai = ai_enhancement_enabled  # Only use AI if user opted for enhancement
     ai_instructions = ""
     
+    # Smart slide count calculation
+    word_count = len(script_content.split())
+    if word_count <= 300:
+        auto_slides = "5-8 slides"
+        default_min, default_max = 5, 8
+    elif word_count <= 800:
+        auto_slides = "10-15 slides"
+        default_min, default_max = 10, 15
+    else:
+        auto_slides = "15-25 slides"
+        default_min, default_max = 15, 25
+    
+    # Slide count selection
+    st.markdown("####")
+    st.markdown("### 📊 Presentation Length")
+    
+    col1, col2 = st.columns([2, 3])
+    with col1:
+        st.metric("Content Size", f"{word_count} words")
+        st.caption(f"🤖 AI suggests: {auto_slides}")
+    
+    with col2:
+        slide_preference = st.radio(
+            "Choose presentation style:",
+            ["✨ Auto (Recommended)", "🎯 Quick (5-8 slides)", "📄 Standard (10-15 slides)", "📚 Detailed (15-25 slides)"],
+            horizontal=False,
+            help="Auto mode intelligently adjusts based on content length"
+        )
+        
+        if slide_preference == "✨ Auto (Recommended)":
+            min_slides, max_slides = default_min, default_max
+        elif slide_preference == "🎯 Quick (5-8 slides)":
+            min_slides, max_slides = 5, 8
+        elif slide_preference == "📄 Standard (10-15 slides)":
+            min_slides, max_slides = 10, 15
+        else:  # Detailed
+            min_slides, max_slides = 15, 25
+    
+    # Store in session state
+    st.session_state['min_slides'] = min_slides
+    st.session_state['max_slides'] = max_slides
+    
     # Theme selection (only for PPT mode)
     if generate_ppt:
         st.markdown("####")
@@ -742,6 +784,10 @@ if script_content and st.session_state.get('main_menu'):
                 # Get template path from session state
                 template_path = st.session_state.get('template_path', None)
                 
+                # Get slide count preferences
+                min_slides = st.session_state.get('min_slides', 10)
+                max_slides = st.session_state.get('max_slides', 20)
+                
                 try:
                     success = generate_beautiful_ppt(
                         script_content, 
@@ -750,7 +796,9 @@ if script_content and st.session_state.get('main_menu'):
                         use_ai=use_ai,
                         ai_instructions=user_instructions,
                         original_topic=original_topic,
-                        template_path=template_path
+                        template_path=template_path,
+                        min_slides=min_slides,
+                        max_slides=max_slides
                     )
                 except Exception as e:
                     st.error(f"❌ Error: {str(e)}")

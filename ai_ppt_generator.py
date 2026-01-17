@@ -38,22 +38,41 @@ def structure_content_with_ai(script_text, user_instructions=""):
         if user_instructions:
             extra_instructions = f"\n\nUser's specific instructions:\n{user_instructions}\n\nPlease incorporate these instructions while structuring the presentation."
         
+        # Detect if script has Hindi content
+        has_hindi = any(ord(char) >= 0x0900 and ord(char) <= 0x097F for char in script_text[:500])
+        
+        if has_hindi:
+            lang_instruction = """भाषा: हिंदी में slides बनाएं
+- Title slide: मुख्य शीर्षक और उपशीर्षक
+- कम से कम 10 slides, अधिकतम 20 slides
+- हर content slide में 4-6 bullet points (अनिवार्य)
+- हर bullet में पूर्ण, सार्थक वाक्य (60-120 characters)
+- Section dividers का उपयोग करें
+- Conclusion slide में मुख्य बिंदु
+- Generic text नहीं - विषय के बारे में विशिष्ट जानकारी दें"""
+        else:
+            lang_instruction = """Language: Create slides in English
+- Title slide with main title and subtitle
+- Minimum 10 slides, maximum 20 slides
+- Each content slide: 4-6 bullet points (MANDATORY)
+- Each bullet: complete, meaningful sentence (80-150 chars)
+- Use section dividers for major topics
+- Conclusion slide with key takeaways
+- NO generic text - provide specific information about the topic"""
+        
         prompt = f"""You are a professional presentation designer. Convert the following script into a well-structured PowerPoint presentation.
 
 Script:
 {script_text}{extra_instructions}
 
-Create as many slides as needed to properly cover the content. Don't force a fixed number.
+{lang_instruction}
 
-Guidelines:
-- Title slide with main title and subtitle
-- Opening/hook slide if content allows
-- Break content into logical sections
-- Each content slide: 4-6 bullet points (MANDATORY - never less than 4)
-- Each bullet should be substantial and informative (80-150 chars)
-- Use section dividers for major topic changes
-- Conclusion slide with key takeaways
-- Could be 5 slides or 20 slides - depends on content
+IMPORTANT REQUIREMENTS:
+- MINIMUM 10 slides (excluding title and end slide)
+- MAXIMUM 20 slides total
+- Each slide must have REAL, SPECIFIC content about the topic
+- NO generic phrases like 'Understanding the fundamentals', 'important aspect', etc.
+- Use actual facts, examples, and detailed information from the script
 
 Return ONLY valid JSON (no markdown):
 {{
@@ -78,11 +97,11 @@ Return ONLY valid JSON (no markdown):
 }}
 
 Important Rules:
+- MINIMUM 10 content slides, MAXIMUM 20 slides total
 - MINIMUM 4 bullets per content slide (ideal 5-6)
-- Each bullet must be a complete, meaningful sentence
-- Keep bullets informative (80-150 chars each)
-- Create as many or as few slides as needed for the content
-- Don't pad or compress content artificially
+- Each bullet must be SPECIFIC to the topic with actual information
+- NO generic phrases - every bullet should contain real facts/examples
+- Keep bullets informative and specific
 - Natural flow and logical grouping
 - DO NOT use emojis or special icons (⚠️ ❌ ✅ etc.) - plain text only
 - Return ONLY the JSON, no extra text"""
@@ -90,11 +109,11 @@ Important Rules:
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
-                {"role": "system", "content": "You are a presentation design expert. Create the right number of slides for the content - not too few, not too many. Return only valid JSON."},
+                {"role": "system", "content": "You are a presentation design expert. Create 10-20 slides with specific, detailed content from the script. NO generic text allowed. Return only valid JSON."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
-            max_tokens=4000
+            max_tokens=6000
         )
         
         content_text = response.choices[0].message.content.strip()

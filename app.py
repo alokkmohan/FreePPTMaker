@@ -606,7 +606,23 @@ if script_content and st.session_state.get('main_menu'):
                                             use_container_width=True
                                         )
                         else:
-                            st.info("ℹ️ Image conversion not available on cloud deployment. Download the PPT file to view slides!")
+                            st.warning("⚠️ **Slide Preview Unavailable on Cloud**")
+                            st.markdown("""
+                            <div style="background: linear-gradient(145deg, #fff3cd 0%, #fff8e1 100%); 
+                                        padding: 1.5rem; border-radius: 10px; border-left: 4px solid #ffc107;">
+                                <h4 style="color: #856404; margin-top: 0;">📥 Download Your Presentation</h4>
+                                <p style="color: #856404; margin-bottom: 0.5rem;">
+                                    The PowerPoint file has been created successfully! Image preview requires additional 
+                                    libraries not available in cloud deployment.
+                                </p>
+                                <p style="color: #856404; margin: 0;">
+                                    <strong>✨ Next Steps:</strong><br>
+                                    1. Click "Download PowerPoint (PPTX)" button above<br>
+                                    2. Open the file in PowerPoint, Google Slides, or LibreOffice<br>
+                                    3. View your beautiful presentation with all slides!
+                                </p>
+                            </div>
+                            """, unsafe_allow_html=True)
                 else:
                     st.error("❌ PPT generation failed")
         

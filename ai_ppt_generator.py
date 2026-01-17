@@ -353,16 +353,26 @@ class ModernPPTDesigner:
         """Section divider slide"""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
         
-        # Diagonal accent
+        # Background with gradient effect using two rectangles
+        bg_bottom = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            Inches(0), Inches(0),
+            Inches(10), Inches(5.625)
+        )
+        bg_bottom.fill.solid()
+        bg_bottom.fill.fore_color.rgb = RGBColor(250, 250, 250)
+        bg_bottom.line.fill.background()
+        
+        # Diagonal accent (properly contained within slide)
         accent = slide.shapes.add_shape(
             MSO_SHAPE.RECTANGLE,
-            Inches(-2), Inches(-1),
-            Inches(14), Inches(7)
+            Inches(0), Inches(0),
+            Inches(10), Inches(3.5)
         )
         accent.fill.solid()
         accent.fill.fore_color.rgb = self.colors["secondary"]
         accent.line.fill.background()
-        accent.rotation = 15
+        accent.rotation = 0  # Keep it horizontal, no overflow
         
         # Title
         title_box = slide.shapes.add_textbox(

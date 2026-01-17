@@ -47,8 +47,8 @@ def update_visitor_count():
 
 # Page Configuration
 st.set_page_config(
-    page_title="AI PowerPoint & YouTube Script Generator",
-    page_icon="🎨",
+    page_title="TEXT to PPT Generator - AI Powered",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed"
 )

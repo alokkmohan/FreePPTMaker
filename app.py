@@ -460,7 +460,7 @@ if st.session_state.get('input_method') == 'upload':
             with st.expander("👀 Preview Content"):
                 col_preview, col_copy = st.columns([4, 1])
                 with col_preview:
-                    st.text_area("", script_content, height=200, disabled=True, label_visibility="collapsed")
+                    st.text_area("Content Preview", script_content, height=200, disabled=True, label_visibility="collapsed")
                 with col_copy:
                     if st.button("📋 Copy", use_container_width=True):
                         st.code(script_content, language=None)
@@ -670,7 +670,7 @@ if script_content and st.session_state.get('main_menu'):
                     st.success("✅ Content generated successfully!")
                     
                     with st.expander("📄 View Generated Content"):
-                        st.text_area("", generated_content, height=300, label_visibility="collapsed")
+                        st.text_area("Generated Content", generated_content, height=300, label_visibility="collapsed")
                 except Exception as e:
                     progress_bar.empty()
                     progress_text.empty()
@@ -689,7 +689,7 @@ if script_content and st.session_state.get('main_menu'):
                     st.success("✅ Content enhanced successfully!")
                     
                     with st.expander("📄 View Enhanced Content"):
-                        st.text_area("", enhanced_content, height=300, label_visibility="collapsed")
+                        st.text_area("Enhanced Content", enhanced_content, height=300, label_visibility="collapsed")
                 except Exception as e:
                     st.error(f"❌ Content generation failed: {str(e)}")
                     st.stop()

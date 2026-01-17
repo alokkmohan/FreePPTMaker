@@ -564,6 +564,6 @@ if script_content:
 st.markdown("""
 <div class="footer">
     <p><strong>💡 Pro Tip:</strong> Upload any text file or paste content directly. Get professional presentations and YouTube scripts instantly!</p>
-    <p style="margin-top: 1rem; color: #a0aec0;">Made with ❤️ using Streamlit & Groq AI</p>
+    <p style="margin-top: 1rem; color: #a0aec0;">Made with ❤️ by Alok Mohan using Streamlit & Groq AI</p>
 </div>
 """, unsafe_allow_html=True)

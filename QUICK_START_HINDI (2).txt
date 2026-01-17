@@ -1,0 +1,271 @@
+╔════════════════════════════════════════════════════════════╗
+║                                                            ║
+║   📊 HINDI PPT MAKER - QUICK START GUIDE (हिंदी)          ║
+║                                                            ║
+╚════════════════════════════════════════════════════════════╝
+
+🎯 यह क्या करता है?
+────────────────────
+आपकी Hindi TTS script को automatically professional PowerPoint 
+presentation में convert कर देता है।
+
+⚡ 5 मिनट में शुरू करें!
+────────────────────────
+
+📥 STEP 1: PYTHON INSTALL (अगर नहीं है तो)
+┌──────────────────────────────────────────────┐
+│ 1. https://www.python.org/ पर जाएं           │
+│ 2. Download Python (latest version)          │
+│ 3. Install करें                               │
+│    ⚠️ Important: "Add Python to PATH"       │
+│       checkbox को SELECT करें                 │
+│ 4. Computer restart करें                     │
+└──────────────────────────────────────────────┘
+
+Check करें: Terminal में type करें
+  → python --version
+  (कुछ इस तरह दिखना चाहिए: Python 3.11.0)
+
+🔧 STEP 2: LIBRARY INSTALL
+┌──────────────────────────────────────────────┐
+│ 1. Folder को VS Code में open करें           │
+│    (या Terminal में folder में जाएं)         │
+│                                               │
+│ 2. Terminal खोलें (VS Code में: Ctrl + `)    │
+│                                               │
+│ 3. यह command run करें:                      │
+│    pip install -r requirements.txt            │
+│                                               │
+│ 4. या directly:                               │
+│    pip install python-pptx                    │
+│                                               │
+│ 5. Wait करें (कुछ seconds)                   │
+└──────────────────────────────────────────────┘
+
+✍️ STEP 3: SCRIPT तैयार करें
+┌──────────────────────────────────────────────┐
+│ Option A: Sample script use करें              │
+│   → input_script.txt already included है     │
+│   → Directly next step पर जाएं               │
+│                                               │
+│ Option B: अपनी script बनाएं                  │
+│   → input_script.txt open करें               │
+│   → अपनी content paste करें                  │
+│   → Save करें (Ctrl + S)                     │
+└──────────────────────────────────────────────┘
+
+📝 Script Format:
+   शीर्षक
+   विवरण
+   
+   Text-to-Speech के लिए Hindi स्क्रिप्ट
+   
+   === भाग १: पहला section ===
+   
+   Content यहाँ...
+   
+   === भाग २: दूसरा section ===
+   
+   और content...
+
+🚀 STEP 4: PROGRAM RUN करें
+┌──────────────────────────────────────────────┐
+│ Terminal में type करें:                       │
+│                                               │
+│   python create_ppt.py                        │
+│                                               │
+│ और Enter दबाएं!                              │
+└──────────────────────────────────────────────┘
+
+✅ SUCCESS होने पर यह दिखेगा:
+   ✅ SUCCESS!
+   📄 Presentation created: output_presentation.pptx
+   📊 Total slides: 25
+
+🎉 STEP 5: OUTPUT देखें
+┌──────────────────────────────────────────────┐
+│ → output_presentation.pptx file बन चुकी है   │
+│ → उसे double-click करके open करें            │
+│ → PowerPoint में खुल जाएगी                   │
+│ → Professional presentation ready! 🎨         │
+└──────────────────────────────────────────────┘
+
+═════════════════════════════════════════════════
+
+🎨 THEMES बदलना (Advanced)
+
+Advanced features के लिए advanced_ppt.py use करें:
+
+```python
+from advanced_ppt import AdvancedPPTMaker
+
+# Theme चुनें
+maker = AdvancedPPTMaker(theme='PROFESSIONAL')
+# Options: PROFESSIONAL, WARM, COOL, PURPLE
+
+# Slides add करें
+maker.add_title_slide("शीर्षक", "उपशीर्षक")
+maker.add_section_slide("भाग १")
+maker.add_bullet_slide("Title", ["Point 1", "Point 2"])
+maker.add_end_slide()
+
+# Save करें
+maker.save("my_presentation.pptx")
+```
+
+Available Themes:
+• PROFESSIONAL - Blue (Default)
+• WARM - Orange/Red
+• COOL - Green
+• PURPLE - Purple
+
+═════════════════════════════════════════════════
+
+⚙️ CUSTOMIZATION
+
+create_ppt.py file में Config section:
+
+```python
+class Config:
+    INPUT_FILE = 'input_script.txt'      # Change filename
+    OUTPUT_FILE = 'my_output.pptx'       # Change output
+    
+    # Colors change करें
+    TITLE_COLOR = RGBColor(255, 0, 0)    # Red
+    
+    # Font sizes change करें
+    TITLE_FONT_SIZE = Pt(50)             # Bigger
+    
+    # Bullets per slide
+    MAX_BULLETS_PER_SLIDE = 5            # Fewer bullets
+```
+
+Popular Colors (RGB):
+• Red: RGBColor(255, 0, 0)
+• Blue: RGBColor(0, 0, 255)
+• Green: RGBColor(0, 255, 0)
+• Orange: RGBColor(255, 165, 0)
+
+═════════════════════════════════════════════════
+
+🐛 PROBLEMS? TROUBLESHOOTING
+
+Problem: "python: command not found"
+Solution: 
+  1. Python install करें
+  2. PATH में add करें
+  3. Computer restart करें
+
+Problem: "No module named 'pptx'"
+Solution: pip install python-pptx
+
+Problem: "Input file not found"
+Solution: input_script.txt file exist करती है check करें
+
+Problem: Slides में Hindi text नहीं दिख रहा
+Solution: 
+  1. File को UTF-8 में save करें
+  2. Hindi fonts system में installed हों
+
+Problem: Output file create नहीं हो रही
+Solution:
+  1. Folder में write permission है check करें
+  2. Output filename में special characters नहीं हों
+  3. Terminal में error message पढ़ें
+
+═════════════════════════════════════════════════
+
+💡 PRO TIPS
+
+1. Script Quality:
+   - Clear section divisions (=== भाग ===)
+   - Not too long paragraphs
+   - 5-6 points per section ideal
+
+2. Multiple Presentations:
+   - Different input files के लिए Config change करें
+   - या different folders use करें
+
+3. VS Code Benefits:
+   - Syntax highlighting
+   - Integrated terminal
+   - Easy file editing
+
+4. Backup:
+   - हमेशा original script की backup रखें
+   - Generated PPTs को organize करके रखें
+
+═════════════════════════════════════════════════
+
+📂 FILE STRUCTURE
+
+hindi-ppt-maker/
+├── create_ppt.py           # Basic generator
+├── advanced_ppt.py         # Advanced generator
+├── requirements.txt        # Dependencies
+├── README.md              # Full documentation
+├── QUICK_START_HINDI.txt  # यह file
+│
+├── input_script.txt       # Your input
+└── output_presentation.pptx  # Generated output
+
+═════════════════════════════════════════════════
+
+📱 COMMON COMMANDS
+
+# Install
+pip install python-pptx
+
+# Run basic
+python create_ppt.py
+
+# Run advanced (edit code first)
+python advanced_ppt.py
+
+# Check versions
+python --version
+pip --version
+
+# List installed packages
+pip list
+
+═════════════════════════════════════════════════
+
+🎯 EXAMPLE WORKFLOWS
+
+Example 1: Simple PPT
+```bash
+python create_ppt.py
+```
+
+Example 2: Custom theme PPT
+Edit advanced_ppt.py bottom section:
+```python
+maker = AdvancedPPTMaker(theme='WARM')
+# Add your slides
+maker.save("custom.pptx")
+```
+Then run: python advanced_ppt.py
+
+Example 3: Multiple scripts
+```python
+# Change in Config
+INPUT_FILE = 'script1.txt'
+OUTPUT_FILE = 'presentation1.pptx'
+```
+
+═════════════════════════════════════════════════
+
+📚 NEXT STEPS
+
+1. README.md पढ़ें - Complete documentation
+2. advanced_ppt.py explore करें - More features
+3. अपनी themes बनाएं - Custom colors
+4. Layout experiments करें - Different styles
+
+═════════════════════════════════════════════════
+
+बस! अब आप ready हैं।
+अपनी पहली presentation बनाएं! 🚀📊
+
+Happy Presenting! 🎉

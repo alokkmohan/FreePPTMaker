@@ -1,0 +1,22 @@
+{
+  "name": "hindi-script-to-word",
+  "version": "1.0.0",
+  "description": "Convert Hindi TTS scripts to Word documents",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node index.js"
+  },
+  "keywords": [
+    "docx",
+    "hindi",
+    "word",
+    "tts",
+    "script"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "docx": "^8.5.0"
+  }
+}

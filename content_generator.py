@@ -185,69 +185,86 @@ def generate_with_groq(topic, user_instructions=""):
 
 विषय: {topic}{extra_context}
 
+महत्वपूर्ण फॉर्मेट निर्देश:
+- हर section का heading COLON (:) के साथ अलग line पर होना चाहिए
+- Example: "परिचय:" फिर अगली line पर content
+- हर paragraph के बाद एक खाली line
+- कम से कम 10-12 sections बनाएं (10-12 slides के लिए)
+
 आवश्यकताएं:
-- लंबाई: 2000-2500 शब्द (10-15 slides के लिए)
+- लंबाई: 2000-2500 शब्द
 - विशिष्ट तथ्य, आंकड़े, वास्तविक डेटा
 - ठोस उदाहरण और case studies
 - आधिकारिक, professional tone
 - वास्तविक कंपनी के नाम, तकनीकें, विशिष्ट संख्याएं
 
-संरचना:
-1. परिचय (300-400 शब्द)
-2. मुख्य विषय (1200-1500 शब्द) - 8-10 sections
-3. भविष्य का दृष्टिकोण (300-400 शब्द)
-4. निष्कर्ष (200-300 शब्द)
+संरचना (हर section का heading अलग line पर):
+परिचय: (300-400 शब्द)
 
-विस्तृत, तथ्यात्मक content लिखें। कम से कम 10 slides के लिए पर्याप्त content दें।
+मुख्य अवधारणाएं: (200-300 शब्द)
 
-अब पूरा लेख हिंदी में लिखें:"""
+ऐतिहासिक पृष्ठभूमि: (200-300 शब्द)
+
+वर्तमान trends और विकास: (200-300 शब्द)
+
+वास्तविक applications: (200-300 शब्द)
+
+लाभ और अवसर: (200-300 शब्द)
+
+चुनौतियां और सीमाएं: (200-300 शब्द)
+
+नवीनतम innovations: (200-300 शब्द)
+
+भविष्य की संभावनाएं: (200-300 शब्द)
+
+निष्कर्ष: (200-300 शब्द)
+
+अब पूरा लेख हिंदी में लिखें, हर heading को COLON के साथ अलग line पर:"""
         else:
             prompt = f"""You are an expert researcher and content writer with deep knowledge. Create a COMPREHENSIVE, FACTUAL, and DETAILED article on the following topic:
 
 Topic: {topic}{extra_context}
 
+CRITICAL FORMAT INSTRUCTIONS:
+- Each section heading MUST be on its own line followed by a COLON (:)
+- Example: "Introduction:" then content on next lines
+- Blank line after each paragraph
+- Create at least 10-12 distinct sections (for 10-12 slides)
+
 REQUIREMENTS:
-- Length: 2000-2500 words (for 10-15 slides)
+- Length: 2000-2500 words
 - Include SPECIFIC FACTS, STATISTICS, REAL DATA with numbers
 - Provide CONCRETE EXAMPLES with actual company/product names
 - Use authoritative, professional, technical tone
 - Include current information and recent developments
 - Cite specific technologies, methodologies, frameworks
 
-Article Structure:
-1. **Introduction** (300-400 words)
-   - Comprehensive background and context
-   - Historical perspective if relevant
-   - Why this topic is critical now
-   - Current state and relevance
+Article Structure (each heading on separate line with colon):
+Introduction: (300-400 words)
 
-2. **Main Content** (1200-1500 words) - 8-10 detailed sections:
-   - Core concepts and technical definitions (detailed)
-   - Current trends with specific examples (companies, products, stats)
-   - Real-world applications and use cases with details
-   - Benefits and advantages with quantifiable metrics
-   - Challenges and limitations with specific scenarios
-   - Latest innovations, technologies, breakthroughs
-   - Industry impact, market size, growth data
-   - Best practices and recommendations
-   - Security and risk considerations
-   - Future possibilities and developments
+Core Concepts and Definitions: (200-300 words)
 
-3. **Future Outlook** (300-400 words)
-   - Specific predictions with timeframes
-   - Emerging trends with examples
-   - Growth opportunities and market projections
-   - Technological advancements expected
+Historical Background: (200-300 words)
 
-4. **Conclusion** (200-300 words)
-   - Summary of critical insights
-   - Actionable recommendations
-   - Strategic takeaways
-   - Key points to remember
+Current Trends and Developments: (200-300 words)
 
-IMPORTANT: Be extremely specific. Instead of saying "many companies", name actual companies. Instead of "recent years", give specific years. Instead of "significant growth", provide actual percentages or numbers. Use technical terminology. Provide enough detailed content for at least 10 slides.
+Real-World Applications: (200-300 words)
 
-Write the complete, detailed article now (2000-2500 words):"""
+Benefits and Advantages: (200-300 words)
+
+Challenges and Limitations: (200-300 words)
+
+Latest Innovations: (200-300 words)
+
+Industry Impact and Market Insights: (200-300 words)
+
+Future Outlook: (200-300 words)
+
+Conclusion: (200-300 words)
+
+IMPORTANT: Be extremely specific. Name actual companies, give specific years, provide actual percentages. Each section heading should be on its own line followed by a colon.
+
+Write the complete, detailed article now (2000-2500 words), with each heading on a separate line with colon:"""
         
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",

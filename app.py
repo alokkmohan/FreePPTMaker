@@ -352,75 +352,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Sidebar with Reset Button
+# Minimal Sidebar - only reset button
 with st.sidebar:
-    st.markdown("### 🔧 Controls")
-    st.markdown("")
-    
-    # Dark Mode Toggle
-    if 'dark_mode' not in st.session_state:
-        st.session_state['dark_mode'] = False
-    
-    dark_mode = st.toggle("🌙 Dark Mode", value=st.session_state['dark_mode'], key="dark_mode_toggle")
-    if dark_mode != st.session_state['dark_mode']:
-        st.session_state['dark_mode'] = dark_mode
-        st.rerun()
-    
-    if st.session_state['dark_mode']:
-        st.markdown('<script>document.documentElement.setAttribute("data-theme", "dark");</script>', unsafe_allow_html=True)
-    
-    st.markdown("")
-    
     if st.button("🔄 Reset App", key="reset_btn", use_container_width=True, help="Clear all data and start fresh"):
         # Clear all session state
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
-    
-    st.markdown("---")
-    
-    # Download History
-    st.markdown("### 📥 Download History")
-    if 'download_history' not in st.session_state:
-        st.session_state['download_history'] = []
-    
-    history = st.session_state.get('download_history', [])
-    if history:
-        st.markdown(f"**Last {min(len(history), 5)} files:**")
-        for i, item in enumerate(history[-5:][::-1], 1):
-            if os.path.exists(item['path']):
-                with st.expander(f"{i}. {item['name']} - {item['time']}"):
-                    with open(item['path'], "rb") as f:
-                        st.download_button(
-                            label=f"📥 Re-download {item['type']}",
-                            data=f,
-                            file_name=item['name'],
-                            mime=item['mime'],
-                            key=f"history_{i}",
-                            use_container_width=True
-                        )
-    else:
-        st.info("No downloads yet")
-    
-    st.markdown("---")
-    st.markdown("### ℹ️ About")
-    st.markdown("""
-    **AM AI Studio** helps you:
-    - 📊 Create beautiful PowerPoint presentations
-    - 🎥 Generate engaging YouTube scripts
-    - 🤖 Use AI to enhance your content
-    
-    **Features:**
-    - Multiple design themes
-    - Hindi & English support
-    - AI-powered content generation
-    - Session persistence
-    - Dark mode
-    - Download history
-    """)
-    
-    st.markdown("---")
-    st.markdown("<p style='text-align: center; color: #718096; font-size: 0.85rem;'>Made with ❤️ by AM AI Studio</p>", unsafe_allow_html=True)
 
 st.markdown("""
 <style>
@@ -454,225 +392,205 @@ os.makedirs("input", exist_ok=True)
 os.makedirs("output/slides", exist_ok=True)
 
 # Main Menu Selection
-st.markdown('<div class="step-indicator">🎯 Choose Your Output Format</div>', unsafe_allow_html=True)
+# Initialize session state for main menu - auto-select PowerPoint
+if 'main_menu' not in st.session_state:
+    st.session_state['main_menu'] = 'ppt'  # Auto-select PowerPoint
+
+# Step 1: Input Method - directly start here
+st.markdown(f'<div class="step-indicator">📝 Step 1: Choose Input Method for PowerPoint</div>', unsafe_allow_html=True)
 st.markdown("")
 
-# Initialize session state for main menu - check URL params first
-if 'main_menu' not in st.session_state:
-    # Try to get from URL parameter
-    url_params = st.query_params
-    if 'task' in url_params and url_params['task'] in ['ppt', 'youtube']:
-        st.session_state['main_menu'] = url_params['task']
-    else:
-        st.session_state['main_menu'] = None
+# Initialize session state for input method
+if 'input_method' not in st.session_state:
+    st.session_state['input_method'] = None
 
-# Menu selection container with active state
-active_menu = st.session_state.get('main_menu')
-menu_class = f"menu-active-{active_menu}" if active_menu else ""
+col1, col2 = st.columns(2)
 
-st.markdown(f'<div class="{menu_class}">', unsafe_allow_html=True)
-col_menu1, col_menu2 = st.columns(2)
-
-with col_menu1:
-    if st.button("📊 Text to PowerPoint\n\nCreate beautiful PPT presentations", key="ppt_menu_btn", use_container_width=True, type="secondary"):
-        st.session_state['main_menu'] = 'ppt'
-        st.session_state['input_method'] = None  # Reset input method
-        st.query_params['task'] = 'ppt'  # Update URL
-        st.rerun()
+with col1:
+    if st.button("📁 Upload File\n\nUpload TXT, DOCX, MD files", key="upload_btn", use_container_width=True):
+        st.session_state['input_method'] = 'upload'
     
-with col_menu2:
-    if st.button("🎥 Text to YouTube Script\n\nGenerate engaging video scripts", key="youtube_menu_btn", use_container_width=True, type="secondary"):
-        st.session_state['main_menu'] = 'youtube'
-        st.session_state['input_method'] = None  # Reset input method
-        st.query_params['task'] = 'youtube'  # Update URL
-        st.rerun()
+with col2:
+    if st.button("✍️ Paste Text\n\nCopy and paste your content", key="paste_btn", use_container_width=True):
+        st.session_state['input_method'] = 'paste'
 
-st.markdown('</div>', unsafe_allow_html=True)
+st.markdown("")
 
-st.markdown("---")
+# Initialize script_content outside conditionals
+script_content = None
 
-# Only show input method if main menu is selected
-if st.session_state.get('main_menu'):
-    # Step 1: Input Method
-    menu_type = "PowerPoint" if st.session_state['main_menu'] == 'ppt' else "YouTube Script"
-    st.markdown(f'<div class="step-indicator">📝 Step 1: Choose Input Method for {menu_type}</div>', unsafe_allow_html=True)
-    st.markdown("")
-
-    # Initialize session state for input method
-    if 'input_method' not in st.session_state:
-        st.session_state['input_method'] = None
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("📁 Upload File\n\nUpload TXT, DOCX, MD files", key="upload_btn", use_container_width=True):
-            st.session_state['input_method'] = 'upload'
+if st.session_state.get('input_method') == 'upload':
+    st.markdown("### 📁 Upload Your File")
+    uploaded_file = st.file_uploader(
+        "Choose your file",
+        type=["txt", "docx", "md"],
+        help="Supported formats: TXT, DOCX, MD"
+    )
+    if uploaded_file:
+        file_type = uploaded_file.name.split('.')[-1].lower()
         
-    with col2:
-        if st.button("✍️ Paste Text\n\nCopy and paste your content", key="paste_btn", use_container_width=True):
-            st.session_state['input_method'] = 'paste'
-
-    st.markdown("")
-    
-    # Initialize script_content outside conditionals
-    script_content = None
-
-    if st.session_state.get('input_method') == 'upload':
-        st.markdown("### 📁 Upload Your File")
-        uploaded_file = st.file_uploader(
-            "Choose your file",
-            type=["txt", "docx", "md"],
-            help="Supported formats: TXT, DOCX, MD"
-        )
-        if uploaded_file:
-            file_type = uploaded_file.name.split('.')[-1].lower()
-            
-            if file_type in ["txt", "md"]:
-                script_content = uploaded_file.read().decode('utf-8')
-            elif file_type == "docx":
-                temp_path = os.path.join("input", "temp.docx")
-                with open(temp_path, "wb") as f:
-                    f.write(uploaded_file.read())
-                doc = Document(temp_path)
-                script_content = "\n".join([para.text for para in doc.paragraphs])
-            
-            if script_content:
-                st.success("✅ File uploaded successfully!")
-                
-                # Content Analytics
-                word_count = len(script_content.split())
-                char_count = len(script_content)
-                estimated_slides = max(5, min(20, word_count // 100))
-                estimated_time = f"{estimated_slides * 3}-{estimated_slides * 5} seconds"
-                
-                col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
-                with col_stat1:
-                    st.metric("📝 Words", f"{word_count:,}")
-                with col_stat2:
-                    st.metric("🔤 Characters", f"{char_count:,}")
-                with col_stat3:
-                    st.metric("📊 Est. Slides", estimated_slides)
-                with col_stat4:
-                    st.metric("⏱️ Est. Time", estimated_time)
-                
-                with st.expander("👀 Preview Content"):
-                    col_preview, col_copy = st.columns([4, 1])
-                    with col_preview:
-                        st.text_area("", script_content, height=200, disabled=True, label_visibility="collapsed")
-                    with col_copy:
-                        if st.button("📋 Copy", use_container_width=True):
-                            st.code(script_content, language=None)
-                            st.success("✅ Select and copy text above!")
-
-    elif st.session_state.get('input_method') == 'paste':
-        st.markdown("### ✍️ Paste Your Content")
+        if file_type in ["txt", "md"]:
+            script_content = uploaded_file.read().decode('utf-8')
+        elif file_type == "docx":
+            temp_path = os.path.join("input", "temp.docx")
+            with open(temp_path, "wb") as f:
+                f.write(uploaded_file.read())
+            doc = Document(temp_path)
+            script_content = "\n".join([para.text for para in doc.paragraphs])
         
-        # Initialize session state for content type
-        if 'content_type' not in st.session_state:
-            st.session_state['content_type'] = None
-        
-        col_a, col_b = st.columns(2)
-        
-        with col_a:
-            if st.button("📄 Complete Article\n\nReady content to convert", key="article_btn", use_container_width=True):
-                st.session_state['content_type'] = 'article'
-        
-        with col_b:
-            if st.button("🤖 Topic Only\n\nAI generates content for you", key="topic_btn", use_container_width=True):
-                st.session_state['content_type'] = 'topic'
-        
-        st.markdown("")
-        
-        if st.session_state.get('content_type') == 'topic':
-            st.markdown("### 🎯 Enter Your Topic")
-            st.markdown("AI will generate a detailed article and create presentation from your topic")
-            topic_input = st.text_area(
-                "",
-                placeholder="Example:\n• Artificial Intelligence in Healthcare\n• Climate Change and Its Effects\n• Future of Electric Vehicles\n• Digital Marketing Strategies 2025",
-                help="Enter any topic - AI will create comprehensive content",
-                height=150,
-                label_visibility="collapsed",
-                key="topic_text"
-            )
+        if script_content:
+            st.success("✅ File uploaded successfully!")
             
-            if topic_input and st.button("✅ Confirm Topic and Proceed", type="primary", use_container_width=True):
-                st.session_state['confirmed_content'] = f"TOPIC:{topic_input}"
-                st.info(f"💡 Topic: **{topic_input}** - AI will create detailed content and presentation")
+            # Content Analytics
+            word_count = len(script_content.split())
+            char_count = len(script_content)
+            estimated_slides = max(5, min(20, word_count // 100))
+            estimated_time = f"{estimated_slides * 3}-{estimated_slides * 5} seconds"
             
-            script_content = st.session_state.get('confirmed_content') if st.session_state.get('confirmed_content', '').startswith('TOPIC:') else None
+            col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
+            with col_stat1:
+                st.metric("📝 Words", f"{word_count:,}")
+            with col_stat2:
+                st.metric("🔤 Characters", f"{char_count:,}")
+            with col_stat3:
+                st.metric("📊 Est. Slides", estimated_slides)
+            with col_stat4:
+                st.metric("⏱️ Est. Time", estimated_time)
             
-        elif st.session_state.get('content_type') == 'article':
-            st.markdown("### 📝 Paste Your Content")
+            with st.expander("👀 Preview Content"):
+                col_preview, col_copy = st.columns([4, 1])
+                with col_preview:
+                    st.text_area("", script_content, height=200, disabled=True, label_visibility="collapsed")
+                with col_copy:
+                    if st.button("📋 Copy", use_container_width=True):
+                        st.code(script_content, language=None)
+                        st.success("✅ Select and copy text above!")
             
-            # Auto-save draft feature
-            if 'draft_content' not in st.session_state:
-                st.session_state['draft_content'] = ""
-            
-            article_input = st.text_area(
-                "",
-                value=st.session_state.get('draft_content', ''),
-                height=300,
-                placeholder="Paste your content here...\nYou can paste in multiple parts - the text will accumulate.\nSupports multiple languages including Hindi, English, etc.",
-                help="Paste your ready-to-convert content. You can paste multiple times before submitting.",
-                label_visibility="collapsed",
-                key="article_text",
-                on_change=lambda: st.session_state.update({'draft_content': st.session_state.article_text})
-            )
-            
-            # Auto-save indicator
-            if article_input:
-                st.caption("💾 Auto-saved draft")
-                
-                # Content Analytics for pasted content
-                word_count = len(article_input.split())
-                char_count = len(article_input)
-                estimated_slides = max(5, min(20, word_count // 100))
-                
-                # Quality Indicators
-                avg_word_length = sum(len(word) for word in article_input.split()) / max(word_count, 1)
-                readability_score = "Good" if 4 <= avg_word_length <= 7 else "Complex" if avg_word_length > 7 else "Simple"
-                
-                col_stat1, col_stat2, col_stat3 = st.columns(3)
-                with col_stat1:
-                    st.metric("📝 Words", f"{word_count:,}")
-                with col_stat2:
-                    st.metric("📊 Est. Slides", estimated_slides)
-                with col_stat3:
-                    st.metric("🎯 Readability", readability_score)
-            
-            # AI Enhancement option
+            # AI Enhancement option for uploaded files
             st.markdown("####")
-            enhance_with_ai = st.checkbox(
-                "🤖 AI Enhancement - Improve and structure content with AI",
-                value=False,
-                help="Enable this to let AI enhance, restructure and improve your content before creating presentation"
+            enhance_uploaded = st.checkbox(
+                "🤖 AI Enhancement - Auto-create title, sections and structure",
+                value=True,
+                key="enhance_upload",
+                help="Enable this to let AI automatically create title, section headings and organize content"
             )
             
-            if enhance_with_ai:
-                st.info("💡 AI will enhance and restructure your content for better presentation")
+            if enhance_uploaded:
+                st.info("💡 AI will create title, section headings and organize content into slides")
+                st.session_state['ai_enhancement'] = True
             else:
-                st.info("📄 Will create presentation directly from your pasted content")
+                st.info("📄 Will use basic formatting without AI enhancement")
+                st.session_state['ai_enhancement'] = False
+
+elif st.session_state.get('input_method') == 'paste':
+    st.markdown("### ✍️ Paste Your Content")
+    
+    # Initialize session state for content type
+    if 'content_type' not in st.session_state:
+        st.session_state['content_type'] = None
+    
+    col_a, col_b = st.columns(2)
+    
+    with col_a:
+        if st.button("📄 Complete Article\n\nReady content to convert", key="article_btn", use_container_width=True):
+            st.session_state['content_type'] = 'article'
+    
+    with col_b:
+        if st.button("🤖 Topic Only\n\nAI generates content for you", key="topic_btn", use_container_width=True):
+            st.session_state['content_type'] = 'topic'
+    
+    st.markdown("")
+    
+    if st.session_state.get('content_type') == 'topic':
+        st.markdown("### 🎯 Enter Your Topic")
+        st.markdown("AI will generate a detailed article and create presentation from your topic")
+        topic_input = st.text_area(
+            "",
+            placeholder="Example:\n• Artificial Intelligence in Healthcare\n• Climate Change and Its Effects\n• Future of Electric Vehicles\n• Digital Marketing Strategies 2025",
+            help="Enter any topic - AI will create comprehensive content",
+            height=150,
+            label_visibility="collapsed",
+            key="topic_text"
+        )
+        
+        if topic_input and st.button("✅ Confirm Topic and Proceed", type="primary", use_container_width=True):
+            st.session_state['confirmed_content'] = f"TOPIC:{topic_input}"
+            st.info(f"💡 Topic: **{topic_input}** - AI will create detailed content and presentation")
+        
+        script_content = st.session_state.get('confirmed_content') if st.session_state.get('confirmed_content', '').startswith('TOPIC:') else None
+        
+    elif st.session_state.get('content_type') == 'article':
+        st.markdown("### 📝 Paste Your Content")
+        
+        # Auto-save draft feature
+        if 'draft_content' not in st.session_state:
+            st.session_state['draft_content'] = ""
+        
+        article_input = st.text_area(
+            "",
+            value=st.session_state.get('draft_content', ''),
+            height=300,
+            placeholder="Paste your content here...\nYou can paste in multiple parts - the text will accumulate.\nSupports multiple languages including Hindi, English, etc.",
+            help="Paste your ready-to-convert content. You can paste multiple times before submitting.",
+            label_visibility="collapsed",
+            key="article_text",
+            on_change=lambda: st.session_state.update({'draft_content': st.session_state.article_text})
+        )
+        
+        # Auto-save indicator
+        if article_input:
+            st.caption("💾 Auto-saved draft")
             
-            col_confirm, col_clear = st.columns([3, 1])
-            with col_confirm:
-                if article_input and st.button("✅ Confirm Content and Proceed", type="primary", use_container_width=True):
-                    # Store both content and enhancement preference
-                    if enhance_with_ai:
-                        st.session_state['confirmed_content'] = f"ENHANCE:{article_input}"
-                    else:
-                        st.session_state['confirmed_content'] = article_input
-                    st.session_state['ai_enhancement'] = enhance_with_ai
-                    st.success(f"✅ Content confirmed ({len(article_input)} characters) - {'AI Enhancement ON' if enhance_with_ai else 'Direct Conversion'}")
+            # Content Analytics for pasted content
+            word_count = len(article_input.split())
+            char_count = len(article_input)
+            estimated_slides = max(5, min(20, word_count // 100))
             
-            with col_clear:
-                if st.button("🗑️ Clear", use_container_width=True):
-                    st.session_state['draft_content'] = ""
-                    st.rerun()
+            # Quality Indicators
+            avg_word_length = sum(len(word) for word in article_input.split()) / max(word_count, 1)
+            readability_score = "Good" if 4 <= avg_word_length <= 7 else "Complex" if avg_word_length > 7 else "Simple"
             
-            script_content = st.session_state.get('confirmed_content')
-            # Filter out TOPIC: prefix for this check
-            if script_content and script_content.startswith('TOPIC:'):
-                script_content = None
+            col_stat1, col_stat2, col_stat3 = st.columns(3)
+            with col_stat1:
+                st.metric("📝 Words", f"{word_count:,}")
+            with col_stat2:
+                st.metric("📊 Est. Slides", estimated_slides)
+            with col_stat3:
+                st.metric("🎯 Readability", readability_score)
+        
+        # AI Enhancement option
+        st.markdown("####")
+        enhance_with_ai = st.checkbox(
+            "🤖 AI Enhancement - Improve and structure content with AI",
+            value=False,
+            help="Enable this to let AI enhance, restructure and improve your content before creating presentation"
+        )
+        
+        if enhance_with_ai:
+            st.info("💡 AI will enhance and restructure your content for better presentation")
+        else:
+            st.info("📄 Will create presentation directly from your pasted content")
+        
+        col_confirm, col_clear = st.columns([3, 1])
+        with col_confirm:
+            if article_input and st.button("✅ Confirm Content and Proceed", type="primary", use_container_width=True):
+                # Store both content and enhancement preference
+                if enhance_with_ai:
+                    st.session_state['confirmed_content'] = f"ENHANCE:{article_input}"
+                else:
+                    st.session_state['confirmed_content'] = article_input
+                st.session_state['ai_enhancement'] = enhance_with_ai
+                st.success(f"✅ Content confirmed ({len(article_input)} characters) - {'AI Enhancement ON' if enhance_with_ai else 'Direct Conversion'}")
+        
+        with col_clear:
+            if st.button("🗑️ Clear", use_container_width=True):
+                st.session_state['draft_content'] = ""
+                st.rerun()
+        
+        script_content = st.session_state.get('confirmed_content')
+        # Filter out TOPIC: prefix for this check
+        if script_content and script_content.startswith('TOPIC:'):
+            script_content = None
 else:
     # Initialize script_content if no input method selected
     script_content = None
@@ -683,15 +601,9 @@ if script_content and st.session_state.get('main_menu'):
     st.markdown('<div class="step-indicator">⚙️ Step 2: Configure Options</div>', unsafe_allow_html=True)
     st.markdown("")
     
-    # Set generate flags based on main menu selection
-    if st.session_state['main_menu'] == 'ppt':
-        generate_ppt = True
-        generate_youtube_script = False
-        st.info("📊 **Mode:** PowerPoint Generation Only")
-    else:  # youtube
-        generate_ppt = False
-        generate_youtube_script = True
-        st.info("🎬 **Mode:** YouTube Script Generation Only")
+    # Set generate flags - PowerPoint only
+    generate_ppt = True
+    generate_youtube_script = False
     
     # AI Enhancement setting based on user choice
     ai_enhancement_enabled = st.session_state.get('ai_enhancement', False)
@@ -722,7 +634,7 @@ if script_content and st.session_state.get('main_menu'):
         st.info(f"✨ Selected Theme: **{selected_theme.upper()}**")
     
     st.markdown("####")
-    if st.button(f"🚀 Generate {'PowerPoint' if generate_ppt else 'YouTube Script'}", type="primary", use_container_width=True):
+    if st.button(f"🚀 Generate PowerPoint", type="primary", use_container_width=True):
         st.session_state['ai_instructions'] = ai_instructions
         
         # Store original topic for PPT title
@@ -800,7 +712,6 @@ if script_content and st.session_state.get('main_menu'):
         
         st.markdown("---")
         st.markdown('<div class="step-indicator">📦 Results</div>', unsafe_allow_html=True)
-        st.info(f"📁 Files saved in: **{output_folder}**")
         st.markdown("")
         
         # Generate PPT
@@ -870,7 +781,7 @@ if script_content and st.session_state.get('main_menu'):
                                     for idx, img in enumerate(images):
                                         with cols[idx % 3]:
                                             img_path = os.path.join(output_folder, img)
-                                            st.image(img_path, caption=f"Slide {idx+1}", use_column_width=True)
+                                            st.image(img_path, caption=f"Slide {idx+1}")
                                             with open(img_path, "rb") as f:
                                                 st.download_button(
                                                     label=f"📥 Slide {idx+1}",
@@ -1016,7 +927,7 @@ if st.session_state.get('ppt_generated') and os.path.exists(st.session_state.get
                 with cols[idx % 3]:
                     img_path = os.path.join(images_folder, img)
                     if os.path.exists(img_path):
-                        st.image(img_path, caption=f"Slide {idx+1}", use_column_width=True)
+                        st.image(img_path, caption=f"Slide {idx+1}")
 
 if st.session_state.get('youtube_generated') and os.path.exists(st.session_state.get('youtube_path', '')):
     if not st.session_state.get('ppt_generated'):
@@ -1039,17 +950,24 @@ if st.session_state.get('youtube_generated') and os.path.exists(st.session_state
             st.markdown(st.session_state['youtube_script'])
 
 # Footer
-st.markdown("""
-<div class="update-info">
-    <h3>🔄 System Status</h3>
-    <p><strong>Last Updated:</strong> <span class="timestamp">2026-01-17 15:41:55 IST</span></p>
-    <p style="color: #667eea; font-size: 0.9rem; margin-top: 1rem;">
-        ✅ All systems operational | Hindi & English support | 10-20 slides generation
-    </p>
-</div>
+from datetime import datetime
+import pytz
 
-<div class="footer">
-    <p><strong>💡 Pro Tip:</strong> Upload any text file or paste content directly. Get professional presentations and YouTube scripts instantly!</p>
-    <p style="margin-top: 1rem; color: #a0aec0;">Made with ❤️ by Alok Mohan using Streamlit & Groq AI</p>
+# Get current time in IST
+ist = pytz.timezone('Asia/Kolkata')
+current_time = datetime.now(ist).strftime('%Y-%m-%d %H:%M:%S IST')
+
+st.markdown(f"""
+<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; margin-top: 3rem; border-radius: 15px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);">
+    <div style="text-align: center;">
+        <h3 style="color: white; margin-bottom: 1rem;">🔄 System Status</h3>
+        <p style="color: #f0f4ff; margin-bottom: 0.5rem;"><strong>Last Updated:</strong> {current_time}</p>
+        <p style="color: #e8ecf1; font-size: 0.9rem; margin-bottom: 1rem;">
+            ✅ All systems operational | Hindi & English support | 10-20 slides generation
+        </p>
+        <p style="color: #d4d9e8; font-size: 0.85rem; margin-top: 1.5rem; opacity: 0.9; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 1rem;">
+            Developed by Alok Mohan
+        </p>
+    </div>
 </div>
 """, unsafe_allow_html=True)

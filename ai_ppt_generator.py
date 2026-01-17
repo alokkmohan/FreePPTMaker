@@ -52,8 +52,14 @@ def structure_content_with_ai(script_text, user_instructions=""):
 - हर content slide में 4-6 bullet points (अनिवार्य)
 - हर bullet में पूर्ण, सार्थक वाक्य (60-120 characters)
 - Section dividers का उपयोग करें
-- Conclusion slide में मुख्य बिंदु
-- Generic text नहीं - विषय के बारे में विशिष्ट जानकारी दें"""
+- Conclusion slide में मुख्य बिंदु"""
+            
+            content_preservation = """महत्वपूर्ण: ORIGINAL CONTENT को preserve करें
+- Script में दी गई जानकारी को ज्यों का त्यों रखें
+- सिर्फ formatting और organization improve करें
+- नई जानकारी न जोड़ें, script में जो है वही use करें
+- Bullets में script के exact words और phrases use करें
+- बस proper sections बनाएं और clear titles दें"""
         else:
             lang_instruction = """Language: Create slides in English
 - Title slide with main title and subtitle
@@ -61,62 +67,74 @@ def structure_content_with_ai(script_text, user_instructions=""):
 - Each content slide: 4-6 bullet points (MANDATORY)
 - Each bullet: complete, meaningful sentence (80-150 chars)
 - Use section dividers for major topics
-- Conclusion slide with key takeaways
-- NO generic text - provide specific information about the topic"""
+- Conclusion slide with key takeaways"""
+            
+            content_preservation = """CRITICAL: PRESERVE ORIGINAL CONTENT
+- Keep the information from the script AS IS
+- Only improve formatting and organization
+- DO NOT add new information - use only what's in the script
+- Use exact words and phrases from the script in bullets
+- Just create proper sections and clear titles"""
         
-        prompt = f"""You are a professional presentation designer. Convert the following script into a well-structured PowerPoint presentation.
+        prompt = f"""You are a professional presentation designer. Your task is to RESTRUCTURE (not rewrite) the following script into a well-organized PowerPoint presentation.
 
 Script:
 {script_text}{extra_instructions}
 
 {lang_instruction}
 
+{content_preservation}
+
 IMPORTANT REQUIREMENTS:
-- MINIMUM 10 slides (excluding title and end slide)
+- Extract a clear TITLE from the script content (first line or main topic)
+- Create a relevant SUBTITLE based on script theme
+- MINIMUM 10 slides (excluding title)
 - MAXIMUM 20 slides total
-- Each slide must have REAL, SPECIFIC content about the topic
-- NO generic phrases like 'Understanding the fundamentals', 'important aspect', etc.
-- Use actual facts, examples, and detailed information from the script
+- Break the script into logical sections
+- Each section gets a clear, descriptive title
+- Convert each section's content into 4-6 bullet points
+- Use the EXACT information from the script - don't invent new content
+- Keep technical terms, names, numbers exactly as given in script
 
 Return ONLY valid JSON (no markdown):
 {{
-    "title": "Main presentation title",
-    "subtitle": "Brief subtitle or tagline",
+    "title": "Extract or infer main title from script",
+    "subtitle": "Brief subtitle based on script theme",
     "slides": [
         {{
             "type": "content",
-            "title": "Slide Title",
-            "bullets": ["Detailed point 1 with full explanation", "Detailed point 2 with context", "Detailed point 3 with examples", "Detailed point 4 with insights"]
+            "title": "Section Title (from script context)",
+            "bullets": ["Point from script", "Another point from script", "Third point from script", "Fourth point from script"]
         }},
         {{
             "type": "section",
-            "title": "Major Topic Name"
+            "title": "Major Topic Divider"
         }},
         {{
             "type": "content",
-            "title": "Another Topic",
-            "bullets": ["Complete sentence 1", "Complete sentence 2", "Complete sentence 3", "Complete sentence 4"]
+            "title": "Another Section Title",
+            "bullets": ["Script content 1", "Script content 2", "Script content 3", "Script content 4"]
         }}
     ]
 }}
 
 Important Rules:
-- MINIMUM 10 content slides, MAXIMUM 20 slides total
+- PRESERVE original content - only reorganize it
+- Extract title and subtitle from script itself
 - MINIMUM 4 bullets per content slide (ideal 5-6)
-- Each bullet must be SPECIFIC to the topic with actual information
-- NO generic phrases - every bullet should contain real facts/examples
-- Keep bullets informative and specific
-- Natural flow and logical grouping
+- Each bullet uses information directly from the script
+- Create clear section titles that reflect the content
+- Natural flow following script's structure
 - DO NOT use emojis or special icons (⚠️ ❌ ✅ etc.) - plain text only
 - Return ONLY the JSON, no extra text"""
         
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
-                {"role": "system", "content": "You are a presentation design expert. Create 10-20 slides with specific, detailed content from the script. NO generic text allowed. Return only valid JSON."},
+                {"role": "system", "content": "You are a presentation design expert who restructures content without changing it. Extract and organize information from the script, preserve exact wording, create clear titles. Return only valid JSON."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.7,
+            temperature=0.3,  # Lower temperature for more faithful content preservation
             max_tokens=6000
         )
         
@@ -571,7 +589,7 @@ class ModernPPTDesigner:
         """Save presentation"""
         self.prs.save(filepath)
 
-def generate_beautiful_ppt(script_text, output_path, color_scheme="corporate", use_ai=True, ai_instructions=""):
+def generate_beautiful_ppt(script_text, output_path, color_scheme="corporate", use_ai=True, ai_instructions="", original_topic=None):
     """
     Generate beautiful PPT from script
     
@@ -581,7 +599,9 @@ def generate_beautiful_ppt(script_text, output_path, color_scheme="corporate", u
         color_scheme: Color scheme to use
         use_ai: Use AI for content structuring
         ai_instructions: Additional instructions for AI (optional)
+        original_topic: Original topic title to use (optional)
     """
+    print(f"DEBUG: Function called with original_topic={original_topic}")  # Debug line
     
     # Structure content
     if use_ai:

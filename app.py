@@ -399,9 +399,14 @@ os.makedirs("output/slides", exist_ok=True)
 st.markdown('<div class="step-indicator">🎯 Choose Your Output Format</div>', unsafe_allow_html=True)
 st.markdown("")
 
-# Initialize session state for main menu
+# Initialize session state for main menu - check URL params first
 if 'main_menu' not in st.session_state:
-    st.session_state['main_menu'] = None
+    # Try to get from URL parameter
+    url_params = st.query_params
+    if 'task' in url_params and url_params['task'] in ['ppt', 'youtube']:
+        st.session_state['main_menu'] = url_params['task']
+    else:
+        st.session_state['main_menu'] = None
 
 # Menu selection container with active state
 active_menu = st.session_state.get('main_menu')
@@ -414,12 +419,14 @@ with col_menu1:
     if st.button("📊 Text to PowerPoint\n\nCreate beautiful PPT presentations", key="ppt_menu_btn", use_container_width=True, type="secondary"):
         st.session_state['main_menu'] = 'ppt'
         st.session_state['input_method'] = None  # Reset input method
+        st.query_params['task'] = 'ppt'  # Update URL
         st.rerun()
     
 with col_menu2:
     if st.button("🎥 Text to YouTube Script\n\nGenerate engaging video scripts", key="youtube_menu_btn", use_container_width=True, type="secondary"):
         st.session_state['main_menu'] = 'youtube'
         st.session_state['input_method'] = None  # Reset input method
+        st.query_params['task'] = 'youtube'  # Update URL
         st.rerun()
 
 st.markdown('</div>', unsafe_allow_html=True)

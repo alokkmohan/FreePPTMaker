@@ -404,17 +404,35 @@ class ModernPPTDesigner:
         tf = content_box.text_frame
         tf.word_wrap = True
         
+        # Calculate appropriate font size based on content
+        total_chars = sum(len(bullet) for bullet in bullets)
+        num_bullets = len(bullets)
+        
+        # Dynamic font sizing
+        if total_chars > 800 or num_bullets > 7:
+            font_size = 16
+            space_after = 10
+        elif total_chars > 600 or num_bullets > 5:
+            font_size = 18
+            space_after = 12
+        else:
+            font_size = 20
+            space_after = 14
+        
         for i, bullet in enumerate(bullets):
             if i == 0:
                 p = tf.paragraphs[0]
             else:
                 p = tf.add_paragraph()
             
-            p.text = "●  " + bullet
-            p.font.size = Pt(20)
+            # Truncate very long bullets
+            bullet_text = bullet[:200] + "..." if len(bullet) > 200 else bullet
+            
+            p.text = "●  " + bullet_text
+            p.font.size = Pt(font_size)
             p.font.color.rgb = self.colors["text"]
             p.font.name = 'Calibri'
-            p.space_after = Pt(14)
+            p.space_after = Pt(space_after)
         
         return slide
     

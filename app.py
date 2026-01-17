@@ -362,25 +362,16 @@ if script_content:
     st.markdown('<div class="step-indicator">⚙️ Step 2: Configure Options</div>', unsafe_allow_html=True)
     st.markdown("")
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     
     with col1:
         generate_ppt = st.checkbox("📊 Generate PowerPoint", value=True)
     with col2:
-        use_ai = st.checkbox("🤖 AI Enhancement", value=True, help="Smart content structuring with Groq AI")
-    with col3:
         generate_youtube_script = st.checkbox("🎬 YouTube Script", value=True)
     
-    # AI customization
+    # Always use AI for best results
+    use_ai = True
     ai_instructions = ""
-    if use_ai:
-        st.markdown("####")
-        ai_instructions = st.text_area(
-            "🎯 AI Instructions (Optional):",
-            placeholder="Example:\n• Make it engaging for students\n• Focus on technical details\n• Keep language simple and conversational",
-            height=100,
-            help="Guide AI on how to structure your presentation"
-        )
     
     # Theme selection
     if generate_ppt:

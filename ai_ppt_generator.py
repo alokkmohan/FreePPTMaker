@@ -408,16 +408,38 @@ class ModernPPTDesigner:
         total_chars = sum(len(bullet) for bullet in bullets)
         num_bullets = len(bullets)
         
-        # Dynamic font sizing
-        if total_chars > 800 or num_bullets > 7:
-            font_size = 16
-            space_after = 10
-        elif total_chars > 600 or num_bullets > 5:
-            font_size = 18
-            space_after = 12
+        # Detect if text contains Hindi/Devanagari characters
+        has_hindi = any(ord(char) >= 0x0900 and ord(char) <= 0x097F for bullet in bullets for char in bullet)
+        
+        # Dynamic font sizing - more aggressive for Hindi
+        if has_hindi:
+            # Hindi text takes more space, use smaller limits
+            if total_chars > 500 or num_bullets > 7:
+                font_size = 14
+                space_after = 8
+                max_chars = 100
+            elif total_chars > 350 or num_bullets > 5:
+                font_size = 16
+                space_after = 10
+                max_chars = 130
+            else:
+                font_size = 18
+                space_after = 12
+                max_chars = 160
         else:
-            font_size = 20
-            space_after = 14
+            # English text
+            if total_chars > 800 or num_bullets > 7:
+                font_size = 16
+                space_after = 10
+                max_chars = 200
+            elif total_chars > 600 or num_bullets > 5:
+                font_size = 18
+                space_after = 12
+                max_chars = 200
+            else:
+                font_size = 20
+                space_after = 14
+                max_chars = 200
         
         for i, bullet in enumerate(bullets):
             if i == 0:
@@ -425,8 +447,8 @@ class ModernPPTDesigner:
             else:
                 p = tf.add_paragraph()
             
-            # Truncate very long bullets
-            bullet_text = bullet[:200] + "..." if len(bullet) > 200 else bullet
+            # Truncate very long bullets based on language
+            bullet_text = bullet[:max_chars] + "..." if len(bullet) > max_chars else bullet
             
             p.text = "●  " + bullet_text
             p.font.size = Pt(font_size)

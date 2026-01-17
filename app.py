@@ -282,7 +282,7 @@ st.markdown("""
 # Beautiful Header
 st.markdown("""
 <div class="header-container">
-    <div class="main-title">🎨 AI Content Generator</div>
+    <div class="main-title">🎨 AM AI Studio</div>
     <div class="sub-title">Transform Ideas into Beautiful Presentations & YouTube Scripts</div>
 </div>
 """, unsafe_allow_html=True)
@@ -338,82 +338,82 @@ if st.session_state.get('main_menu'):
     script_content = None
 
     if st.session_state.get('input_method') == 'upload':
-    st.markdown("### 📁 Upload Your File")
-    uploaded_file = st.file_uploader(
-        "Choose your file",
-        type=["txt", "docx", "md"],
-        help="Supported formats: TXT, DOCX, MD"
-    )
-    if uploaded_file:
-        file_type = uploaded_file.name.split('.')[-1].lower()
-        
-        if file_type in ["txt", "md"]:
-            script_content = uploaded_file.read().decode('utf-8')
-        elif file_type == "docx":
-            temp_path = os.path.join("input", "temp.docx")
-            with open(temp_path, "wb") as f:
-                f.write(uploaded_file.read())
-            doc = Document(temp_path)
-            script_content = "\n".join([para.text for para in doc.paragraphs])
-        
-        if script_content:
-            st.success("✅ File uploaded successfully!")
-            with st.expander("👀 Preview Content"):
-                st.text_area("", script_content, height=200, disabled=True, label_visibility="collapsed")
+        st.markdown("### 📁 Upload Your File")
+        uploaded_file = st.file_uploader(
+            "Choose your file",
+            type=["txt", "docx", "md"],
+            help="Supported formats: TXT, DOCX, MD"
+        )
+        if uploaded_file:
+            file_type = uploaded_file.name.split('.')[-1].lower()
+            
+            if file_type in ["txt", "md"]:
+                script_content = uploaded_file.read().decode('utf-8')
+            elif file_type == "docx":
+                temp_path = os.path.join("input", "temp.docx")
+                with open(temp_path, "wb") as f:
+                    f.write(uploaded_file.read())
+                doc = Document(temp_path)
+                script_content = "\n".join([para.text for para in doc.paragraphs])
+            
+            if script_content:
+                st.success("✅ File uploaded successfully!")
+                with st.expander("👀 Preview Content"):
+                    st.text_area("", script_content, height=200, disabled=True, label_visibility="collapsed")
 
-elif st.session_state.get('input_method') == 'paste':
-    st.markdown("### ✍️ Paste Your Content")
-    
-    # Initialize session state for content type
-    if 'content_type' not in st.session_state:
-        st.session_state['content_type'] = None
-    
-    col_a, col_b = st.columns(2)
-    
-    with col_a:
-        if st.button("📄 Complete Article\n\nReady content to convert", key="article_btn", use_container_width=True):
-            st.session_state['content_type'] = 'article'
-    
-    with col_b:
-        if st.button("🤖 Topic Only\n\nAI generates content for you", key="topic_btn", use_container_width=True):
-            st.session_state['content_type'] = 'topic'
-    
-    st.markdown("")
-    
-    if st.session_state.get('content_type') == 'topic':
-        st.markdown("### 🎯 Enter Your Topic")
-        st.markdown("AI will generate a detailed article and create presentation from your topic")
-        topic_input = st.text_area(
-            "",
-            placeholder="Example:\n• Artificial Intelligence in Healthcare\n• Climate Change and Its Effects\n• Future of Electric Vehicles\n• Digital Marketing Strategies 2025",
-            help="Enter any topic - AI will create comprehensive content",
-            height=150,
-            label_visibility="collapsed",
-            key="topic_text"
-        )
+    elif st.session_state.get('input_method') == 'paste':
+        st.markdown("### ✍️ Paste Your Content")
         
-        if topic_input and st.button("✅ Confirm Topic and Proceed", type="primary", use_container_width=True):
-            st.session_state['confirmed_content'] = f"TOPIC:{topic_input}"
-            st.info(f"💡 Topic: **{topic_input}** - AI will create detailed content and presentation")
+        # Initialize session state for content type
+        if 'content_type' not in st.session_state:
+            st.session_state['content_type'] = None
         
-        script_content = st.session_state.get('confirmed_content') if st.session_state.get('confirmed_content', '').startswith('TOPIC:') else None
+        col_a, col_b = st.columns(2)
         
-    elif st.session_state.get('content_type') == 'article':
-        st.markdown("### 📝 Paste Your Content")
-        article_input = st.text_area(
-            "",
-            height=300,
-            placeholder="Paste your content here...\nYou can paste in multiple parts - the text will accumulate.\nSupports multiple languages including Hindi, English, etc.",
-            help="Paste your ready-to-convert content. You can paste multiple times before submitting.",
-            label_visibility="collapsed",
-            key="article_text"
-        )
+        with col_a:
+            if st.button("📄 Complete Article\n\nReady content to convert", key="article_btn", use_container_width=True):
+                st.session_state['content_type'] = 'article'
         
-        if article_input and st.button("✅ Confirm Content and Proceed", type="primary", use_container_width=True):
-            st.session_state['confirmed_content'] = article_input
-            st.success(f"✅ Content confirmed ({len(article_input)} characters)")
+        with col_b:
+            if st.button("🤖 Topic Only\n\nAI generates content for you", key="topic_btn", use_container_width=True):
+                st.session_state['content_type'] = 'topic'
         
-        script_content = st.session_state.get('confirmed_content') if not st.session_state.get('confirmed_content', '').startswith('TOPIC:') else None
+        st.markdown("")
+        
+        if st.session_state.get('content_type') == 'topic':
+            st.markdown("### 🎯 Enter Your Topic")
+            st.markdown("AI will generate a detailed article and create presentation from your topic")
+            topic_input = st.text_area(
+                "",
+                placeholder="Example:\n• Artificial Intelligence in Healthcare\n• Climate Change and Its Effects\n• Future of Electric Vehicles\n• Digital Marketing Strategies 2025",
+                help="Enter any topic - AI will create comprehensive content",
+                height=150,
+                label_visibility="collapsed",
+                key="topic_text"
+            )
+            
+            if topic_input and st.button("✅ Confirm Topic and Proceed", type="primary", use_container_width=True):
+                st.session_state['confirmed_content'] = f"TOPIC:{topic_input}"
+                st.info(f"💡 Topic: **{topic_input}** - AI will create detailed content and presentation")
+            
+            script_content = st.session_state.get('confirmed_content') if st.session_state.get('confirmed_content', '').startswith('TOPIC:') else None
+            
+        elif st.session_state.get('content_type') == 'article':
+            st.markdown("### 📝 Paste Your Content")
+            article_input = st.text_area(
+                "",
+                height=300,
+                placeholder="Paste your content here...\nYou can paste in multiple parts - the text will accumulate.\nSupports multiple languages including Hindi, English, etc.",
+                help="Paste your ready-to-convert content. You can paste multiple times before submitting.",
+                label_visibility="collapsed",
+                key="article_text"
+            )
+            
+            if article_input and st.button("✅ Confirm Content and Proceed", type="primary", use_container_width=True):
+                st.session_state['confirmed_content'] = article_input
+                st.success(f"✅ Content confirmed ({len(article_input)} characters)")
+            
+            script_content = st.session_state.get('confirmed_content') if not st.session_state.get('confirmed_content', '').startswith('TOPIC:') else None
 
 # Process if content is available
 if script_content and st.session_state.get('main_menu'):

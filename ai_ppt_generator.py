@@ -88,7 +88,7 @@ Important Rules:
 - Return ONLY the JSON, no extra text"""
         
         response = client.chat.completions.create(
-            model="llama-3.1-70b-versatile",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": "You are a presentation design expert. Create the right number of slides for the content - not too few, not too many. Return only valid JSON."},
                 {"role": "user", "content": prompt}

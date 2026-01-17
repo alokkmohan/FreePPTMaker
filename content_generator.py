@@ -41,7 +41,7 @@ Format: Use clear paragraphs with section headers
 Write the complete article now:"""
         
         response = client.chat.completions.create(
-            model="llama-3.1-70b-versatile",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": "You are an expert content writer who creates detailed, well-structured articles."},
                 {"role": "user", "content": prompt}

@@ -250,31 +250,11 @@ os.makedirs("output/slides", exist_ok=True)
 st.markdown('<div class="step-indicator">📝 Step 1: Choose Input Method</div>', unsafe_allow_html=True)
 st.markdown("")
 
-col1, col2 = st.columns(2)
-
-with col1:
-    st.markdown("""
-    <div class="feature-card">
-        <div class="feature-icon">📁</div>
-        <div class="feature-title">Upload File</div>
-        <div class="feature-desc">Upload TXT, DOCX, MD files</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-with col2:
-    st.markdown("""
-    <div class="feature-card">
-        <div class="feature-icon">✍️</div>
-        <div class="feature-title">Paste Text</div>
-        <div class="feature-desc">Copy and paste your content</div>
-    </div>
-    """, unsafe_allow_html=True)
-
 input_method = st.radio(
     "Select method:",
     ["📁 Upload File", "✍️ Paste Text"],
     horizontal=True,
-    label_visibility="collapsed"
+    label_visibility="visible"
 )
 
 script_content = None
@@ -306,31 +286,11 @@ if input_method == "📁 Upload File":
 else:  # Paste Text
     st.markdown("###")
     
-    # Input type selection
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon">📄</div>
-            <div class="feature-title">Complete Article</div>
-            <div class="feature-desc">Ready content to convert</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col_b:
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon">🤖</div>
-            <div class="feature-title">Topic Only</div>
-            <div class="feature-desc">AI generates content for you</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
     input_type = st.radio(
         "What are you providing?",
         ["📄 Complete Article/Script", "🤖 Topic Only (AI generates content)"],
         horizontal=True,
-        label_visibility="collapsed"
+        label_visibility="visible"
     )
     
     if input_type == "🤖 Topic Only (AI generates content)":
@@ -499,7 +459,7 @@ if script_content:
                                             use_container_width=True
                                         )
                         else:
-                            st.warning("⚠️ Image conversion skipped (LibreOffice not installed)")
+                            st.info("ℹ️ Image conversion not available on cloud deployment. Download the PPT file to view slides!")
                 else:
                     st.error("❌ PPT generation failed")
         

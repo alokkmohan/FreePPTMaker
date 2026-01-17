@@ -36,7 +36,7 @@ Keep the same information but make it more engaging and conversational.
 """
         
         response = client.chat.completions.create(
-            model="llama-3.1-70b-versatile",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": "You are an expert YouTube scriptwriter who creates engaging, conversational scripts."},
                 {"role": "user", "content": prompt}

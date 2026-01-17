@@ -595,8 +595,9 @@ def generate_beautiful_ppt(script_text, output_path, color_scheme="corporate", u
     print("🎨 Creating beautiful presentation...")
     designer = ModernPPTDesigner(scheme=color_scheme)
     
-    # Title slide
-    designer.create_title_slide(content["title"], content["subtitle"])
+    # Title slide - use original topic if provided, otherwise use AI-generated title
+    title_to_use = original_topic if original_topic else content["title"]
+    designer.create_title_slide(title_to_use, content["subtitle"])
     
     # Content slides
     for slide_data in content.get("slides", []):

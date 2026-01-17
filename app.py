@@ -303,17 +303,42 @@ st.markdown("")
 if 'main_menu' not in st.session_state:
     st.session_state['main_menu'] = None
 
+# Custom CSS for active menu buttons
+active_menu = st.session_state.get('main_menu')
+if active_menu == 'ppt':
+    st.markdown("""
+    <style>
+    button[kind="primary"][data-testid="baseButton-primary"]:nth-of-type(1) {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        border: 2px solid #667eea !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+elif active_menu == 'youtube':
+    st.markdown("""
+    <style>
+    button[kind="primary"][data-testid="baseButton-primary"]:nth-of-type(2) {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+        border: 2px solid #f5576c !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 col_menu1, col_menu2 = st.columns(2)
 
 with col_menu1:
-    if st.button("📊 Text to PowerPoint\n\nCreate beautiful PPT presentations", key="ppt_menu_btn", use_container_width=True):
+    btn_type = "primary" if active_menu == 'ppt' else "secondary"
+    if st.button("📊 Text to PowerPoint\n\nCreate beautiful PPT presentations", key="ppt_menu_btn", use_container_width=True, type=btn_type):
         st.session_state['main_menu'] = 'ppt'
         st.session_state['input_method'] = None  # Reset input method
+        st.rerun()
     
 with col_menu2:
-    if st.button("🎥 Text to YouTube Script\n\nGenerate engaging video scripts", key="youtube_menu_btn", use_container_width=True):
+    btn_type = "primary" if active_menu == 'youtube' else "secondary"
+    if st.button("🎥 Text to YouTube Script\n\nGenerate engaging video scripts", key="youtube_menu_btn", use_container_width=True, type=btn_type):
         st.session_state['main_menu'] = 'youtube'
         st.session_state['input_method'] = None  # Reset input method
+        st.rerun()
 
 st.markdown("---")
 
@@ -493,9 +518,13 @@ if script_content and st.session_state.get('main_menu'):
     if st.button(f"🚀 Generate {'PowerPoint' if generate_ppt else 'YouTube Script'}", type="primary", use_container_width=True):
         st.session_state['ai_instructions'] = ai_instructions
         
+        # Store original topic for PPT title
+        original_topic = None
+        
         # Handle topic mode (always uses AI)
         if script_content.startswith("TOPIC:"):
             topic = script_content.replace("TOPIC:", "").strip()
+            original_topic = topic  # Store the original topic
             
             with st.spinner(f"🤖 AI is generating detailed content on: **{topic}**..."):
                 try:
@@ -560,7 +589,8 @@ if script_content and st.session_state.get('main_menu'):
                         ppt_path, 
                         color_scheme=selected_theme,
                         use_ai=use_ai,
-                        ai_instructions=user_instructions
+                        ai_instructions=user_instructions,
+                        original_topic=original_topic
                     )
                 except Exception as e:
                     st.error(f"❌ Error: {str(e)}")

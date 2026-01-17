@@ -745,6 +745,15 @@ if script_content and st.session_state.get('main_menu'):
                 # Get template path from session state
                 template_path = st.session_state.get('template_path', None)
                 
+                # Debug info
+                if template_path:
+                    st.info(f"🔍 Debug: Using template - {template_path}")
+                    if not os.path.exists(template_path):
+                        st.error(f"❌ Template file not found: {template_path}")
+                        template_path = None
+                else:
+                    st.info(f"🔍 Debug: Using color scheme - {selected_theme}")
+                
                 try:
                     success = generate_beautiful_ppt(
                         script_content, 

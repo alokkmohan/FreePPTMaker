@@ -300,48 +300,60 @@ class ModernPPTDesigner:
         stripe.fill.fore_color.rgb = self.colors["accent"]
         stripe.line.fill.background()
         
-        # Title - adjusted for longer text
+        # Title - adjusted for longer text with better constraints
         title_box = slide.shapes.add_textbox(
-            Inches(0.5), Inches(0.4),
-            Inches(9), Inches(1.8)
+            Inches(0.5), Inches(0.3),
+            Inches(9), Inches(2)
         )
         tf = title_box.text_frame
-        tf.text = title
+        # Truncate very long titles
+        if len(title) > 120:
+            tf.text = title[:117] + "..."
+        else:
+            tf.text = title
         tf.word_wrap = True
         tf.vertical_anchor = MSO_ANCHOR.MIDDLE
         
         p = tf.paragraphs[0]
         p.alignment = PP_ALIGN.CENTER
         
-        # Dynamic font size based on title length
-        if len(title) > 80:
-            p.font.size = Pt(36)  # Smaller for long titles
+        # More aggressive dynamic font sizing for titles
+        if len(title) > 100:
+            p.font.size = Pt(28)  # Very small for very long titles
+        elif len(title) > 80:
+            p.font.size = Pt(32)  # Smaller for long titles
         elif len(title) > 50:
-            p.font.size = Pt(42)  # Medium for moderate titles
+            p.font.size = Pt(38)  # Medium for moderate titles
         else:
-            p.font.size = Pt(48)  # Large for short titles
+            p.font.size = Pt(44)  # Large for short titles
             
         p.font.bold = True
         p.font.color.rgb = RGBColor(255, 255, 255)
         p.font.name = 'Calibri'
         
-        # Subtitle
+        # Subtitle with better positioning
         subtitle_box = slide.shapes.add_textbox(
-            Inches(1), Inches(3.2),
-            Inches(8), Inches(1)
+            Inches(1), Inches(3),
+            Inches(8), Inches(1.5)
         )
         tf = subtitle_box.text_frame
-        tf.text = subtitle
+        # Truncate very long subtitles
+        if len(subtitle) > 100:
+            tf.text = subtitle[:97] + "..."
+        else:
+            tf.text = subtitle
         tf.word_wrap = True
         
         p = tf.paragraphs[0]
         p.alignment = PP_ALIGN.CENTER
         
-        # Dynamic subtitle size
-        if len(subtitle) > 60:
-            p.font.size = Pt(22)
+        # More aggressive dynamic subtitle sizing
+        if len(subtitle) > 80:
+            p.font.size = Pt(18)
+        elif len(subtitle) > 60:
+            p.font.size = Pt(20)
         else:
-            p.font.size = Pt(28)
+            p.font.size = Pt(24)
             
         p.font.color.rgb = self.colors["secondary"]
         p.font.name = 'Calibri'
@@ -374,18 +386,30 @@ class ModernPPTDesigner:
         accent.line.fill.background()
         accent.rotation = 0  # Keep it horizontal, no overflow
         
-        # Title
+        # Title with dynamic sizing
         title_box = slide.shapes.add_textbox(
             Inches(1), Inches(2),
             Inches(8), Inches(1.5)
         )
         tf = title_box.text_frame
-        tf.text = title
+        # Truncate very long section titles
+        if len(title) > 80:
+            tf.text = title[:77] + "..."
+        else:
+            tf.text = title
         tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+        tf.word_wrap = True
         
         p = tf.paragraphs[0]
         p.alignment = PP_ALIGN.CENTER
-        p.font.size = Pt(48)
+        
+        # Dynamic font sizing for section titles
+        if len(title) > 60:
+            p.font.size = Pt(36)
+        elif len(title) > 40:
+            p.font.size = Pt(42)
+        else:
+            p.font.size = Pt(48)
         p.font.bold = True
         p.font.color.rgb = RGBColor(255, 255, 255)
         p.font.name = 'Calibri'
@@ -406,15 +430,27 @@ class ModernPPTDesigner:
         header.fill.fore_color.rgb = self.colors["primary"]
         header.line.fill.background()
         
-        # Title on header
+        # Title on header with dynamic sizing
         title_box = slide.shapes.add_textbox(
-            Inches(0.5), Inches(0.2),
-            Inches(9), Inches(0.6)
+            Inches(0.5), Inches(0.15),
+            Inches(9), Inches(0.7)
         )
         tf = title_box.text_frame
-        tf.text = title
+        # Truncate very long content slide titles
+        if len(title) > 70:
+            tf.text = title[:67] + "..."
+        else:
+            tf.text = title
+        tf.word_wrap = True
+        
         p = tf.paragraphs[0]
-        p.font.size = Pt(36)
+        # Dynamic font sizing for content slide titles
+        if len(title) > 50:
+            p.font.size = Pt(28)
+        elif len(title) > 35:
+            p.font.size = Pt(32)
+        else:
+            p.font.size = Pt(36)
         p.font.bold = True
         p.font.color.rgb = RGBColor(255, 255, 255)
         p.font.name = 'Calibri'
@@ -447,31 +483,31 @@ class ModernPPTDesigner:
         # Dynamic font sizing - more aggressive for Hindi
         if has_hindi:
             # Hindi text takes more space, use smaller limits
-            if total_chars > 500 or num_bullets > 7:
+            if total_chars > 450 or num_bullets > 6:
+                font_size = 12
+                space_after = 6
+                max_chars = 80
+            elif total_chars > 300 or num_bullets > 5:
                 font_size = 14
                 space_after = 8
                 max_chars = 100
-            elif total_chars > 350 or num_bullets > 5:
+            else:
                 font_size = 16
                 space_after = 10
-                max_chars = 130
-            else:
-                font_size = 18
-                space_after = 12
-                max_chars = 160
+                max_chars = 120
         else:
-            # English text
-            if total_chars > 800 or num_bullets > 7:
+            # English text - more aggressive limits
+            if total_chars > 700 or num_bullets > 6:
+                font_size = 14
+                space_after = 8
+                max_chars = 150
+            elif total_chars > 500 or num_bullets > 5:
                 font_size = 16
                 space_after = 10
-                max_chars = 200
-            elif total_chars > 600 or num_bullets > 5:
+                max_chars = 180
+            else:
                 font_size = 18
                 space_after = 12
-                max_chars = 200
-            else:
-                font_size = 20
-                space_after = 14
                 max_chars = 200
         
         for i, bullet in enumerate(bullets):

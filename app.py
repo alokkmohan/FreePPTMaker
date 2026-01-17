@@ -847,16 +847,25 @@ if script_content and st.session_state.get('main_menu'):
                                     st.success(f"✅ Generated {len(images)} slide images!")
                                     
                                     st.markdown("### 🖼️ Slide Preview")
-                                    cols = st.columns(3)
-                                    for idx, img in enumerate(images):
-                                        with cols[idx % 3]:
+                                    
+                                    # Sort images by slide number to ensure correct order
+                                    sorted_images = sorted(images, key=lambda x: int(x.split('_')[1].split('.')[0]))
+                                    
+                                    # Responsive columns: 2 columns on mobile, 3 on desktop
+                                    cols = st.columns([1, 1, 1])
+                                    
+                                    for idx, img in enumerate(sorted_images):
+                                        col_idx = idx % 3
+                                        with cols[col_idx]:
                                             img_path = os.path.join(output_folder, img)
-                                            st.image(img_path, caption=f"Slide {idx+1}")
+                                            # Show slide number clearly
+                                            st.markdown(f"**Slide {idx+1}**")
+                                            st.image(img_path, use_column_width=True)
                                             with open(img_path, "rb") as f:
                                                 st.download_button(
-                                                    label=f"📥 Slide {idx+1}",
+                                                    label=f"📥 Download",
                                                     data=f,
-                                                    file_name=img,
+                                                    file_name=f"slide_{idx+1}.png",
                                                     mime="image/png",
                                                     key=f"img_{idx}",
                                                     use_container_width=True

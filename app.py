@@ -92,23 +92,34 @@ st.markdown("""
     
     /* Buttons */
     .stButton > button {
-        border-radius: 12px;
+        border-radius: 15px;
         font-weight: 600;
-        border: none;
-        padding: 0.8rem 2.5rem;
+        border: 2px solid #e8ecf1;
+        padding: 2rem 1.5rem;
         transition: all 0.3s ease;
-        font-size: 1.05rem;
+        font-size: 1.1rem;
+        background: linear-gradient(145deg, #ffffff 0%, #f8f9ff 100%);
+        color: #2d3748;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        white-space: pre-line;
+        height: auto;
+        line-height: 1.6;
     }
     
     .stButton > button:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        transform: translateY(-5px);
+        box-shadow: 0 12px 30px rgba(102, 126, 234, 0.2);
+        border-color: #667eea;
     }
     
     /* Primary button */
     .stButton > button[kind="primary"] {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
+        border: none;
+        padding: 0.8rem 2.5rem;
+        white-space: normal;
+        line-height: normal;
     }
     
     /* File uploader */
@@ -250,17 +261,25 @@ os.makedirs("output/slides", exist_ok=True)
 st.markdown('<div class="step-indicator">📝 Step 1: Choose Input Method</div>', unsafe_allow_html=True)
 st.markdown("")
 
-input_method = st.radio(
-    "Select method:",
-    ["📁 Upload File", "✍️ Paste Text"],
-    horizontal=True,
-    label_visibility="visible"
-)
+# Initialize session state for input method
+if 'input_method' not in st.session_state:
+    st.session_state['input_method'] = None
 
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("📁 Upload File\n\nUpload TXT, DOCX, MD files", key="upload_btn", use_container_width=True):
+        st.session_state['input_method'] = 'upload'
+    
+with col2:
+    if st.button("✍️ Paste Text\n\nCopy and paste your content", key="paste_btn", use_container_width=True):
+        st.session_state['input_method'] = 'paste'
+
+st.markdown("")
 script_content = None
 
-if input_method == "📁 Upload File":
-    st.markdown("###")
+if st.session_state.get('input_method') == 'upload':
+    st.markdown("### 📁 Upload Your File")
     uploaded_file = st.file_uploader(
         "Choose your file",
         type=["txt", "docx", "md"],
@@ -283,17 +302,26 @@ if input_method == "📁 Upload File":
             with st.expander("👀 Preview Content"):
                 st.text_area("", script_content, height=200, disabled=True, label_visibility="collapsed")
 
-else:  # Paste Text
-    st.markdown("###")
+elif st.session_state.get('input_method') == 'paste':
+    st.markdown("### ✍️ Paste Your Content")
     
-    input_type = st.radio(
-        "What are you providing?",
-        ["📄 Complete Article/Script", "🤖 Topic Only (AI generates content)"],
-        horizontal=True,
-        label_visibility="visible"
-    )
+    # Initialize session state for content type
+    if 'content_type' not in st.session_state:
+        st.session_state['content_type'] = None
     
-    if input_type == "🤖 Topic Only (AI generates content)":
+    col_a, col_b = st.columns(2)
+    
+    with col_a:
+        if st.button("📄 Complete Article\n\nReady content to convert", key="article_btn", use_container_width=True):
+            st.session_state['content_type'] = 'article'
+    
+    with col_b:
+        if st.button("🤖 Topic Only\n\nAI generates content for you", key="topic_btn", use_container_width=True):
+            st.session_state['content_type'] = 'topic'
+    
+    st.markdown("")
+    
+    if st.session_state.get('content_type') == 'topic':
         topic = st.text_input(
             "🎯 Enter your topic:",
             placeholder="Example: Artificial Intelligence in Healthcare",
@@ -303,7 +331,7 @@ else:  # Paste Text
         if topic:
             st.info(f"💡 Topic: **{topic}** - AI will create detailed content and presentation")
             script_content = f"TOPIC:{topic}"
-    else:
+    elif st.session_state.get('content_type') == 'article':
         script_content = st.text_area(
             "📝 Paste your complete article/script:",
             height=300,
@@ -311,8 +339,8 @@ else:  # Paste Text
             help="Paste your ready-to-convert content"
         )
     
-    if script_content and not script_content.startswith("TOPIC:"):
-        st.success(f"✅ Content received ({len(script_content)} characters)")
+        if script_content:
+            st.success(f"✅ Content received ({len(script_content)} characters)")
 
 # Process if content is available
 if script_content:

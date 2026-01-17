@@ -242,6 +242,36 @@ st.markdown("""
         font-size: 0.95rem;
         margin-top: 3rem;
     }
+    
+    .update-info {
+        background: linear-gradient(145deg, #ffffff 0%, #f8f9ff 100%);
+        border: 2px solid #667eea;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 2rem auto;
+        max-width: 600px;
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.15);
+    }
+    
+    .update-info h3 {
+        color: #667eea;
+        font-size: 1.2rem;
+        margin: 0 0 0.5rem 0;
+        font-weight: 700;
+    }
+    
+    .update-info p {
+        margin: 0.5rem 0;
+        color: #4a5568;
+        font-size: 1rem;
+    }
+    
+    .update-info .timestamp {
+        color: #764ba2;
+        font-weight: 700;
+        font-size: 1.1rem;
+        font-family: 'Courier New', monospace;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -555,6 +585,14 @@ if script_content:
 
 # Footer
 st.markdown("""
+<div class="update-info">
+    <h3>🔄 System Status</h3>
+    <p><strong>Last Updated:</strong> <span class="timestamp">2026-01-17 15:41:55 IST</span></p>
+    <p style="color: #667eea; font-size: 0.9rem; margin-top: 1rem;">
+        ✅ All systems operational | Hindi & English support | 10-20 slides generation
+    </p>
+</div>
+
 <div class="footer">
     <p><strong>💡 Pro Tip:</strong> Upload any text file or paste content directly. Get professional presentations and YouTube scripts instantly!</p>
     <p style="margin-top: 1rem; color: #a0aec0;">Made with ❤️ by Alok Mohan using Streamlit & Groq AI</p>

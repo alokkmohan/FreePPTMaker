@@ -613,72 +613,37 @@ if script_content and st.session_state.get('main_menu'):
     # Theme selection (only for PPT mode)
     if generate_ppt:
         st.markdown("####")
-        st.markdown("### 🎨 Choose Template or Theme")
+        st.markdown("### 🎨 Choose Design Theme")
         
-        # Template Selection Options
-        template_option = st.radio(
-            "Select Template Source:",
-            ["📦 Pre-loaded Templates", "🎨 Color Themes", "📤 Upload Custom Template"],
-            horizontal=True
-        )
+        col_a, col_b, col_c, col_d, col_e = st.columns(5)
         
-        template_path = None
-        selected_theme = 'corporate'
+        with col_a:
+            if st.button("🌊 Ocean", use_container_width=True, help="Professional blue theme"):
+                st.session_state['theme'] = 'ocean'
+                st.session_state['template_path'] = None
+        with col_b:
+            if st.button("🌲 Forest", use_container_width=True, help="Natural green theme"):
+                st.session_state['theme'] = 'forest'
+                st.session_state['template_path'] = None
+        with col_c:
+            if st.button("🌅 Sunset", use_container_width=True, help="Warm orange theme"):
+                st.session_state['theme'] = 'sunset'
+                st.session_state['template_path'] = None
+        with col_d:
+            if st.button("💼 Corporate", use_container_width=True, help="Classic business theme"):
+                st.session_state['theme'] = 'corporate'
+                st.session_state['template_path'] = None
+        with col_e:
+            if st.button("📊 EG Template", use_container_width=True, help="Custom EG template"):
+                st.session_state['theme'] = 'custom'
+                st.session_state['template_path'] = "templates/EG Template.pptx"
         
-        if template_option == "📦 Pre-loaded Templates":
-            # List available templates from templates folder
-            templates_dir = "templates"
-            if os.path.exists(templates_dir):
-                template_files = [f for f in os.listdir(templates_dir) if f.endswith('.pptx')]
-                if template_files:
-                    selected_template = st.selectbox(
-                        "Choose a template:",
-                        ["None"] + template_files,
-                        help="Select from pre-loaded professional templates"
-                    )
-                    if selected_template != "None":
-                        template_path = os.path.join(templates_dir, selected_template)
-                        st.success(f"✅ Template selected: {selected_template}")
-                else:
-                    st.warning("⚠️ No templates found. Add .pptx files to templates/ folder or use Color Themes.")
-            else:
-                st.warning("⚠️ Templates folder not found. Using Color Themes instead.")
-                
-        elif template_option == "🎨 Color Themes":
-            col_a, col_b, col_c, col_d = st.columns(4)
-            
-            with col_a:
-                if st.button("🌊 Ocean", use_container_width=True, help="Professional blue theme"):
-                    st.session_state['theme'] = 'ocean'
-            with col_b:
-                if st.button("🌲 Forest", use_container_width=True, help="Natural green theme"):
-                    st.session_state['theme'] = 'forest'
-            with col_c:
-                if st.button("🌅 Sunset", use_container_width=True, help="Warm orange theme"):
-                    st.session_state['theme'] = 'sunset'
-            with col_d:
-                if st.button("💼 Corporate", use_container_width=True, help="Classic business theme"):
-                    st.session_state['theme'] = 'corporate'
-            
+        # Display selected option
+        if st.session_state.get('template_path'):
+            st.info(f"✨ Selected: **EG TEMPLATE**")
+        else:
             selected_theme = st.session_state.get('theme', 'corporate')
             st.info(f"✨ Selected Theme: **{selected_theme.upper()}**")
-            
-        elif template_option == "📤 Upload Custom Template":
-            uploaded_template = st.file_uploader(
-                "Upload your PowerPoint template (.pptx)",
-                type=['pptx'],
-                help="Upload a custom PowerPoint template with your desired layouts and design"
-            )
-            if uploaded_template:
-                # Save uploaded template temporarily
-                temp_template_path = os.path.join("output", f"temp_template_{uploaded_template.name}")
-                with open(temp_template_path, "wb") as f:
-                    f.write(uploaded_template.getbuffer())
-                template_path = temp_template_path
-                st.success(f"✅ Custom template uploaded: {uploaded_template.name}")
-        
-        # Store template info in session state
-        st.session_state['template_path'] = template_path
     
     st.markdown("####")
     if st.button(f"🚀 Generate PowerPoint", type="primary", use_container_width=True):

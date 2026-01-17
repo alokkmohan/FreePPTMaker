@@ -634,16 +634,13 @@ if script_content and st.session_state.get('main_menu'):
                 st.session_state['theme'] = 'corporate'
                 st.session_state['template_path'] = None
         with col_e:
-            if st.button("📊 EG Template", use_container_width=True, help="Custom EG template"):
-                st.session_state['theme'] = 'custom'
-                st.session_state['template_path'] = "templates/EG Template.pptx"
+            if st.button("🎯 EG Theme", use_container_width=True, help="EG custom red theme"):
+                st.session_state['theme'] = 'eg'
+                st.session_state['template_path'] = None
         
         # Display selected option
-        if st.session_state.get('template_path'):
-            st.info(f"✨ Selected: **EG TEMPLATE**")
-        else:
-            selected_theme = st.session_state.get('theme', 'corporate')
-            st.info(f"✨ Selected Theme: **{selected_theme.upper()}**")
+        selected_theme = st.session_state.get('theme', 'corporate')
+        st.info(f"✨ Selected Theme: **{selected_theme.upper()}**")
     
     st.markdown("####")
     if st.button(f"🚀 Generate PowerPoint", type="primary", use_container_width=True):
@@ -744,15 +741,6 @@ if script_content and st.session_state.get('main_menu'):
                 
                 # Get template path from session state
                 template_path = st.session_state.get('template_path', None)
-                
-                # Debug info
-                if template_path:
-                    st.info(f"🔍 Debug: Using template - {template_path}")
-                    if not os.path.exists(template_path):
-                        st.error(f"❌ Template file not found: {template_path}")
-                        template_path = None
-                else:
-                    st.info(f"🔍 Debug: Using color scheme - {selected_theme}")
                 
                 try:
                     success = generate_beautiful_ppt(

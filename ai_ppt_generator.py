@@ -269,6 +269,13 @@ class ModernPPTDesigner:
             "accent": RGBColor(0, 188, 212),       # Cyan
             "text": RGBColor(33, 33, 33),
             "bg": RGBColor(255, 255, 255),
+        },
+        "eg": {
+            "primary": RGBColor(255, 47, 47),      # Bright Red (EG Template Title)
+            "secondary": RGBColor(200, 30, 30),    # Darker Red
+            "accent": RGBColor(255, 100, 100),     # Light Red
+            "text": RGBColor(38, 38, 38),          # Dark Gray (EG Template Text)
+            "bg": RGBColor(255, 255, 255),         # White
         }
     }
     

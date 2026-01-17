@@ -337,13 +337,15 @@ class ModernPPTDesigner:
         
         # More aggressive dynamic font sizing for titles
         if len(title) > 100:
-            p.font.size = Pt(28)  # Very small for very long titles
+            p.font.size = Pt(24)  # Very small for very long titles
         elif len(title) > 80:
-            p.font.size = Pt(32)  # Smaller for long titles
-        elif len(title) > 50:
-            p.font.size = Pt(38)  # Medium for moderate titles
+            p.font.size = Pt(28)  # Smaller for long titles
+        elif len(title) > 60:
+            p.font.size = Pt(32)  # Medium-small for moderate titles
+        elif len(title) > 40:
+            p.font.size = Pt(36)  # Medium for shorter titles
         else:
-            p.font.size = Pt(44)  # Large for short titles
+            p.font.size = Pt(40)  # Large for short titles
             
         p.font.bold = True
         p.font.color.rgb = RGBColor(255, 255, 255)

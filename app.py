@@ -720,7 +720,16 @@ if script_content and st.session_state.get('main_menu'):
             user_instructions = st.session_state.get('ai_instructions', '')
             
             with st.spinner(f"🎨 Creating beautiful **{selected_theme.upper()}** presentation..."):
-                ppt_path = os.path.join(output_folder, "presentation.pptx")
+                # Generate filename from title
+                import re
+                if original_topic:
+                    safe_title = re.sub(r'[^\w\s-]', '', original_topic)[:50]
+                    safe_title = re.sub(r'[-\s]+', '_', safe_title)
+                    ppt_filename = f"{safe_title}.pptx"
+                else:
+                    ppt_filename = "presentation.pptx"
+                ppt_path = os.path.join(output_folder, ppt_filename)
+                
                 try:
                     success = generate_beautiful_ppt(
                         script_content, 

@@ -411,11 +411,32 @@ if st.session_state.get('main_menu'):
                 key="article_text"
             )
             
-            if article_input and st.button("✅ Confirm Content and Proceed", type="primary", use_container_width=True):
-                st.session_state['confirmed_content'] = article_input
-                st.success(f"✅ Content confirmed ({len(article_input)} characters)")
+            # AI Enhancement option
+            st.markdown("####")
+            enhance_with_ai = st.checkbox(
+                "🤖 AI Enhancement - Improve and structure content with AI",
+                value=False,
+                help="Enable this to let AI enhance, restructure and improve your content before creating presentation"
+            )
             
-            script_content = st.session_state.get('confirmed_content') if not st.session_state.get('confirmed_content', '').startswith('TOPIC:') else None
+            if enhance_with_ai:
+                st.info("💡 AI will enhance and restructure your content for better presentation")
+            else:
+                st.info("📄 Will create presentation directly from your pasted content")
+            
+            if article_input and st.button("✅ Confirm Content and Proceed", type="primary", use_container_width=True):
+                # Store both content and enhancement preference
+                if enhance_with_ai:
+                    st.session_state['confirmed_content'] = f"ENHANCE:{article_input}"
+                else:
+                    st.session_state['confirmed_content'] = article_input
+                st.session_state['ai_enhancement'] = enhance_with_ai
+                st.success(f"✅ Content confirmed ({len(article_input)} characters) - {'AI Enhancement ON' if enhance_with_ai else 'Direct Conversion'}")
+            
+            script_content = st.session_state.get('confirmed_content')
+            # Filter out TOPIC: prefix for this check
+            if script_content and script_content.startswith('TOPIC:'):
+                script_content = None
 else:
     # Initialize script_content if no input method selected
     script_content = None
@@ -436,8 +457,9 @@ if script_content and st.session_state.get('main_menu'):
         generate_youtube_script = True
         st.info("🎬 **Mode:** YouTube Script Generation Only")
     
-    # Always use AI for best results
-    use_ai = True
+    # AI Enhancement setting based on user choice
+    ai_enhancement_enabled = st.session_state.get('ai_enhancement', False)
+    use_ai = ai_enhancement_enabled  # Only use AI if user opted for enhancement
     ai_instructions = ""
     
     # Theme selection (only for PPT mode)
@@ -467,7 +489,7 @@ if script_content and st.session_state.get('main_menu'):
     if st.button(f"🚀 Generate {'PowerPoint' if generate_ppt else 'YouTube Script'}", type="primary", use_container_width=True):
         st.session_state['ai_instructions'] = ai_instructions
         
-        # Handle topic mode
+        # Handle topic mode (always uses AI)
         if script_content.startswith("TOPIC:"):
             topic = script_content.replace("TOPIC:", "").strip()
             
@@ -479,6 +501,23 @@ if script_content and st.session_state.get('main_menu'):
                     
                     with st.expander("📄 View Generated Content"):
                         st.text_area("", generated_content, height=300, label_visibility="collapsed")
+                except Exception as e:
+                    st.error(f"❌ Content generation failed: {str(e)}")
+                    st.stop()
+        
+        # Handle AI enhancement mode for pasted content
+        elif script_content.startswith("ENHANCE:"):
+            original_content = script_content.replace("ENHANCE:", "").strip()
+            
+            with st.spinner(f"🤖 AI is enhancing and structuring your content..."):
+                try:
+                    # Use the content generator to enhance the pasted content
+                    enhanced_content = generate_content_from_topic(f"Enhance and restructure this content:\n\n{original_content}", ai_instructions)
+                    script_content = enhanced_content
+                    st.success("✅ Content enhanced successfully!")
+                    
+                    with st.expander("📄 View Enhanced Content"):
+                        st.text_area("", enhanced_content, height=300, label_visibility="collapsed")
                 except Exception as e:
                     st.error(f"❌ Content generation failed: {str(e)}")
                     st.stop()

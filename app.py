@@ -126,6 +126,41 @@ st.markdown("""
         line-height: normal;
     }
     
+    /* Menu buttons - consistent size */
+    button[data-testid="baseButton-secondary"] {
+        padding: 2rem 1.5rem !important;
+        font-size: 1.1rem !important;
+        background: linear-gradient(145deg, #ffffff 0%, #f8f9ff 100%) !important;
+        border: 2px solid #e8ecf1 !important;
+        color: #2d3748 !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    button[data-testid="baseButton-secondary"]:hover {
+        transform: translateY(-3px) !important;
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.15) !important;
+        border-color: #667eea !important;
+    }
+    
+    /* Active menu button states */
+    .menu-active-ppt button[data-testid="baseButton-secondary"]:first-child {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        border: 3px solid #667eea !important;
+        box-shadow: 0 12px 30px rgba(102, 126, 234, 0.4) !important;
+        transform: scale(1.02) !important;
+        font-weight: 700 !important;
+    }
+    
+    .menu-active-youtube button[data-testid="baseButton-secondary"]:last-child {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+        color: white !important;
+        border: 3px solid #f5576c !important;
+        box-shadow: 0 12px 30px rgba(245, 87, 108, 0.4) !important;
+        transform: scale(1.02) !important;
+        font-weight: 700 !important;
+    }
+    
     /* File uploader */
     .uploadedFile {
         border-radius: 12px;
@@ -303,42 +338,26 @@ st.markdown("")
 if 'main_menu' not in st.session_state:
     st.session_state['main_menu'] = None
 
-# Custom CSS for active menu buttons
+# Menu selection container with active state
 active_menu = st.session_state.get('main_menu')
-if active_menu == 'ppt':
-    st.markdown("""
-    <style>
-    button[kind="primary"][data-testid="baseButton-primary"]:nth-of-type(1) {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        border: 2px solid #667eea !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-elif active_menu == 'youtube':
-    st.markdown("""
-    <style>
-    button[kind="primary"][data-testid="baseButton-primary"]:nth-of-type(2) {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
-        border: 2px solid #f5576c !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+menu_class = f"menu-active-{active_menu}" if active_menu else ""
 
+st.markdown(f'<div class="{menu_class}">', unsafe_allow_html=True)
 col_menu1, col_menu2 = st.columns(2)
 
 with col_menu1:
-    btn_type = "primary" if active_menu == 'ppt' else "secondary"
-    if st.button("📊 Text to PowerPoint\n\nCreate beautiful PPT presentations", key="ppt_menu_btn", use_container_width=True, type=btn_type):
+    if st.button("📊 Text to PowerPoint\n\nCreate beautiful PPT presentations", key="ppt_menu_btn", use_container_width=True, type="secondary"):
         st.session_state['main_menu'] = 'ppt'
         st.session_state['input_method'] = None  # Reset input method
         st.rerun()
     
 with col_menu2:
-    btn_type = "primary" if active_menu == 'youtube' else "secondary"
-    if st.button("🎥 Text to YouTube Script\n\nGenerate engaging video scripts", key="youtube_menu_btn", use_container_width=True, type=btn_type):
+    if st.button("🎥 Text to YouTube Script\n\nGenerate engaging video scripts", key="youtube_menu_btn", use_container_width=True, type="secondary"):
         st.session_state['main_menu'] = 'youtube'
         st.session_state['input_method'] = None  # Reset input method
         st.rerun()
+
+st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("---")
 

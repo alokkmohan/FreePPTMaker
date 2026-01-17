@@ -8,6 +8,7 @@ Uses Google Gemini to structure content intelligently
 
 import os
 import json
+import shutil
 from groq import Groq
 from pptx import Presentation
 from pptx.util import Inches, Pt
@@ -591,7 +592,99 @@ class ModernPPTDesigner:
         """Save presentation"""
         self.prs.save(filepath)
 
-def generate_beautiful_ppt(script_text, output_path, color_scheme="corporate", use_ai=True, ai_instructions="", original_topic=None):
+def generate_ppt_from_template(script_text, output_path, template_path, use_ai=True, ai_instructions="", original_topic=None):
+    """
+    Generate PPT using a template file
+    
+    Args:
+        script_text: Input script text
+        output_path: Output PPT file path
+        template_path: Path to template PPTX file
+        use_ai: Use AI for content structuring
+        ai_instructions: Additional instructions for AI (optional)
+        original_topic: Original topic title to use (optional)
+    """
+    print(f"📋 Using template: {template_path}")
+    
+    # Structure content
+    if use_ai:
+        print("🤖 Using AI to structure content...")
+        content = structure_content_with_ai(script_text, ai_instructions)
+    else:
+        print("📝 Using basic structuring...")
+        content = structure_content_basic(script_text)
+    
+    # Load template
+    prs = Presentation(template_path)
+    
+    # Use original topic if provided
+    title_to_use = original_topic if original_topic else content["title"]
+    
+    # Try to find title slide (usually layout 0 or a slide with title placeholder)
+    title_slide = prs.slides.add_slide(prs.slide_layouts[0])
+    
+    # Fill in title and subtitle if placeholders exist
+    if title_slide.shapes.title:
+        title_slide.shapes.title.text = title_to_use
+    
+    # Try to add subtitle if placeholder exists
+    for shape in title_slide.placeholders:
+        if shape.placeholder_format.idx == 1:  # Usually subtitle placeholder
+            shape.text = content.get("subtitle", "")
+            break
+    
+    # Add content slides using template layout
+    # Try to use layout 1 (usually content layout) or fallback to layout 0
+    content_layout_idx = 1 if len(prs.slide_layouts) > 1 else 0
+    
+    for slide_data in content.get("slides", []):
+        slide_type = slide_data.get("type", "content")
+        
+        if slide_type == "section":
+            # For section slides, try to use section header layout if available
+            section_layout_idx = 2 if len(prs.slide_layouts) > 2 else content_layout_idx
+            slide = prs.slides.add_slide(prs.slide_layouts[section_layout_idx])
+            if slide.shapes.title:
+                slide.shapes.title.text = slide_data["title"]
+        else:
+            # Regular content slide
+            slide = prs.slides.add_slide(prs.slide_layouts[content_layout_idx])
+            
+            # Set title
+            if slide.shapes.title:
+                slide.shapes.title.text = slide_data["title"]
+            
+            # Add bullets to content placeholder
+            bullets = slide_data.get("bullets", [])
+            if bullets:
+                # Find the content placeholder (usually idx 1)
+                for shape in slide.placeholders:
+                    if shape.placeholder_format.idx == 1 and shape.has_text_frame:
+                        text_frame = shape.text_frame
+                        text_frame.clear()
+                        
+                        for i, bullet in enumerate(bullets):
+                            if i == 0:
+                                p = text_frame.paragraphs[0]
+                            else:
+                                p = text_frame.add_paragraph()
+                            p.text = bullet
+                            p.level = 0
+                        break
+    
+    # Add thank you slide using last layout
+    end_layout_idx = len(prs.slide_layouts) - 1
+    end_slide = prs.slides.add_slide(prs.slide_layouts[end_layout_idx])
+    if end_slide.shapes.title:
+        end_slide.shapes.title.text = "Thank You!"
+    
+    # Save
+    prs.save(output_path)
+    print(f"✅ PPT created from template: {output_path}")
+    
+    return True
+
+def generate_beautiful_ppt(script_text, output_path, color_scheme="corporate", use_ai=True, ai_instructions="", original_topic=None, template_path=None):
     """
     Generate beautiful PPT from script
     
@@ -602,8 +695,13 @@ def generate_beautiful_ppt(script_text, output_path, color_scheme="corporate", u
         use_ai: Use AI for content structuring
         ai_instructions: Additional instructions for AI (optional)
         original_topic: Original topic title to use (optional)
+        template_path: Path to template PPTX file (optional)
     """
-    print(f"DEBUG: Function called with original_topic={original_topic}")  # Debug line
+    print(f"DEBUG: Function called with original_topic={original_topic}, template_path={template_path}")
+    
+    # If template is provided, use template-based generation
+    if template_path and os.path.exists(template_path):
+        return generate_ppt_from_template(script_text, output_path, template_path, use_ai, ai_instructions, original_topic)
     
     # Structure content
     if use_ai:

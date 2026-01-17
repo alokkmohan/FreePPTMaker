@@ -25,9 +25,26 @@ st.set_page_config(
 # Custom CSS for beautiful, mobile-responsive UI
 st.markdown("""
 <style>
+    /* CSS Variables for theming */
+    :root {
+        --bg-primary: linear-gradient(to bottom, #f5f7fa 0%, #e8ecf1 100%);
+        --bg-card: linear-gradient(145deg, #ffffff 0%, #f8f9ff 100%);
+        --text-primary: #2d3748;
+        --text-secondary: #718096;
+        --border-color: #e8ecf1;
+    }
+    
+    [data-theme="dark"] {
+        --bg-primary: linear-gradient(to bottom, #1a202c 0%, #2d3748 100%);
+        --bg-card: linear-gradient(145deg, #2d3748 0%, #374151 100%);
+        --text-primary: #f7fafc;
+        --text-secondary: #cbd5e0;
+        --border-color: #4a5568;
+    }
+    
     /* Main background */
     .stApp {
-        background: linear-gradient(to bottom, #f5f7fa 0%, #e8ecf1 100%);
+        background: var(--bg-primary);
     }
     
     /* Header styling */
@@ -340,11 +357,50 @@ with st.sidebar:
     st.markdown("### 🔧 Controls")
     st.markdown("")
     
+    # Dark Mode Toggle
+    if 'dark_mode' not in st.session_state:
+        st.session_state['dark_mode'] = False
+    
+    dark_mode = st.toggle("🌙 Dark Mode", value=st.session_state['dark_mode'], key="dark_mode_toggle")
+    if dark_mode != st.session_state['dark_mode']:
+        st.session_state['dark_mode'] = dark_mode
+        st.rerun()
+    
+    if st.session_state['dark_mode']:
+        st.markdown('<script>document.documentElement.setAttribute("data-theme", "dark");</script>', unsafe_allow_html=True)
+    
+    st.markdown("")
+    
     if st.button("🔄 Reset App", key="reset_btn", use_container_width=True, help="Clear all data and start fresh"):
         # Clear all session state
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
+    
+    st.markdown("---")
+    
+    # Download History
+    st.markdown("### 📥 Download History")
+    if 'download_history' not in st.session_state:
+        st.session_state['download_history'] = []
+    
+    history = st.session_state.get('download_history', [])
+    if history:
+        st.markdown(f"**Last {min(len(history), 5)} files:**")
+        for i, item in enumerate(history[-5:][::-1], 1):
+            if os.path.exists(item['path']):
+                with st.expander(f"{i}. {item['name']} - {item['time']}"):
+                    with open(item['path'], "rb") as f:
+                        st.download_button(
+                            label=f"📥 Re-download {item['type']}",
+                            data=f,
+                            file_name=item['name'],
+                            mime=item['mime'],
+                            key=f"history_{i}",
+                            use_container_width=True
+                        )
+    else:
+        st.info("No downloads yet")
     
     st.markdown("---")
     st.markdown("### ℹ️ About")
@@ -359,6 +415,8 @@ with st.sidebar:
     - Hindi & English support
     - AI-powered content generation
     - Session persistence
+    - Dark mode
+    - Download history
     """)
     
     st.markdown("---")
@@ -480,8 +538,31 @@ if st.session_state.get('main_menu'):
             
             if script_content:
                 st.success("✅ File uploaded successfully!")
+                
+                # Content Analytics
+                word_count = len(script_content.split())
+                char_count = len(script_content)
+                estimated_slides = max(5, min(20, word_count // 100))
+                estimated_time = f"{estimated_slides * 3}-{estimated_slides * 5} seconds"
+                
+                col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
+                with col_stat1:
+                    st.metric("📝 Words", f"{word_count:,}")
+                with col_stat2:
+                    st.metric("🔤 Characters", f"{char_count:,}")
+                with col_stat3:
+                    st.metric("📊 Est. Slides", estimated_slides)
+                with col_stat4:
+                    st.metric("⏱️ Est. Time", estimated_time)
+                
                 with st.expander("👀 Preview Content"):
-                    st.text_area("", script_content, height=200, disabled=True, label_visibility="collapsed")
+                    col_preview, col_copy = st.columns([4, 1])
+                    with col_preview:
+                        st.text_area("", script_content, height=200, disabled=True, label_visibility="collapsed")
+                    with col_copy:
+                        if st.button("📋 Copy", use_container_width=True):
+                            st.code(script_content, language=None)
+                            st.success("✅ Select and copy text above!")
 
     elif st.session_state.get('input_method') == 'paste':
         st.markdown("### ✍️ Paste Your Content")
@@ -522,14 +603,42 @@ if st.session_state.get('main_menu'):
             
         elif st.session_state.get('content_type') == 'article':
             st.markdown("### 📝 Paste Your Content")
+            
+            # Auto-save draft feature
+            if 'draft_content' not in st.session_state:
+                st.session_state['draft_content'] = ""
+            
             article_input = st.text_area(
                 "",
+                value=st.session_state.get('draft_content', ''),
                 height=300,
                 placeholder="Paste your content here...\nYou can paste in multiple parts - the text will accumulate.\nSupports multiple languages including Hindi, English, etc.",
                 help="Paste your ready-to-convert content. You can paste multiple times before submitting.",
                 label_visibility="collapsed",
-                key="article_text"
+                key="article_text",
+                on_change=lambda: st.session_state.update({'draft_content': st.session_state.article_text})
             )
+            
+            # Auto-save indicator
+            if article_input:
+                st.caption("💾 Auto-saved draft")
+                
+                # Content Analytics for pasted content
+                word_count = len(article_input.split())
+                char_count = len(article_input)
+                estimated_slides = max(5, min(20, word_count // 100))
+                
+                # Quality Indicators
+                avg_word_length = sum(len(word) for word in article_input.split()) / max(word_count, 1)
+                readability_score = "Good" if 4 <= avg_word_length <= 7 else "Complex" if avg_word_length > 7 else "Simple"
+                
+                col_stat1, col_stat2, col_stat3 = st.columns(3)
+                with col_stat1:
+                    st.metric("📝 Words", f"{word_count:,}")
+                with col_stat2:
+                    st.metric("📊 Est. Slides", estimated_slides)
+                with col_stat3:
+                    st.metric("🎯 Readability", readability_score)
             
             # AI Enhancement option
             st.markdown("####")
@@ -544,14 +653,21 @@ if st.session_state.get('main_menu'):
             else:
                 st.info("📄 Will create presentation directly from your pasted content")
             
-            if article_input and st.button("✅ Confirm Content and Proceed", type="primary", use_container_width=True):
-                # Store both content and enhancement preference
-                if enhance_with_ai:
-                    st.session_state['confirmed_content'] = f"ENHANCE:{article_input}"
-                else:
-                    st.session_state['confirmed_content'] = article_input
-                st.session_state['ai_enhancement'] = enhance_with_ai
-                st.success(f"✅ Content confirmed ({len(article_input)} characters) - {'AI Enhancement ON' if enhance_with_ai else 'Direct Conversion'}")
+            col_confirm, col_clear = st.columns([3, 1])
+            with col_confirm:
+                if article_input and st.button("✅ Confirm Content and Proceed", type="primary", use_container_width=True):
+                    # Store both content and enhancement preference
+                    if enhance_with_ai:
+                        st.session_state['confirmed_content'] = f"ENHANCE:{article_input}"
+                    else:
+                        st.session_state['confirmed_content'] = article_input
+                    st.session_state['ai_enhancement'] = enhance_with_ai
+                    st.success(f"✅ Content confirmed ({len(article_input)} characters) - {'AI Enhancement ON' if enhance_with_ai else 'Direct Conversion'}")
+            
+            with col_clear:
+                if st.button("🗑️ Clear", use_container_width=True):
+                    st.session_state['draft_content'] = ""
+                    st.rerun()
             
             script_content = st.session_state.get('confirmed_content')
             # Filter out TOPIC: prefix for this check
@@ -617,15 +733,35 @@ if script_content and st.session_state.get('main_menu'):
             topic = script_content.replace("TOPIC:", "").strip()
             original_topic = topic  # Store the original topic
             
+            # Progress bar for AI generation
+            progress_text = st.empty()
+            progress_bar = st.progress(0)
+            
+            progress_text.text("🤖 Initializing AI...")
+            progress_bar.progress(10)
+            
             with st.spinner(f"🤖 AI is generating detailed content on: **{topic}**..."):
                 try:
+                    progress_text.text("📝 Generating comprehensive article...")
+                    progress_bar.progress(30)
+                    
                     generated_content = generate_content_from_topic(topic, ai_instructions)
+                    
+                    progress_bar.progress(80)
+                    progress_text.text("✅ Content generated! Structuring slides...")
+                    
                     script_content = generated_content
+                    progress_bar.progress(100)
+                    progress_text.empty()
+                    progress_bar.empty()
+                    
                     st.success("✅ Content generated successfully!")
                     
                     with st.expander("📄 View Generated Content"):
                         st.text_area("", generated_content, height=300, label_visibility="collapsed")
                 except Exception as e:
+                    progress_bar.empty()
+                    progress_text.empty()
                     st.error(f"❌ Content generation failed: {str(e)}")
                     st.stop()
         
@@ -693,6 +829,18 @@ if script_content and st.session_state.get('main_menu'):
                     # Store in session state for persistence
                     st.session_state['ppt_generated'] = True
                     st.session_state['ppt_path'] = ppt_path
+                    
+                    # Add to download history
+                    if 'download_history' not in st.session_state:
+                        st.session_state['download_history'] = []
+                    
+                    st.session_state['download_history'].append({
+                        'name': 'presentation.pptx',
+                        'path': ppt_path,
+                        'type': 'PowerPoint',
+                        'mime': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                        'time': datetime.now().strftime("%Y-%m-%d %H:%M")
+                    })
                     
                     with open(ppt_path, "rb") as f:
                         st.download_button(
@@ -807,6 +955,18 @@ if script_content and st.session_state.get('main_menu'):
                 st.session_state['youtube_generated'] = True
                 st.session_state['youtube_path'] = doc_path
                 st.session_state['youtube_script'] = youtube_script
+                
+                # Add to download history
+                if 'download_history' not in st.session_state:
+                    st.session_state['download_history'] = []
+                
+                st.session_state['download_history'].append({
+                    'name': 'youtube_script.docx',
+                    'path': doc_path,
+                    'type': 'YouTube Script',
+                    'mime': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'time': datetime.now().strftime("%Y-%m-%d %H:%M")
+                })
                 
                 with st.expander("📺 Preview YouTube Script"):
                     st.markdown(youtube_script)

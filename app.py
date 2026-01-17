@@ -241,6 +241,10 @@ st.markdown("""
         color: #718096;
         font-size: 0.95rem;
         margin-top: 3rem;
+        margin-left: -2rem;
+        margin-right: -2rem;
+        background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+        border-top: 2px solid #e8ecf1;
     }
     
     .update-info {
@@ -249,7 +253,7 @@ st.markdown("""
         border-radius: 15px;
         padding: 1.5rem;
         margin: 2rem auto;
-        max-width: 600px;
+        max-width: 100%;
         box-shadow: 0 8px 20px rgba(102, 126, 234, 0.15);
     }
     
@@ -278,7 +282,7 @@ st.markdown("""
 # Beautiful Header
 st.markdown("""
 <div class="header-container">
-    <div class="main-title">🎨 AI PowerPoint Generator</div>
+    <div class="main-title">🎨 AI Content Generator</div>
     <div class="sub-title">Transform Ideas into Beautiful Presentations & YouTube Scripts</div>
 </div>
 """, unsafe_allow_html=True)
@@ -287,28 +291,53 @@ st.markdown("""
 os.makedirs("input", exist_ok=True)
 os.makedirs("output/slides", exist_ok=True)
 
-# Step 1: Input Method
-st.markdown('<div class="step-indicator">📝 Step 1: Choose Input Method</div>', unsafe_allow_html=True)
+# Main Menu Selection
+st.markdown('<div class="step-indicator">🎯 Choose Your Output Format</div>', unsafe_allow_html=True)
 st.markdown("")
 
-# Initialize session state for input method
-if 'input_method' not in st.session_state:
-    st.session_state['input_method'] = None
+# Initialize session state for main menu
+if 'main_menu' not in st.session_state:
+    st.session_state['main_menu'] = None
 
-col1, col2 = st.columns(2)
+col_menu1, col_menu2 = st.columns(2)
 
-with col1:
-    if st.button("📁 Upload File\n\nUpload TXT, DOCX, MD files", key="upload_btn", use_container_width=True):
-        st.session_state['input_method'] = 'upload'
+with col_menu1:
+    if st.button("📊 Text to PowerPoint\n\nCreate beautiful PPT presentations", key="ppt_menu_btn", use_container_width=True):
+        st.session_state['main_menu'] = 'ppt'
+        st.session_state['input_method'] = None  # Reset input method
     
-with col2:
-    if st.button("✍️ Paste Text\n\nCopy and paste your content", key="paste_btn", use_container_width=True):
-        st.session_state['input_method'] = 'paste'
+with col_menu2:
+    if st.button("🎥 Text to YouTube Script\n\nGenerate engaging video scripts", key="youtube_menu_btn", use_container_width=True):
+        st.session_state['main_menu'] = 'youtube'
+        st.session_state['input_method'] = None  # Reset input method
 
-st.markdown("")
-script_content = None
+st.markdown("---")
 
-if st.session_state.get('input_method') == 'upload':
+# Only show input method if main menu is selected
+if st.session_state.get('main_menu'):
+    # Step 1: Input Method
+    menu_type = "PowerPoint" if st.session_state['main_menu'] == 'ppt' else "YouTube Script"
+    st.markdown(f'<div class="step-indicator">📝 Step 1: Choose Input Method for {menu_type}</div>', unsafe_allow_html=True)
+    st.markdown("")
+
+    # Initialize session state for input method
+    if 'input_method' not in st.session_state:
+        st.session_state['input_method'] = None
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("📁 Upload File\n\nUpload TXT, DOCX, MD files", key="upload_btn", use_container_width=True):
+            st.session_state['input_method'] = 'upload'
+        
+    with col2:
+        if st.button("✍️ Paste Text\n\nCopy and paste your content", key="paste_btn", use_container_width=True):
+            st.session_state['input_method'] = 'paste'
+
+    st.markdown("")
+    script_content = None
+
+    if st.session_state.get('input_method') == 'upload':
     st.markdown("### 📁 Upload Your File")
     uploaded_file = st.file_uploader(
         "Choose your file",
@@ -387,23 +416,26 @@ elif st.session_state.get('input_method') == 'paste':
         script_content = st.session_state.get('confirmed_content') if not st.session_state.get('confirmed_content', '').startswith('TOPIC:') else None
 
 # Process if content is available
-if script_content:
+if script_content and st.session_state.get('main_menu'):
     st.markdown("---")
     st.markdown('<div class="step-indicator">⚙️ Step 2: Configure Options</div>', unsafe_allow_html=True)
     st.markdown("")
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        generate_ppt = st.checkbox("📊 Generate PowerPoint", value=True)
-    with col2:
-        generate_youtube_script = st.checkbox("🎬 YouTube Script", value=True)
+    # Set generate flags based on main menu selection
+    if st.session_state['main_menu'] == 'ppt':
+        generate_ppt = True
+        generate_youtube_script = False
+        st.info("📊 **Mode:** PowerPoint Generation Only")
+    else:  # youtube
+        generate_ppt = False
+        generate_youtube_script = True
+        st.info("🎬 **Mode:** YouTube Script Generation Only")
     
     # Always use AI for best results
     use_ai = True
     ai_instructions = ""
     
-    # Theme selection
+    # Theme selection (only for PPT mode)
     if generate_ppt:
         st.markdown("####")
         st.markdown("### 🎨 Choose Design Theme")
@@ -427,7 +459,7 @@ if script_content:
         st.info(f"✨ Selected Theme: **{selected_theme.upper()}**")
     
     st.markdown("####")
-    if st.button("🚀 Generate Beautiful Files", type="primary", use_container_width=True):
+    if st.button(f"🚀 Generate {'PowerPoint' if generate_ppt else 'YouTube Script'}", type="primary", use_container_width=True):
         st.session_state['ai_instructions'] = ai_instructions
         
         # Handle topic mode

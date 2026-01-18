@@ -787,39 +787,60 @@ if script_content and st.session_state.get('main_menu'):
     st.markdown("####")
     if st.button(f"🚀 Generate PowerPoint", type="primary", use_container_width=True):
         st.session_state['ai_instructions'] = ai_instructions
-        
+
         # Store original topic for PPT title
         original_topic = None
-        
+
+        # Dynamic word/section requirements based on slide preference
+        min_s = st.session_state.get('min_slides', 10)
+        max_s = st.session_state.get('max_slides', 15)
+        slide_pref = st.session_state.get('slide_preference', 'auto')
+        if slide_pref == 'quick':
+            word_range = "700-1000 words"
+            section_range = "5-8 slides/sections"
+        elif slide_pref == 'standard':
+            word_range = "1200-1800 words"
+            section_range = "10-15 slides/sections"
+        elif slide_pref == 'detailed':
+            word_range = "2500-4000 words"
+            section_range = "15-25 slides/sections"
+        else:
+            word_range = f"{min_s*120}-{max_s*180} words"
+            section_range = f"{min_s}-{max_s} slides/sections"
+
         # Handle topic mode (always uses AI)
         if script_content.startswith("TOPIC:"):
             topic = script_content.replace("TOPIC:", "").strip()
             original_topic = topic  # Store the original topic
-            
+
+            # Add dynamic requirements to instructions
+            dynamic_instructions = f"\n\nIMPORTANT: Generate enough content for {section_range} (about {word_range}). If content is less, expand with relevant facts, examples, data, and case studies."
+            full_instructions = (ai_instructions or "") + dynamic_instructions
+
             # Progress bar for AI generation
             progress_text = st.empty()
             progress_bar = st.progress(0)
-            
+
             progress_text.text("🤖 Initializing AI...")
             progress_bar.progress(10)
-            
+
             with st.spinner(f"🤖 AI is generating detailed content on: **{topic}**..."):
                 try:
                     progress_text.text("📝 Generating comprehensive article...")
                     progress_bar.progress(30)
-                    
-                    generated_content = generate_content_from_topic(topic, ai_instructions)
-                    
+
+                    generated_content = generate_content_from_topic(topic, full_instructions)
+
                     progress_bar.progress(80)
                     progress_text.text("✅ Content generated! Structuring slides...")
-                    
+
                     script_content = generated_content
                     progress_bar.progress(100)
                     progress_text.empty()
                     progress_bar.empty()
-                    
+
                     st.success("✅ Content generated successfully!")
-                    
+
                     with st.expander("📄 View Generated Content"):
                         st.text_area("Generated Content", generated_content, height=300, label_visibility="collapsed")
                 except Exception as e:
@@ -827,18 +848,22 @@ if script_content and st.session_state.get('main_menu'):
                     progress_text.empty()
                     st.error(f"❌ Content generation failed: {str(e)}")
                     st.stop()
-        
+
         # Handle AI enhancement mode for pasted content
         elif script_content.startswith("ENHANCE:"):
             original_content = script_content.replace("ENHANCE:", "").strip()
-            
+
+            # Add dynamic requirements to instructions
+            dynamic_instructions = f"\n\nIMPORTANT: Generate enough content for {section_range} (about {word_range}). If content is less, expand with relevant facts, examples, data, and case studies."
+            full_instructions = (ai_instructions or "") + dynamic_instructions
+
             with st.spinner(f"🤖 AI is enhancing and structuring your content..."):
                 try:
                     # Use the content generator to enhance the pasted content
-                    enhanced_content = generate_content_from_topic(f"Enhance and restructure this content:\n\n{original_content}", ai_instructions)
+                    enhanced_content = generate_content_from_topic(f"Enhance and restructure this content:\n\n{original_content}", full_instructions)
                     script_content = enhanced_content
                     st.success("✅ Content enhanced successfully!")
-                    
+
                     with st.expander("📄 View Enhanced Content"):
                         st.text_area("Enhanced Content", enhanced_content, height=300, label_visibility="collapsed")
                 except Exception as e:

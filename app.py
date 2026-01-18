@@ -813,10 +813,6 @@ if script_content and st.session_state.get('main_menu'):
             topic = script_content.replace("TOPIC:", "").strip()
             original_topic = topic  # Store the original topic
 
-            # Add dynamic requirements to instructions
-            dynamic_instructions = f"\n\nIMPORTANT: Generate enough content for {section_range} (about {word_range}). If content is less, expand with relevant facts, examples, data, and case studies."
-            full_instructions = (ai_instructions or "") + dynamic_instructions
-
             # Progress bar for AI generation
             progress_text = st.empty()
             progress_bar = st.progress(0)
@@ -829,7 +825,7 @@ if script_content and st.session_state.get('main_menu'):
                     progress_text.text("📝 Generating comprehensive article...")
                     progress_bar.progress(30)
 
-                    generated_content = generate_content_from_topic(topic, full_instructions)
+                    generated_content = generate_content_from_topic(topic, ai_instructions, min_s, max_s)
 
                     progress_bar.progress(80)
                     progress_text.text("✅ Content generated! Structuring slides...")
@@ -853,14 +849,10 @@ if script_content and st.session_state.get('main_menu'):
         elif script_content.startswith("ENHANCE:"):
             original_content = script_content.replace("ENHANCE:", "").strip()
 
-            # Add dynamic requirements to instructions
-            dynamic_instructions = f"\n\nIMPORTANT: Generate enough content for {section_range} (about {word_range}). If content is less, expand with relevant facts, examples, data, and case studies."
-            full_instructions = (ai_instructions or "") + dynamic_instructions
-
             with st.spinner(f"🤖 AI is enhancing and structuring your content..."):
                 try:
                     # Use the content generator to enhance the pasted content
-                    enhanced_content = generate_content_from_topic(f"Enhance and restructure this content:\n\n{original_content}", full_instructions)
+                    enhanced_content = generate_content_from_topic(f"Enhance and restructure this content:\n\n{original_content}", ai_instructions, min_s, max_s)
                     script_content = enhanced_content
                     st.success("✅ Content enhanced successfully!")
 

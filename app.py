@@ -15,7 +15,7 @@ from ai_ppt_generator import generate_beautiful_ppt
 from youtube_script_generator import generate_youtube_script_with_ai
 from content_generator import generate_content_from_topic
 
-# Simple visitor counter
+# Simple visitor counter and conversion tracking
 def update_visitor_count():
     """Track and update visitor count"""
     counter_file = "visitor_count.json"
@@ -28,15 +28,21 @@ def update_visitor_count():
                 with open(counter_file, 'r') as f:
                     data = json.load(f)
                     count = data.get('total_visits', 0)
+                    ppt_count = data.get('ppt_generated', 0)
             else:
                 count = 0
+                ppt_count = 0
             
             # Increment count
             count += 1
             
             # Save updated count
             with open(counter_file, 'w') as f:
-                json.dump({'total_visits': count, 'last_visit': datetime.now().isoformat()}, f)
+                json.dump({
+                    'total_visits': count, 
+                    'ppt_generated': ppt_count,
+                    'last_visit': datetime.now().isoformat()
+                }, f)
             
             st.session_state['visitor_counted'] = True
             st.session_state['visit_count'] = count
@@ -44,6 +50,50 @@ def update_visitor_count():
             st.session_state['visit_count'] = 0
     
     return st.session_state.get('visit_count', 0)
+
+def track_ppt_generation():
+    """Track successful PPT generation for conversion rate"""
+    counter_file = "visitor_count.json"
+    
+    # Only count once per session
+    if 'ppt_tracked' not in st.session_state:
+        try:
+            # Read current data
+            if os.path.exists(counter_file):
+                with open(counter_file, 'r') as f:
+                    data = json.load(f)
+            else:
+                data = {'total_visits': 0, 'ppt_generated': 0}
+            
+            # Increment PPT count
+            data['ppt_generated'] = data.get('ppt_generated', 0) + 1
+            data['last_ppt'] = datetime.now().isoformat()
+            
+            # Save updated data
+            with open(counter_file, 'w') as f:
+                json.dump(data, f)
+            
+            st.session_state['ppt_tracked'] = True
+        except:
+            pass
+
+def get_conversion_stats():
+    """Get conversion rate statistics"""
+    counter_file = "visitor_count.json"
+    try:
+        if os.path.exists(counter_file):
+            with open(counter_file, 'r') as f:
+                data = json.load(f)
+                visits = data.get('total_visits', 0)
+                ppts = data.get('ppt_generated', 0)
+                if visits > 0:
+                    conversion_rate = (ppts / visits) * 100
+                else:
+                    conversion_rate = 0
+                return visits, ppts, conversion_rate
+    except:
+        pass
+    return 0, 0, 0
 
 # Page Configuration
 st.set_page_config(
@@ -836,6 +886,9 @@ if script_content and st.session_state.get('main_menu'):
                     success = False
                 
                 if success:
+                    # Track conversion
+                    track_ppt_generation()
+                    
                     st.success("✅ PowerPoint created successfully!")
                     
                     # Store in session state for persistence
@@ -1066,6 +1119,9 @@ import pytz
 # Update visitor count
 total_visitors = update_visitor_count()
 
+# Get conversion stats
+visits, ppts_generated, conversion_rate = get_conversion_stats()
+
 # Get current time in IST
 ist = pytz.timezone('Asia/Kolkata')
 current_time = datetime.now(ist).strftime('%Y-%m-%d %H:%M:%S IST')
@@ -1073,15 +1129,23 @@ current_time = datetime.now(ist).strftime('%Y-%m-%d %H:%M:%S IST')
 st.markdown(f"""
 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; margin-top: 3rem; border-radius: 15px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);">
     <div style="text-align: center;">
-        <h3 style="color: white; margin-bottom: 1rem;">🔄 System Status</h3>
-        <div style="display: flex; justify-content: center; gap: 3rem; flex-wrap: wrap; margin-bottom: 1rem;">
+        <h3 style="color: white; margin-bottom: 1rem;">📊 Analytics Dashboard</h3>
+        <div style="display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap; margin-bottom: 1rem;">
             <div>
                 <p style="color: #f0f4ff; margin-bottom: 0.3rem; font-size: 0.9rem;">Last Updated</p>
                 <p style="color: white; font-weight: bold; margin: 0;">{current_time}</p>
             </div>
             <div>
                 <p style="color: #f0f4ff; margin-bottom: 0.3rem; font-size: 0.9rem;">👥 Total Visitors</p>
-                <p style="color: #ffd700; font-weight: bold; font-size: 1.5rem; margin: 0;">{total_visitors:,}</p>
+                <p style="color: #ffd700; font-weight: bold; font-size: 1.5rem; margin: 0;">{visits:,}</p>
+            </div>
+            <div>
+                <p style="color: #f0f4ff; margin-bottom: 0.3rem; font-size: 0.9rem;">📊 PPTs Generated</p>
+                <p style="color: #4ade80; font-weight: bold; font-size: 1.5rem; margin: 0;">{ppts_generated:,}</p>
+            </div>
+            <div>
+                <p style="color: #f0f4ff; margin-bottom: 0.3rem; font-size: 0.9rem;">🎯 Conversion Rate</p>
+                <p style="color: #fb923c; font-weight: bold; font-size: 1.5rem; margin: 0;">{conversion_rate:.1f}%</p>
             </div>
         </div>
         <p style="color: #e8ecf1; font-size: 0.9rem; margin-bottom: 1rem;">

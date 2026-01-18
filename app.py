@@ -722,12 +722,16 @@ if script_content and st.session_state.get('main_menu'):
         
         if slide_preference == "✨ Auto (Recommended)":
             min_slides, max_slides = default_min, default_max
+            st.session_state['slide_preference'] = 'auto'
         elif slide_preference == "🎯 Quick (5-8 slides)":
             min_slides, max_slides = 5, 8
+            st.session_state['slide_preference'] = 'quick'
         elif slide_preference == "📄 Standard (10-15 slides)":
             min_slides, max_slides = 10, 15
+            st.session_state['slide_preference'] = 'standard'
         else:  # Detailed
             min_slides, max_slides = 15, 25
+            st.session_state['slide_preference'] = 'detailed'
     
     # Store in session state
     st.session_state['min_slides'] = min_slides
@@ -761,9 +765,24 @@ if script_content and st.session_state.get('main_menu'):
                 st.session_state['theme'] = 'eg'
                 st.session_state['template_path'] = None
         
-        # Display selected option
+        # Display selected options
         selected_theme = st.session_state.get('theme', 'corporate')
-        st.info(f"✨ Selected Theme: **{selected_theme.upper()}**")
+        selected_pref = st.session_state.get('slide_preference', 'auto')
+        min_s = st.session_state.get('min_slides', 10)
+        max_s = st.session_state.get('max_slides', 15)
+        
+        pref_names = {
+            'auto': '✨ Auto (Recommended)',
+            'quick': '🎯 Quick',
+            'standard': '📄 Standard',
+            'detailed': '📚 Detailed'
+        }
+        
+        col_info1, col_info2 = st.columns(2)
+        with col_info1:
+            st.info(f"🎨 Theme: **{selected_theme.upper()}**")
+        with col_info2:
+            st.info(f"📊 Style: **{pref_names.get(selected_pref, 'Standard')}** ({min_s}-{max_s} slides)")
     
     st.markdown("####")
     if st.button(f"🚀 Generate PowerPoint", type="primary", use_container_width=True):

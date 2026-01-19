@@ -585,6 +585,7 @@ elif st.session_state.get('input_method') == 'paste':
     if st.session_state.get('content_type') == 'topic':
         st.markdown("### 🎯 Enter Your Topic")
         st.markdown("AI will generate a detailed article and create presentation from your topic")
+        
         topic_input = st.text_area(
             "",
             placeholder="Example:\n• Artificial Intelligence in Healthcare\n• Climate Change and Its Effects\n• Future of Electric Vehicles\n• Digital Marketing Strategies 2025",
@@ -594,9 +595,25 @@ elif st.session_state.get('input_method') == 'paste':
             key="topic_text"
         )
         
-        if topic_input and st.button("✅ Confirm Topic and Proceed", type="primary", use_container_width=True):
-            st.session_state['confirmed_content'] = f"TOPIC:{topic_input}"
-            st.info(f"💡 Topic: **{topic_input}** - AI will create detailed content and presentation")
+        # Auto-confirm topic after user enters text
+        if topic_input:
+            # Store the topic in session state automatically
+            if st.session_state.get('last_topic') != topic_input:
+                st.session_state['confirmed_content'] = f"TOPIC:{topic_input}"
+                st.session_state['last_topic'] = topic_input
+            
+            # Show success and next step
+            st.success(f"✅ Topic confirmed: **{topic_input}**")
+            st.info("📊 Your AI-powered presentation is being prepared... scroll down to configure your presentation!")
+            
+            # Add a visual button for confirmation (for users who prefer clicking)
+            col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+            with col_btn2:
+                st.markdown("**✨ Ready to create presentation?**")
+                if st.button("📊 Continue to Settings", type="primary", use_container_width=True):
+                    pass  # Session state already updated
+        else:
+            st.warning("⬇️ Enter a topic above to get started")
         
         script_content = st.session_state.get('confirmed_content') if st.session_state.get('confirmed_content', '').startswith('TOPIC:') else None
         
@@ -643,7 +660,7 @@ elif st.session_state.get('input_method') == 'paste':
         st.markdown("####")
         enhance_with_ai = st.checkbox(
             "🤖 AI Enhancement - Improve and structure content with AI",
-            value=False,
+            value=True,
             help="Enable this to let AI enhance, restructure and improve your content before creating presentation"
         )
         
@@ -943,14 +960,38 @@ if script_content and st.session_state.get('main_menu'):
                         'time': datetime.now().strftime("%Y-%m-%d %H:%M")
                     })
                     
+                    # Auto-download the PPT file
                     with open(ppt_path, "rb") as f:
+                        ppt_data = f.read()
+                    
+                    # Display auto-download message
+                    st.markdown("### 📥 Download Your Presentation")
+                    col_download, col_auto = st.columns([3, 2])
+                    
+                    with col_download:
                         st.download_button(
                             label="📥 Download PowerPoint (PPTX)",
-                            data=f,
+                            data=ppt_data,
                             file_name="presentation.pptx",
                             mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
                             use_container_width=True
                         )
+                    
+                    with col_auto:
+                        st.info("✅ Download ready!\n(Auto-triggered)")
+                    
+                    # Try to auto-trigger download using JavaScript
+                    st.markdown("""
+                    <script>
+                        // Try to auto-click the download button after a short delay
+                        setTimeout(function() {
+                            var downloadBtn = document.querySelector('[data-testid="baseButton-primary"]');
+                            if(downloadBtn) {
+                                downloadBtn.click();
+                            }
+                        }, 500);
+                    </script>
+                    """, unsafe_allow_html=True)
                     
                     # Generate images - try conversion, gracefully handle failure
                     try:

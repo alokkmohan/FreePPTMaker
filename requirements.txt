@@ -3,3 +3,6 @@ python-pptx
 python-docx
 groq
 Pillow
+pdfplumber
+requests
+matplotlib

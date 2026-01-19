@@ -10,10 +10,16 @@ try:
     PPT_TO_IMAGES_AVAILABLE = True
 except:
     PPT_TO_IMAGES_AVAILABLE = False
+try:
+    import pdfplumber
+    PDF_SUPPORT_AVAILABLE = True
+except:
+    PDF_SUPPORT_AVAILABLE = False
 from create_ppt import process_script
 from ai_ppt_generator import generate_beautiful_ppt
 from youtube_script_generator import generate_youtube_script_with_ai
 from content_generator import generate_content_from_topic
+from image_generator import get_slide_image, download_image, search_image
 
 # Simple visitor counter and conversion tracking
 def update_visitor_count():
@@ -507,10 +513,16 @@ script_content = None
 
 if st.session_state.get('input_method') == 'upload':
     st.markdown("### 📁 Upload Your File")
+    
+    # Supported file types
+    supported_types = ["txt", "docx", "md"]
+    if PDF_SUPPORT_AVAILABLE:
+        supported_types.append("pdf")
+    
     uploaded_file = st.file_uploader(
         "Choose your file",
-        type=["txt", "docx", "md"],
-        help="Supported formats: TXT, DOCX, MD"
+        type=supported_types,
+        help=f"Supported formats: {', '.join(supported_types).upper()}"
     )
     if uploaded_file:
         file_type = uploaded_file.name.split('.')[-1].lower()
@@ -523,6 +535,38 @@ if st.session_state.get('input_method') == 'upload':
                 f.write(uploaded_file.read())
             doc = Document(temp_path)
             script_content = "\n".join([para.text for para in doc.paragraphs])
+        elif file_type == "pdf" and PDF_SUPPORT_AVAILABLE:
+            # Extract text from PDF with page limit check
+            try:
+                temp_path = os.path.join("input", "temp.pdf")
+                with open(temp_path, "wb") as f:
+                    f.write(uploaded_file.read())
+                
+                with pdfplumber.open(temp_path) as pdf:
+                    # Check page limit
+                    num_pages = len(pdf.pages)
+                    max_pages = 20
+                    
+                    if num_pages > max_pages:
+                        st.error(f"❌ PDF has {num_pages} pages. Maximum allowed: {max_pages} pages")
+                        st.warning(f"📄 Please upload a PDF with {max_pages} pages or less")
+                        script_content = None
+                    else:
+                        script_content = ""
+                        for page in pdf.pages:
+                            text = page.extract_text()
+                            if text:
+                                script_content += text + "\n"
+                        
+                        if not script_content.strip():
+                            st.error("❌ Could not extract text from PDF. Please try another file.")
+                            script_content = None
+                        else:
+                            # Show page count
+                            st.info(f"📄 PDF pages: {num_pages}/{max_pages}")
+            except Exception as e:
+                st.error(f"❌ Error reading PDF: {str(e)}")
+                script_content = None
         
         if script_content:
             st.success("✅ File uploaded successfully!")
@@ -1026,7 +1070,7 @@ if script_content and st.session_state.get('main_menu'):
                                             img_path = os.path.join(output_folder, img)
                                             # Show slide number clearly
                                             st.markdown(f"**Slide {idx+1}**")
-                                            st.image(img_path, use_column_width=True)
+                                            st.image(img_path, width=400)
                                             with open(img_path, "rb") as f:
                                                 st.download_button(
                                                     label=f"📥 Download",

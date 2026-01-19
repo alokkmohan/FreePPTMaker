@@ -9,12 +9,20 @@ Uses Google Gemini to structure content intelligently
 import os
 import json
 import shutil
+import requests
 from groq import Groq
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
+
+# Try to import image generator
+try:
+    from image_generator import get_slide_image, download_image, search_image
+    IMAGE_GENERATION_AVAILABLE = True
+except ImportError:
+    IMAGE_GENERATION_AVAILABLE = False
 
 # Configure Groq API
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -29,23 +37,71 @@ def get_groq_client():
         return Groq(api_key=GROQ_API_KEY)
     return None
 
+def deepseek_generate_content(prompt, system_prompt=None, temperature=0.7, max_tokens=2048):
+    """
+    Call DeepSeek API for text generation
+    """
+    headers = {
+        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": prompt})
+    data = {
+        "model": "deepseek-chat",
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens
+    }
+    response = requests.post(DEEPSEEK_API_URL, headers=headers, json=data, timeout=60)
+    if response.status_code == 200:
+        result = response.json()
+        return result["choices"][0]["message"]["content"]
+    else:
+        raise Exception(f"DeepSeek API error: {response.status_code} {response.text}")
+
+def ollama_generate_content(prompt, system_prompt=None, temperature=0.7, max_tokens=2048):
+    """
+    Try to generate content using local Ollama LLM (e.g. llama3)
+    """
+    try:
+        payload = {
+            "model": "llama3",
+            "prompt": prompt,
+            "options": {"temperature": temperature, "num_predict": max_tokens}
+        }
+        if system_prompt:
+            payload["system"] = system_prompt
+        response = requests.post("http://localhost:11434/api/generate", json=payload, timeout=60)
+        if response.status_code == 200:
+            # Ollama streams output, so we need to parse lines
+            lines = response.text.splitlines()
+            content = ""
+            for line in lines:
+                if line.strip():
+                    try:
+                        obj = json.loads(line)
+                        content += obj.get("response", "")
+                    except Exception:
+                        continue
+            return content.strip()
+        else:
+            raise Exception(f"Ollama error: {response.status_code} {response.text}")
+    except Exception as e:
+        print(f"Ollama failed: {e}")
+        return None
+
 def structure_content_with_ai(script_text, user_instructions="", min_slides=10, max_slides=20):
-    """Use Groq AI to structure script into presentation format"""
-    
-    client = get_groq_client()
-    if not client:
-        # Fallback to basic structuring
-        return structure_content_basic(script_text)
-    
+    """Try Ollama first, fallback to DeepSeek if Ollama fails"""
     try:
         # Add user instructions to prompt if provided
         extra_instructions = ""
         if user_instructions:
             extra_instructions = f"\n\nUser's specific instructions:\n{user_instructions}\n\nPlease incorporate these instructions while structuring the presentation."
-        
         # Detect if script has Hindi content
         has_hindi = any(ord(char) >= 0x0900 and ord(char) <= 0x097F for char in script_text[:500])
-        
         if has_hindi:
             lang_instruction = """भाषा: हिंदी में slides बनाएं
 - Title slide: मुख्य शीर्षक और उपशीर्षक
@@ -54,7 +110,6 @@ def structure_content_with_ai(script_text, user_instructions="", min_slides=10, 
 - हर bullet में पूर्ण, सार्थक वाक्य (60-120 characters)
 - Section dividers का उपयोग करें
 - Conclusion slide में मुख्य बिंदु"""
-            
             content_preservation = """महत्वपूर्ण: ORIGINAL CONTENT को preserve करें
 - Script में दी गई जानकारी को ज्यों का त्यों रखें
 - सिर्फ formatting और organization improve करें
@@ -69,82 +124,22 @@ def structure_content_with_ai(script_text, user_instructions="", min_slides=10, 
 - Each bullet: complete, meaningful sentence (80-150 chars)
 - Use section dividers for major topics
 - Conclusion slide with key takeaways"""
-            
             content_preservation = """CRITICAL: PRESERVE ORIGINAL CONTENT
 - Keep the information from the script AS IS
 - Only improve formatting and organization
 - DO NOT add new information - use only what's in the script
 - Use exact words and phrases from the script in bullets
 - Just create proper sections and clear titles"""
-        
-        prompt = f"""You are a professional presentation designer. Your task is to RESTRUCTURE (not rewrite) the following script into a well-organized PowerPoint presentation.
-
-Script:
-{script_text}{extra_instructions}
-
-{lang_instruction}
-
-{content_preservation}
-
-IMPORTANT REQUIREMENTS:
-- Extract a clear TITLE from the script content (first line or main topic)
-- Create a relevant SUBTITLE based on script theme
-- MINIMUM {min_slides} slides (excluding title)
-- MAXIMUM {max_slides} slides total
-- Break the script into logical sections
-- Each section gets a clear, descriptive title
-- Convert each section's content into 4-6 bullet points
-- Use the EXACT information from the script - don't invent new content
-- Keep technical terms, names, numbers exactly as given in script
-
-Return ONLY valid JSON (no markdown):
-{{
-    "title": "Extract or infer main title from script",
-    "subtitle": "Brief subtitle based on script theme",
-    "slides": [
-        {{
-            "type": "content",
-            "title": "Section Title (from script context)",
-            "bullets": ["Point from script", "Another point from script", "Third point from script", "Fourth point from script"]
-        }},
-        {{
-            "type": "section",
-            "title": "Major Topic Divider"
-        }},
-        {{
-            "type": "content",
-            "title": "Another Section Title",
-            "bullets": ["Script content 1", "Script content 2", "Script content 3", "Script content 4"]
-        }}
-    ]
-}}
-
-Important Rules:
-- PRESERVE original content - only reorganize it
-- Extract title and subtitle from script itself
-- MINIMUM 4 bullets per content slide (ideal 5-6)
-- Each bullet uses information directly from the script
-- Create clear section titles that reflect the content
-- Natural flow following script's structure
-- DO NOT use emojis or special icons (⚠️ ❌ ✅ etc.) - plain text only
-- Return ONLY the JSON, no extra text"""
-        
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": "You are a presentation design expert who restructures content without changing it. Extract and organize information from the script, preserve exact wording, create clear titles. Return only valid JSON."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3,  # Lower temperature for more faithful content preservation
-            max_tokens=6000
-        )
-        
-        content_text = response.choices[0].message.content.strip()
-        # Remove markdown code blocks if present
+        prompt = f"""You are a professional presentation designer. Your task is to RESTRUCTURE (not rewrite) the following script into a well-organized PowerPoint presentation.\n\nScript:\n{script_text}{extra_instructions}\n\n{lang_instruction}\n\n{content_preservation}\n\nIMPORTANT REQUIREMENTS:\n- Extract a clear TITLE from the script content (first line or main topic)\n- Create a relevant SUBTITLE based on script theme\n- MINIMUM {min_slides} slides (excluding title)\n- MAXIMUM {max_slides} slides total\n- Break the script into logical sections\n- Each section gets a clear, descriptive title\n- Convert each section's content into 4-6 bullet points\n- Use the EXACT information from the script - don't invent new content\n- Keep technical terms, names, numbers exactly as given in script\n\nReturn ONLY valid JSON (no markdown):\n{{\n    \"title\": \"Extract or infer main title from script\",\n    \"subtitle\": \"Brief subtitle based on script theme\",\n    \"slides\": [\n        {{\n            \"type\": \"content\",\n            \"title\": \"Section Title (from script context)\",\n            \"bullets\": [\"Point from script\", \"Another point from script\", \"Third point from script\", \"Fourth point from script\"]\n        }},\n        {{\n            \"type\": \"section\",\n            \"title\": \"Major Topic Divider\"\n        }},\n        {{\n            \"type\": \"content\",\n            \"title\": \"Another Section Title\",\n            \"bullets\": [\"Script content 1\", \"Script content 2\", \"Script content 3\", \"Script content 4\"]\n        }}\n    ]\n}}\n\nImportant Rules:\n- PRESERVE original content - only reorganize it\n- Extract title and subtitle from script itself\n- MINIMUM 4 bullets per content slide (ideal 5-6)\n- Each bullet uses information directly from the script\n- Create clear section titles that reflect the content\n- Natural flow following script's structure\n- DO NOT use emojis or special icons (⚠️ ❌ ✅ etc.) - plain text only\n- Return ONLY the JSON, no extra text"""
+        # Try Ollama first
+        content_text = ollama_generate_content(prompt, system_prompt=None, temperature=0.3, max_tokens=6000)
+        if not content_text or len(content_text) < 100:
+            # Fallback to DeepSeek
+            print("Ollama failed or empty, using DeepSeek...")
+            content_text = deepseek_generate_content(prompt, system_prompt=None, temperature=0.3, max_tokens=6000)
         content_text = content_text.replace('```json', '').replace('```', '').strip()
         result = json.loads(content_text)
         return result
-        
     except Exception as e:
         print(f"AI structuring failed: {e}")
         return structure_content_basic(script_text)
@@ -555,6 +550,58 @@ class ModernPPTDesigner:
         
         return slide
     
+    def create_content_slide_with_image(self, title, bullets, image_path=None):
+        """Content slide with image on right side"""
+        slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
+        
+        # Header bar
+        header = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(10), Inches(1))
+        header.fill.solid()
+        header.fill.fore_color.rgb = self.colors["primary"]
+        header.line.fill.background()
+        
+        # Title
+        title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.15), Inches(9), Inches(0.7))
+        tf = title_box.text_frame
+        tf.text = title[:67] + "..." if len(title) > 70 else title
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        p.font.size = Pt(28 if len(title) > 50 else 32 if len(title) > 35 else 36)
+        p.font.bold = True
+        p.font.color.rgb = RGBColor(255, 255, 255)
+        
+        # Side bar
+        side_bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.3), Inches(1.3), Inches(0.15), Inches(3.8))
+        side_bar.fill.solid()
+        side_bar.fill.fore_color.rgb = self.colors["accent"]
+        side_bar.line.fill.background()
+        
+        # Add image if available
+        content_width = 8.7
+        if image_path and os.path.exists(image_path):
+            try:
+                slide.shapes.add_picture(image_path, Inches(5.2), Inches(1.3), width=Inches(4.3), height=Inches(4))
+                content_width = 4.5
+            except:
+                pass
+        
+        # Content
+        content_box = slide.shapes.add_textbox(Inches(0.8), Inches(1.3), Inches(content_width), Inches(4))
+        tf = content_box.text_frame
+        tf.word_wrap = True
+        
+        total_chars = sum(len(b) for b in bullets)
+        font_size = 14 if total_chars > 600 else 16 if total_chars > 400 else 18
+        
+        for i, bullet in enumerate(bullets):
+            p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+            p.text = "● " + (bullet[:150] + "..." if len(bullet) > 150 else bullet)
+            p.font.size = Pt(font_size)
+            p.font.color.rgb = self.colors["text"]
+            p.space_after = Pt(10)
+        
+        return slide
+    
     def create_end_slide(self):
         """Beautiful thank you slide"""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
@@ -726,21 +773,56 @@ def generate_beautiful_ppt(script_text, output_path, color_scheme="corporate", u
     print("🎨 Creating beautiful presentation...")
     designer = ModernPPTDesigner(scheme=color_scheme)
     
-    # Title slide - use original topic if provided, otherwise use AI-generated title
+    # Title slide
     title_to_use = original_topic if original_topic else content["title"]
     designer.create_title_slide(title_to_use, content["subtitle"])
     
+    # Prepare temp directory for images
+    import time
+    temp_img_dir = os.path.join("temp_images", f"ppt_{int(time.time())}")
+    
     # Content slides
-    for slide_data in content.get("slides", []):
+    slide_count = 0
+    total_slides = len(content.get("slides", []))
+    images_added = 0
+    
+    for idx, slide_data in enumerate(content.get("slides", [])):
         slide_type = slide_data.get("type", "content")
         
         if slide_type == "section":
             designer.create_section_slide(slide_data["title"])
         elif slide_type in ["content", "image_placeholder"]:
-            designer.create_content_slide(
+            # Try to get image for this slide
+            image_path = None
+            slide_title = slide_data["title"]
+            slide_content = " ".join(slide_data.get("bullets", []))
+            
+            # Add images to content slides (skip first and last few)
+            if IMAGE_GENERATION_AVAILABLE:
+                skip_image = (idx < 1) or (idx >= total_slides - 1)  # Skip title-like and ending slides
+                
+                if not skip_image:
+                    try:
+                        print(f"🖼️ Fetching image for slide {idx}: {slide_title[:40]}...")
+                        image_path = get_slide_image(slide_title, slide_content, temp_img_dir)
+                        if image_path:
+                            print(f"✅ Added image for slide {idx}")
+                            images_added += 1
+                        else:
+                            print(f"ℹ️ No image found for slide {idx}")
+                    except Exception as e:
+                        print(f"⚠️ Image generation error for slide {idx}: {str(e)}")
+            
+            # Use content slide with image support
+            designer.create_content_slide_with_image(
                 slide_data["title"],
-                slide_data.get("bullets", [])
+                slide_data.get("bullets", []),
+                image_path
             )
+            slide_count += 1
+    
+    # Log summary
+    print(f"📸 Image summary: {images_added} images added to {total_slides} slides")
     
     # End slide
     designer.create_end_slide()

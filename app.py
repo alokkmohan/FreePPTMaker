@@ -305,10 +305,15 @@ st.markdown("""
         font-weight: 600;
     }
     
-    /* Section headers */
+    /* Section headers - works in both light and dark mode */
     h2, h3 {
-        color: #2d3748;
-        font-weight: 700;
+        color: var(--text-primary) !important;
+        font-weight: 700 !important;
+    }
+    
+    h4, h5, h6 {
+        color: var(--text-primary) !important;
+        font-weight: 600 !important;
     }
     
     /* Step indicators */

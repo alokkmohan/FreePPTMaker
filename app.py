@@ -1232,7 +1232,7 @@ if script_content and st.session_state.get('main_menu'):
 from datetime import datetime
 import pytz
 
-st.markdown(f"""
+ 
 st.markdown("""
 <div class='footer'>
     All systems operational | Hindi & English support | 5-25 slides generation<br>

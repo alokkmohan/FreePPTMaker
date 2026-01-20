@@ -1,7 +1,6 @@
 streamlit
 python-pptx
 python-docx
-groq
 Pillow
 pdfplumber
 requests

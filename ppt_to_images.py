@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-PowerPoint to Images Converter
-Converts each slide of a PPT to individual image files
+PowerPoint to Images Converter (Pure Python)
+Converts each slide of a PPT to individual image files using PyMuPDF and pptx2pdf
+No external dependencies required (LibreOffice, Poppler, ImageMagick)
 """
 
 import os
 import sys
-import subprocess
 from pathlib import Path
 
 def ppt_to_images(ppt_file, output_dir="output/slides"):
     """
-    Convert PowerPoint slides to images using LibreOffice
+    Convert PowerPoint slides to images using pure Python libraries
     
     Args:
         ppt_file: Path to PowerPoint file
@@ -31,125 +31,88 @@ def ppt_to_images(ppt_file, output_dir="output/slides"):
         print(f"❌ Error: File not found: {ppt_file}")
         return False
     
-    # Convert using LibreOffice
     try:
-        # LibreOffice command to convert to PDF first (better quality)
-        pdf_output = os.path.join(output_dir, "temp.pdf")
-        
+        # Step 1: Convert PPT to PDF using pptx2pdf
         print("🔄 Step 1: Converting PPT to PDF...")
-        cmd_pdf = [
-            "libreoffice",
-            "--headless",
-            "--convert-to", "pdf",
-            "--outdir", output_dir,
-            ppt_file
-        ]
+        from pptx2pdf.convert import convert
         
-        result = subprocess.run(cmd_pdf, capture_output=True, text=True, timeout=60)
-        
-        if result.returncode != 0:
-            print("⚠️  PDF conversion failed, trying direct PNG conversion...")
-            
-            # Alternative: Direct conversion to PNG
-            print("🔄 Converting PPT slides to PNG...")
-            cmd_png = [
-                "libreoffice",
-                "--headless",
-                "--convert-to", "png",
-                "--outdir", output_dir,
-                ppt_file
-            ]
-            
-            result = subprocess.run(cmd_png, capture_output=True, text=True, timeout=60)
-            
-            if result.returncode == 0:
-                print("✅ Slides converted to PNG!")
-                return True
-            else:
-                print(f"❌ Conversion failed: {result.stderr}")
-                return False
-        
-        # Find the generated PDF
         ppt_name = Path(ppt_file).stem
         pdf_file = os.path.join(output_dir, f"{ppt_name}.pdf")
         
-        if not os.path.exists(pdf_file):
-            print("❌ PDF file not created")
+        try:
+            convert(ppt_file, pdf_file)
+            print(f"✅ PDF created: {pdf_file}")
+        except Exception as e:
+            print(f"⚠️ pptx2pdf conversion failed: {e}")
             return False
         
-        print("✅ PDF created successfully!")
-        
-        # Convert PDF to images using pdftoppm or convert
+        # Step 2: Convert PDF to images using PyMuPDF
         print("🔄 Step 2: Converting PDF to images...")
+        import fitz  # PyMuPDF
         
-        # Try using pdftoppm (better quality)
+        if not os.path.exists(pdf_file):
+            print(f"❌ PDF file not found: {pdf_file}")
+            return False
+        
         try:
-            cmd_images = [
-                "pdftoppm",
-                "-png",
-                "-r", "300",  # 300 DPI for high quality
-                pdf_file,
-                os.path.join(output_dir, "slide")
-            ]
+            # Open PDF
+            pdf_document = fitz.open(pdf_file)
+            total_pages = pdf_document.page_count
             
-            result = subprocess.run(cmd_images, capture_output=True, text=True, timeout=60)
+            print(f"📄 PDF has {total_pages} pages")
             
-            if result.returncode == 0:
-                print("✅ Images created with pdftoppm!")
-                
-                # Rename files to better format
-                rename_slide_images(output_dir)
-                
-                # Clean up PDF
+            # Convert each page to image
+            for page_num in range(total_pages):
+                try:
+                    # Get page
+                    page = pdf_document[page_num]
+                    
+                    # Render page to image (high quality: 300 DPI equivalent)
+                    mat = fitz.Matrix(2, 2)  # 2x zoom for better quality
+                    pix = page.get_pixmap(matrix=mat, alpha=False)
+                    
+                    # Save as PNG
+                    image_file = os.path.join(output_dir, f"slide_{page_num + 1:02d}.png")
+                    pix.save(image_file)
+                    
+                    print(f"  ✓ Slide {page_num + 1} saved")
+                    
+                except Exception as e:
+                    print(f"  ❌ Error converting page {page_num + 1}: {e}")
+                    continue
+            
+            pdf_document.close()
+            print("✅ All slides converted to images!")
+            
+            # Clean up PDF
+            try:
                 os.remove(pdf_file)
-                
-                return True
-        except FileNotFoundError:
-            print("⚠️  pdftoppm not found, trying ImageMagick...")
-        
-        # Try using ImageMagick convert
-        try:
-            cmd_convert = [
-                "convert",
-                "-density", "300",
-                pdf_file,
-                os.path.join(output_dir, "slide-%02d.png")
-            ]
+                print("✓ Cleaned up temporary PDF")
+            except:
+                pass
             
-            result = subprocess.run(cmd_convert, capture_output=True, text=True, timeout=60)
+            return True
             
-            if result.returncode == 0:
-                print("✅ Images created with ImageMagick!")
-                
-                # Clean up PDF
-                os.remove(pdf_file)
-                
-                return True
-        except FileNotFoundError:
-            print("⚠️  ImageMagick not found")
-        
-        print("❌ Could not convert PDF to images. PDF saved at:", pdf_file)
-        return False
-        
-    except subprocess.TimeoutExpired:
-        print("❌ Conversion timeout!")
+        except ImportError:
+            print("❌ PyMuPDF (fitz) not installed")
+            print("💡 Install it with: pip install PyMuPDF")
+            return False
+        except Exception as e:
+            print(f"❌ Error converting PDF to images: {e}")
+            return False
+            
+    except ImportError as e:
+        print(f"❌ Required library not found: {e}")
+        print("💡 Install required packages:")
+        print("   pip install PyMuPDF pptx2pdf")
         return False
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Unexpected error: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
-def rename_slide_images(output_dir):
-    """Rename slide images to a cleaner format"""
-    import glob
-    
-    # Find all slide-*.png files
-    files = sorted(glob.glob(os.path.join(output_dir, "slide-*.png")))
-    
-    for i, old_file in enumerate(files, 1):
-        new_file = os.path.join(output_dir, f"slide_{i:02d}.png")
-        if os.path.exists(old_file):
-            os.rename(old_file, new_file)
-            print(f"  ✓ Slide {i} saved")
+# Note: rename_slide_images is no longer needed with pure Python approach
 
 def list_slides(output_dir="output/slides"):
     """List all slide images"""
@@ -189,7 +152,7 @@ if __name__ == "__main__":
             sys.exit(1)
     
     print("=" * 50)
-    print("  PowerPoint to Images Converter")
+    print("  PowerPoint to Images Converter (Pure Python)")
     print("=" * 50)
     print()
     
@@ -201,8 +164,6 @@ if __name__ == "__main__":
         list_slides()
         print("\n🎉 Conversion complete!")
     else:
-        print("\n⚠️  Conversion completed with warnings or errors")
-        print("💡 Make sure LibreOffice is installed:")
-        print("   sudo apt install libreoffice")
-        print("💡 For better quality, install pdftoppm:")
-        print("   sudo apt install poppler-utils")
+        print("\n⚠️  Conversion failed")
+        print("💡 Make sure required packages are installed:")
+        print("   pip install PyMuPDF pptx2pdf")

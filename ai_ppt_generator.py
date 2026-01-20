@@ -10,7 +10,6 @@ import os
 import json
 import shutil
 import requests
-from groq import Groq
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
@@ -24,18 +23,8 @@ try:
 except ImportError:
     IMAGE_GENERATION_AVAILABLE = False
 
-# Configure Groq API
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-if not GROQ_API_KEY:
-    # Fallback: Construct from parts
-    _key_parts = ["gsk_n4lJT7mrUP9oXh8Q", "gkfvWGdyb3FYiYq2i", "UZO8vh7HSck8Xdal8nF"]
-    GROQ_API_KEY = "".join(_key_parts)
-
-def get_groq_client():
-    """Get Groq client"""
-    if GROQ_API_KEY:
-        return Groq(api_key=GROQ_API_KEY)
-    return None
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 
 def deepseek_generate_content(prompt, system_prompt=None, temperature=0.7, max_tokens=2048):
     """

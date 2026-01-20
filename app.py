@@ -4,7 +4,9 @@ import glob
 import shutil
 from datetime import datetime
 import json
+import base64
 from docx import Document
+import time
 try:
     from ppt_to_images import ppt_to_images
     PPT_TO_IMAGES_AVAILABLE = True
@@ -20,6 +22,82 @@ from ai_ppt_generator import generate_beautiful_ppt
 from youtube_script_generator import generate_youtube_script_with_ai
 from content_generator import generate_content_from_topic
 from image_generator import get_slide_image, download_image, search_image
+# Claude integration
+from claude_ppt_generator import create_ppt_from_file, create_ppt_from_topic
+# === CLAUDE FILE UPLOAD SECTION ===
+def add_claude_file_upload_section():
+    st.markdown("### 🤖 Upload Document for Professional PPT Generation")
+    st.markdown("Upload a Word document, PDF, or text file to create a professional presentation.")
+    uploaded_file = st.file_uploader(
+        "Upload your document(s)",
+        type=['docx', 'pdf', 'txt', 'md'],
+        help="Upload Word, PDF, or text files for professional PPT generation"
+    )
+    if uploaded_file:
+        temp_dir = "temp_uploads"
+        os.makedirs(temp_dir, exist_ok=True)
+        file_path = os.path.join(temp_dir, uploaded_file.name)
+        with open(file_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        st.success(f"✅ File uploaded: {uploaded_file.name}")
+        col1, col2 = st.columns(2)
+        with col1:
+            ppt_style = st.selectbox(
+                "Presentation Style",
+                ["professional", "government", "corporate", "technical"],
+                help="Choose the style of your presentation"
+            )
+            min_slides = st.slider("Minimum Slides", 5, 15, 10)
+        with col2:
+            audience = st.selectbox(
+                "Target Audience",
+                ["general", "executives", "technical", "government"],
+                help="Who will view this presentation?"
+            )
+            max_slides = st.slider("Maximum Slides", 10, 25, 15)
+        custom_instructions = st.text_area(
+            "Additional Instructions (Optional)",
+            placeholder="E.g., Focus on data analysis, Include case studies, etc.",
+            height=100
+        )
+        presenter_name = st.text_input(
+            "Presenter Name (Optional)",
+            placeholder="Your name"
+        )
+        if st.button("🎨 Generate Professional PPT", type="primary", use_container_width=True):
+            with st.spinner("🤖 Analyzing your document and creating a professional presentation..."):
+                output_folder = "outputs"
+                os.makedirs(output_folder, exist_ok=True)
+                output_path = os.path.join(output_folder, f"presentation_{int(time.time())}.pptx")
+                try:
+                    success = create_ppt_from_file(
+                        file_path=file_path,
+                        output_path=output_path,
+                        style=ppt_style,
+                        min_slides=min_slides,
+                        max_slides=max_slides,
+                        audience=audience,
+                        presenter=presenter_name,
+                        custom_instructions=custom_instructions
+                    )
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
+                    success = False
+                if success:
+                    st.success("✅ Professional PowerPoint created successfully!")
+                    with open(output_path, "rb") as f:
+                        ppt_data = f.read()
+                    st.download_button(
+                        label="📥 Download PowerPoint",
+                        data=ppt_data,
+                        file_name="professional_presentation.pptx",
+                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                        use_container_width=True,
+                        type="primary"
+                    )
+                    st.info("💡 Your presentation has been generated with professional formatting!")
+                else:
+                    st.error("❌ Failed to generate presentation. Please try again.")
 
 # Simple visitor counter and conversion tracking
 def update_visitor_count():
@@ -137,7 +215,7 @@ st.markdown("""
     /* Header styling */
     .header-container {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 3rem 2rem;
+        padding: 1.5rem 1.5rem;
         border-radius: 25px;
         margin-bottom: 2rem;
         box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3);
@@ -146,16 +224,16 @@ st.markdown("""
     }
     
     .main-title {
-        font-size: 3.5rem;
+        font-size: 2rem;
         font-weight: 900;
         color: white;
-        margin: 0 0 0.5rem 0;
+        margin: 0 0 0.3rem 0;
         text-shadow: 2px 2px 8px rgba(0,0,0,0.2);
         letter-spacing: -1px;
     }
     
     .sub-title {
-        font-size: 1.4rem;
+        font-size: 1rem;
         color: #f0f4ff;
         margin: 0;
         font-weight: 400;
@@ -346,13 +424,13 @@ st.markdown("""
     /* Mobile responsive */
     @media (max-width: 768px) {
         .main-title {
-            font-size: 2.2rem;
+            font-size: 1.6rem;
         }
         .sub-title {
-            font-size: 1.1rem;
+            font-size: 0.9rem;
         }
         .header-container {
-            padding: 2rem 1.5rem;
+            padding: 1.2rem 1.2rem;
         }
         .feature-card {
             padding: 1.5rem;
@@ -385,14 +463,16 @@ st.markdown("""
     /* Footer */
     .footer {
         text-align: center;
-        padding: 2rem;
-        color: #718096;
-        font-size: 0.95rem;
+        padding: 1.5rem 1.5rem;
+        color: white;
+        font-size: 0.9rem;
         margin-top: 3rem;
-        margin-left: -2rem;
-        margin-right: -2rem;
-        background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
-        border-top: 2px solid #e8ecf1;
+        margin-left: 0;
+        margin-right: 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 25px;
+        box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3);
+        border: 1px solid rgba(255,255,255,0.2);
     }
     
     .update-info {
@@ -488,256 +568,270 @@ os.makedirs("output/slides", exist_ok=True)
 if 'main_menu' not in st.session_state:
     st.session_state['main_menu'] = 'ppt'  # Auto-select PowerPoint
 
-# Step 1: Input Method - directly start here
-st.markdown(f'<div class="step-indicator">📝 Step 1: Choose Input Method for PowerPoint</div>', unsafe_allow_html=True)
-st.markdown("")
+# Initialize current_tab if not exists
+if 'current_tab' not in st.session_state:
+    st.session_state['current_tab'] = 'powerpoint'
 
-# Initialize session state for input method
 if 'input_method' not in st.session_state:
     st.session_state['input_method'] = None
 
-col1, col2 = st.columns(2)
+# Three Main Menu Buttons (Horizontal)
+st.markdown("""
+<style>
+.stButton > button {
+    width: 100% !important;
+    min-height: 60px !important;
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    border-radius: 12px !important;
+    background: linear-gradient(90deg, #667eea 0%, #a7bfe8 100%) !important;
+    color: #fff !important;
+    border: 2px solid #e0e0e0 !important;
+    transition: all 0.3s ease !important;
+    padding: 15px !important;
+    margin-bottom: 0.5rem !important;
+}
+.stButton > button:nth-child(2) {
+    background: linear-gradient(90deg, #f7971e 0%, #ffd200 100%) !important;
+    color: #fff !important;
+}
+.stButton > button:nth-child(3) {
+    background: linear-gradient(90deg, #f5576c 0%, #f093fb 100%) !important;
+    color: #fff !important;
+}
+.stButton > button:hover {
+    border-color: #764ba2 !important;
+    opacity: 0.92;
+}
+</style>
+""", unsafe_allow_html=True)
 
-with col1:
-    if st.button("📁 Upload File\n\nUpload TXT, DOCX, MD files", key="upload_btn", use_container_width=True):
-        st.session_state['input_method'] = 'upload'
-    
-with col2:
-    if st.button("✍️ Paste Text\n\nCopy and paste your content", key="paste_btn", use_container_width=True):
-        st.session_state['input_method'] = 'paste'
+menu_cols = st.columns(3)
 
-st.markdown("")
+with menu_cols[0]:
+    if st.button("📊 Choose Input Method for PowerPoint", key="menu_powerpoint", use_container_width=True):
+        st.session_state['current_tab'] = 'powerpoint'
+        st.rerun()
+with menu_cols[1]:
+    if st.button("❓ Help & Instructions", key="menu_help", use_container_width=True):
+        st.session_state['current_tab'] = 'help'
+        st.rerun()
+with menu_cols[2]:
+    if st.button("☕ Support This Work", key="menu_donate", use_container_width=True):
+        st.session_state['current_tab'] = 'donate'
+        st.rerun()
+
+# Show content based on selected tab
+if st.session_state['current_tab'] == 'help':
+    # Help content
+    st.markdown("## ℹ️ Help & Instructions")
+    st.markdown("""
+**How to use this tool:**
+
+1. **Choose Input Method:** Select how you want to provide content (upload, paste, or topic).
+2. **Configure Presentation:** Set slide count, theme, and other options.
+3. **Generate PPT:** Click the generate button and download your presentation.
+
+**Features:**
+- Claude AI-powered professional PPT generation
+- Supports Word, PDF, and text files
+- Hindi & English content supported
+- Custom themes and slide counts
+
+For more details, see the README or contact the developer.
+    """)
+
+elif st.session_state['current_tab'] == 'donate':
+    # Donate content with smaller centered QR
+    col_left, col_center, col_right = st.columns([1.5, 1, 1.5])
+    with col_center:
+        st.markdown("<h2 style='text-align: center;'>💝 Support This Work</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #764ba2; font-size: 16px;'>If you like this tool and find it useful, consider supporting</p>", unsafe_allow_html=True)
+        qr_path = os.path.join(os.getcwd(), "QR-Code.jpeg")
+        if os.path.exists(qr_path):
+            st.image(qr_path, width=180, caption="Scan to Donate")
+        else:
+            st.info("QR Code not found. Please add QR-Code.jpeg to project folder.")
+        st.markdown("<p style='text-align: center; font-size: 14px;'>UPI • PhonePe • Google Pay • Paytm</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center;'><b>Thank you for your support! ☕</b></p>", unsafe_allow_html=True)
+
+# PowerPoint Tab content (default)
+if st.session_state['current_tab'] == 'powerpoint':
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if st.button("📁 Upload Multiple\nDocuments\n\nUpload TXT, DOCX, MD, PDF files", 
+                     key="upload_method_btn_1", use_container_width=True, help="Upload one or multiple documents"):
+            st.session_state['input_method'] = 'upload'
+    with col2:
+        if st.button("✍️ Paste Content\n\nCopy and paste your\nready-made content", 
+                     key="paste_method_btn_1", use_container_width=True, help="Paste your prepared content"):
+            st.session_state['input_method'] = 'paste_article'
+    with col3:
+        if st.button("🎯 Write Topic\n\nLet AI generate content\nfrom your topic", 
+                     key="topic_method_btn_1", use_container_width=True, help="AI will generate presentation"):
+            st.session_state['input_method'] = 'write_topic'
+    st.markdown("")
+
 
 # Initialize script_content outside conditionals
 script_content = None
 
-if st.session_state.get('input_method') == 'upload':
-    st.markdown("### 📁 Upload Your File")
-    
-    # Supported file types
-    supported_types = ["txt", "docx", "md"]
-    if PDF_SUPPORT_AVAILABLE:
-        supported_types.append("pdf")
-    
-    uploaded_file = st.file_uploader(
-        "Choose your file",
-        type=supported_types,
-        help=f"Supported formats: {', '.join(supported_types).upper()}"
-    )
-    if uploaded_file:
-        file_type = uploaded_file.name.split('.')[-1].lower()
-        
-        if file_type in ["txt", "md"]:
-            script_content = uploaded_file.read().decode('utf-8')
-        elif file_type == "docx":
-            temp_path = os.path.join("input", "temp.docx")
-            with open(temp_path, "wb") as f:
-                f.write(uploaded_file.read())
-            doc = Document(temp_path)
-            script_content = "\n".join([para.text for para in doc.paragraphs])
-        elif file_type == "pdf" and PDF_SUPPORT_AVAILABLE:
-            # Extract text from PDF with page limit check
-            try:
-                temp_path = os.path.join("input", "temp.pdf")
-                with open(temp_path, "wb") as f:
-                    f.write(uploaded_file.read())
-                
-                with pdfplumber.open(temp_path) as pdf:
-                    # Check page limit
-                    num_pages = len(pdf.pages)
-                    max_pages = 20
-                    
-                    if num_pages > max_pages:
-                        st.error(f"❌ PDF has {num_pages} pages. Maximum allowed: {max_pages} pages")
-                        st.warning(f"📄 Please upload a PDF with {max_pages} pages or less")
-                        script_content = None
-                    else:
-                        script_content = ""
-                        for page in pdf.pages:
-                            text = page.extract_text()
-                            if text:
-                                script_content += text + "\n"
-                        
-                        if not script_content.strip():
-                            st.error("❌ Could not extract text from PDF. Please try another file.")
-                            script_content = None
-                        else:
-                            # Show page count
-                            st.info(f"📄 PDF pages: {num_pages}/{max_pages}")
-            except Exception as e:
-                st.error(f"❌ Error reading PDF: {str(e)}")
-                script_content = None
-        
-        if script_content:
-            st.success("✅ File uploaded successfully!")
-            
-            # Content Analytics
-            word_count = len(script_content.split())
-            char_count = len(script_content)
-            estimated_slides = max(5, min(20, word_count // 100))
-            estimated_time = f"{estimated_slides * 3}-{estimated_slides * 5} seconds"
-            
-            col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
-            with col_stat1:
-                st.metric("📝 Words", f"{word_count:,}")
-            with col_stat2:
-                st.metric("🔤 Characters", f"{char_count:,}")
-            with col_stat3:
-                st.metric("📊 Est. Slides", estimated_slides)
-            with col_stat4:
-                st.metric("⏱️ Est. Time", estimated_time)
-            
-            with st.expander("👀 Preview Content"):
-                col_preview, col_copy = st.columns([4, 1])
-                with col_preview:
-                    st.text_area("Content Preview", script_content, height=200, disabled=True, label_visibility="collapsed")
-                with col_copy:
-                    if st.button("📋 Copy", use_container_width=True):
-                        st.code(script_content, language=None)
-                        st.success("✅ Select and copy text above!")
-            
-            # AI Enhancement option for uploaded files
-            st.markdown("####")
-            enhance_uploaded = st.checkbox(
-                "🤖 AI Enhancement - Auto-create title, sections and structure",
-                value=True,
-                key="enhance_upload",
-                help="Enable this to let AI automatically create title, section headings and organize content"
-            )
-            
-            if enhance_uploaded:
-                st.info("💡 AI will create title, section headings and organize content into slides")
-                st.session_state['ai_enhancement'] = True
-            else:
-                st.info("📄 Will use basic formatting without AI enhancement")
-                st.session_state['ai_enhancement'] = False
 
-elif st.session_state.get('input_method') == 'paste':
-    st.markdown("### ✍️ Paste Your Content")
-    
-    # Initialize session state for content type
-    if 'content_type' not in st.session_state:
-        st.session_state['content_type'] = None
-    
-    col_a, col_b = st.columns(2)
-    
-    with col_a:
-        if st.button("📄 Complete Article\n\nReady content to convert", key="article_btn", use_container_width=True):
-            st.session_state['content_type'] = 'article'
-    
-    with col_b:
-        if st.button("🤖 Topic Only\n\nAI generates content for you", key="topic_btn", use_container_width=True):
-            st.session_state['content_type'] = 'topic'
-    
-    st.markdown("")
-    
-    if st.session_state.get('content_type') == 'topic':
-        st.markdown("### 🎯 Enter Your Topic")
-        st.markdown("AI will generate a detailed article and create presentation from your topic")
-        
-        topic_input = st.text_area(
-            "",
-            placeholder="Example:\n• Artificial Intelligence in Healthcare\n• Climate Change and Its Effects\n• Future of Electric Vehicles\n• Digital Marketing Strategies 2025",
-            help="Enter any topic - AI will create comprehensive content",
-            height=150,
-            label_visibility="collapsed",
-            key="topic_text"
+# Only show upload section if on PowerPoint tab
+if st.session_state.get('current_tab') == 'powerpoint' and st.session_state.get('input_method') == 'upload':
+    add_claude_file_upload_section()
+
+elif st.session_state.get('input_method') == 'write_topic':
+    st.markdown("### 🎯 Enter Your Topic")
+    st.markdown("AI will generate a detailed article and create presentation from your topic")
+    topic_input = st.text_area(
+        label="Enter your topic",
+        placeholder="Example:\n• Artificial Intelligence in Healthcare\n• Climate Change and Its Effects\n• Future of Electric Vehicles\n• Digital Marketing Strategies 2025"
+    )
+    use_professional = st.checkbox("🤖 Use Professional PPT Generation", value=False, help="Enable to use advanced AI-powered generation for this topic")
+    if topic_input:
+        if st.session_state.get('last_topic') != topic_input:
+            st.session_state['confirmed_content'] = f"TOPIC:{topic_input}"
+            st.session_state['last_topic'] = topic_input
+        st.success(f"✅ Topic confirmed: **{topic_input}**")
+        st.info("📊 Your AI-powered presentation is being prepared... scroll down to configure your presentation!")
+    else:
+        st.warning("⬇️ Enter a topic above to get started")
+    script_content = st.session_state.get('confirmed_content') if st.session_state.get('confirmed_content', '').startswith('TOPIC:') else None
+    # Professional topic generation UI
+    if use_professional and topic_input:
+        st.markdown("---")
+        st.markdown("### 🤖 Generate Professional PPT from Topic")
+        col1, col2 = st.columns(2)
+        with col1:
+            ppt_style = st.selectbox(
+                "Presentation Style (Claude)",
+                ["professional", "government", "corporate", "technical"],
+                key="claude_topic_style"
+            )
+            min_slides = st.slider("Minimum Slides", 5, 15, 10, key="claude_topic_min")
+        with col2:
+            audience = st.selectbox(
+                "Target Audience (Claude)",
+                ["general", "executives", "technical", "government"],
+                key="claude_topic_aud"
+            )
+            max_slides = st.slider("Maximum Slides", 10, 25, 15, key="claude_topic_max")
+        custom_instructions = st.text_area(
+            "Additional Instructions (Optional)",
+            placeholder="E.g., Include recent statistics, Focus on implementation, etc.",
+            height=100,
+            key="claude_topic_instr"
         )
-        
-        # Auto-confirm topic after user enters text
-        if topic_input:
-            # Store the topic in session state automatically
-            if st.session_state.get('last_topic') != topic_input:
-                st.session_state['confirmed_content'] = f"TOPIC:{topic_input}"
-                st.session_state['last_topic'] = topic_input
-            
-            # Show success and next step
-            st.success(f"✅ Topic confirmed: **{topic_input}**")
-            st.info("📊 Your AI-powered presentation is being prepared... scroll down to configure your presentation!")
-            
-            # Add a visual button for confirmation (for users who prefer clicking)
-            col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
-            with col_btn2:
-                st.markdown("**✨ Ready to create presentation?**")
-                if st.button("📊 Continue to Settings", type="primary", use_container_width=True):
-                    pass  # Session state already updated
-        else:
-            st.warning("⬇️ Enter a topic above to get started")
-        
-        script_content = st.session_state.get('confirmed_content') if st.session_state.get('confirmed_content', '').startswith('TOPIC:') else None
-        
-    elif st.session_state.get('content_type') == 'article':
-        st.markdown("### 📝 Paste Your Content")
-        
-        # Auto-save draft feature
-        if 'draft_content' not in st.session_state:
-            st.session_state['draft_content'] = ""
-        
-        article_input = st.text_area(
-            "",
-            value=st.session_state.get('draft_content', ''),
-            height=300,
-            placeholder="Paste your content here...\nYou can paste in multiple parts - the text will accumulate.\nSupports multiple languages including Hindi, English, etc.",
-            help="Paste your ready-to-convert content. You can paste multiple times before submitting.",
-            label_visibility="collapsed",
-            key="article_text",
-            on_change=lambda: st.session_state.update({'draft_content': st.session_state.article_text})
-        )
-        
-        # Auto-save indicator
-        if article_input:
-            st.caption("💾 Auto-saved draft")
-            
-            # Content Analytics for pasted content
-            word_count = len(article_input.split())
-            char_count = len(article_input)
-            estimated_slides = max(5, min(20, word_count // 100))
-            
-            # Quality Indicators
-            avg_word_length = sum(len(word) for word in article_input.split()) / max(word_count, 1)
-            readability_score = "Good" if 4 <= avg_word_length <= 7 else "Complex" if avg_word_length > 7 else "Simple"
-            
-            col_stat1, col_stat2, col_stat3 = st.columns(3)
-            with col_stat1:
-                st.metric("📝 Words", f"{word_count:,}")
-            with col_stat2:
-                st.metric("📊 Est. Slides", estimated_slides)
-            with col_stat3:
-                st.metric("🎯 Readability", readability_score)
-        
-        # AI Enhancement option
-        st.markdown("####")
-        enhance_with_ai = st.checkbox(
-            "🤖 AI Enhancement - Improve and structure content with AI",
-            value=True,
-            help="Enable this to let AI enhance, restructure and improve your content before creating presentation"
-        )
-        
-        if enhance_with_ai:
-            st.info("💡 AI will enhance and restructure your content for better presentation")
-        else:
-            st.info("📄 Will create presentation directly from your pasted content")
-        
-        col_confirm, col_clear = st.columns([3, 1])
-        with col_confirm:
-            if article_input and st.button("✅ Confirm Content and Proceed", type="primary", use_container_width=True):
-                # Store both content and enhancement preference
-                if enhance_with_ai:
-                    st.session_state['confirmed_content'] = f"ENHANCE:{article_input}"
+        if st.button("🚀 Generate with Claude AI", type="primary", key="claude_topic_btn"):
+            with st.spinner("🤖 Claude is researching and creating your presentation..."):
+                output_folder = "outputs"
+                os.makedirs(output_folder, exist_ok=True)
+                import re
+                safe_title = re.sub(r'[^\w\s-]', '', topic_input)[:50]
+                safe_title = re.sub(r'[-\s]+', '_', safe_title)
+                output_path = os.path.join(output_folder, f"{safe_title}_claude.pptx")
+                try:
+                    success = create_ppt_from_topic(
+                        topic=topic_input,
+                        output_path=output_path,
+                        style=ppt_style,
+                        min_slides=min_slides,
+                        max_slides=max_slides,
+                        audience=audience,
+                        custom_instructions=custom_instructions
+                    )
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
+                    success = False
+                if success:
+                    st.balloons()
+                    st.success("✅ Professional presentation created!")
+                    with open(output_path, "rb") as f:
+                        st.download_button(
+                            "📥 Download Presentation",
+                            data=f.read(),
+                            file_name=f"{safe_title}_presentation.pptx",
+                            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                            use_container_width=True,
+                            type="primary"
+                        )
                 else:
-                    st.session_state['confirmed_content'] = article_input
-                st.session_state['ai_enhancement'] = enhance_with_ai
-                st.success(f"✅ Content confirmed ({len(article_input)} characters) - {'AI Enhancement ON' if enhance_with_ai else 'Direct Conversion'}")
+                    st.error("❌ Failed to generate presentation. Please try again.")
+
+elif st.session_state.get('input_method') == 'paste_article':
+    st.markdown("### 📝 Paste Your Content")
+    
+    # Auto-save draft feature
+    if 'draft_content' not in st.session_state:
+        st.session_state['draft_content'] = ""
+    
+    article_input = st.text_area(
+        "",
+        value=st.session_state.get('draft_content', ''),
+        height=300,
+        placeholder="Paste your content here...\nYou can paste in multiple parts - the text will accumulate.\nSupports multiple languages including Hindi, English, etc.",
+        help="Paste your ready-to-convert content. You can paste multiple times before submitting.",
+        label_visibility="collapsed",
+        key="article_text",
+        on_change=lambda: st.session_state.update({'draft_content': st.session_state.article_text})
+    )
+    
+    # Auto-save indicator
+    if article_input:
+        st.caption("💾 Auto-saved draft")
         
-        with col_clear:
-            if st.button("🗑️ Clear", use_container_width=True):
-                st.session_state['draft_content'] = ""
-                st.rerun()
+        # Content Analytics for pasted content
+        word_count = len(article_input.split())
+        char_count = len(article_input)
+        estimated_slides = max(5, min(20, word_count // 100))
         
-        script_content = st.session_state.get('confirmed_content')
-        # Filter out TOPIC: prefix for this check
-        if script_content and script_content.startswith('TOPIC:'):
-            script_content = None
+        # Quality Indicators
+        avg_word_length = sum(len(word) for word in article_input.split()) / max(word_count, 1)
+        readability_score = "Good" if 4 <= avg_word_length <= 7 else "Complex" if avg_word_length > 7 else "Simple"
+        
+        col_stat1, col_stat2, col_stat3 = st.columns(3)
+        with col_stat1:
+            st.metric("📝 Words", f"{word_count:,}")
+        with col_stat2:
+            st.metric("📊 Est. Slides", estimated_slides)
+        with col_stat3:
+            st.metric("🎯 Readability", readability_score)
+    
+    # AI Enhancement option
+    st.markdown("####")
+    enhance_with_ai = st.checkbox(
+        "🤖 AI Enhancement - Improve and structure content with AI",
+        value=True,
+        help="Enable this to let AI enhance, restructure and improve your content before creating presentation"
+    )
+    
+    if enhance_with_ai:
+        st.info("💡 AI will enhance and restructure your content for better presentation")
+    else:
+        st.info("📄 Will create presentation directly from your pasted content")
+    
+    col_confirm, col_clear = st.columns([3, 1])
+    with col_confirm:
+        if article_input and st.button("✅ Confirm Content and Proceed", type="primary", use_container_width=True):
+            # Store both content and enhancement preference
+            if enhance_with_ai:
+                st.session_state['confirmed_content'] = f"ENHANCE:{article_input}"
+            else:
+                st.session_state['confirmed_content'] = article_input
+            st.session_state['ai_enhancement'] = enhance_with_ai
+            st.success(f"✅ Content confirmed ({len(article_input)} characters) - {'AI Enhancement ON' if enhance_with_ai else 'Direct Conversion'}")
+    
+    with col_clear:
+        if st.button("🗑️ Clear", use_container_width=True):
+            st.session_state['draft_content'] = ""
+            st.rerun()
+    
+    script_content = st.session_state.get('confirmed_content')
+    # Filter out TOPIC: prefix for this check
+    if script_content and script_content.startswith('TOPIC:'):
+        script_content = None
+
 else:
     # Initialize script_content if no input method selected
     script_content = None
@@ -745,8 +839,6 @@ else:
 # Process if content is available
 if script_content and st.session_state.get('main_menu'):
     st.markdown("---")
-    st.markdown('<div class="step-indicator">⚙️ Step 2: Configure Options</div>', unsafe_allow_html=True)
-    st.markdown("")
     
     # Set generate flags - PowerPoint only
     generate_ppt = True
@@ -770,35 +862,28 @@ if script_content and st.session_state.get('main_menu'):
         default_min, default_max = 15, 25
     
     # Slide count selection
-    st.markdown("####")
     st.markdown("### 📊 Presentation Length")
     
-    col1, col2 = st.columns([2, 3])
-    with col1:
-        st.metric("Content Size", f"{word_count} words")
-        st.caption(f"🤖 AI suggests: {auto_slides}")
-    
-    with col2:
-        slide_preference = st.radio(
-            "Choose presentation style:",
-            ["✨ Auto (Recommended)", "🎯 Quick (5-8 slides)", "📄 Standard (10-15 slides)", "📚 Detailed (15-25 slides)"],
-            horizontal=False,
-            help="Auto mode intelligently adjusts based on content length"
-        )
-        
-        if slide_preference == "✨ Auto (Recommended)":
-            min_slides, max_slides = default_min, default_max
-            st.session_state['slide_preference'] = 'auto'
-        elif slide_preference == "🎯 Quick (5-8 slides)":
-            min_slides, max_slides = 5, 8
-            st.session_state['slide_preference'] = 'quick'
-        elif slide_preference == "📄 Standard (10-15 slides)":
-            min_slides, max_slides = 10, 15
-            st.session_state['slide_preference'] = 'standard'
-        else:  # Detailed
-            min_slides, max_slides = 15, 25
-            st.session_state['slide_preference'] = 'detailed'
-    
+    slide_preference = st.radio(
+        "Choose presentation style:",
+        ["✨ Auto (Recommended)", "🎯 Quick (5-8 slides)", "📄 Standard (10-15 slides)", "📚 Detailed (15-25 slides)"],
+        horizontal=True,
+        help="Auto mode intelligently adjusts based on content length"
+    )
+
+    if slide_preference == "✨ Auto (Recommended)":
+        min_slides, max_slides = default_min, default_max
+        st.session_state['slide_preference'] = 'auto'
+    elif slide_preference == "🎯 Quick (5-8 slides)":
+        min_slides, max_slides = 5, 8
+        st.session_state['slide_preference'] = 'quick'
+    elif slide_preference == "📄 Standard (10-15 slides)":
+        min_slides, max_slides = 10, 15
+        st.session_state['slide_preference'] = 'standard'
+    else:  # Detailed
+        min_slides, max_slides = 15, 25
+        st.session_state['slide_preference'] = 'detailed'
+
     # Store in session state
     st.session_state['min_slides'] = min_slides
     st.session_state['max_slides'] = max_slides
@@ -1009,40 +1094,31 @@ if script_content and st.session_state.get('main_menu'):
                         'time': datetime.now().strftime("%Y-%m-%d %H:%M")
                     })
                     
-                    # Auto-download the PPT file
+                    # Download the PPT file
                     with open(ppt_path, "rb") as f:
                         ppt_data = f.read()
                     
-                    # Display auto-download message
-                    st.markdown("### 📥 Download Your Presentation")
-                    col_download, col_auto = st.columns([3, 2])
-                    
-                    with col_download:
+                    # Display prominent download button
+                    st.markdown("---")
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                    with col2:
                         st.download_button(
-                            label="📥 Download PowerPoint (PPTX)",
+                            label="📥 Download PowerPoint",
                             data=ppt_data,
                             file_name="presentation.pptx",
                             mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                            use_container_width=True
+                            use_container_width=True,
+                            key=f"download_ppt_{int(datetime.now().timestamp())}",
+                            type="primary"
                         )
+                    st.markdown("---")
                     
-                    with col_auto:
-                        st.info("✅ Download ready!\n(Auto-triggered)")
+                    st.success("✅ PPT Generated Successfully! Click the Download button above.")
                     
-                    # Try to auto-trigger download using JavaScript
-                    st.markdown("""
-                    <script>
-                        // Try to auto-click the download button after a short delay
-                        setTimeout(function() {
-                            var downloadBtn = document.querySelector('[data-testid="baseButton-primary"]');
-                            if(downloadBtn) {
-                                downloadBtn.click();
-                            }
-                        }, 500);
-                    </script>
-                    """, unsafe_allow_html=True)
+                    # Generate images for slide preview
+                    st.markdown("---")
+                    st.markdown("### 🖼️ Slide Preview")
                     
-                    # Generate images - try conversion, gracefully handle failure
                     try:
                         if PPT_TO_IMAGES_AVAILABLE:
                             with st.spinner("🖼️ Converting slides to images..."):
@@ -1054,55 +1130,27 @@ if script_content and st.session_state.get('main_menu'):
                                 st.session_state['images_folder'] = output_folder
                                 
                                 if images:
-                                    st.success(f"✅ Generated {len(images)} slide images!")
-                                    
-                                    st.markdown("### 🖼️ Slide Preview")
+                                    st.success(f"✅ {len(images)} slides generated")
                                     
                                     # Sort images by slide number to ensure correct order
                                     sorted_images = sorted(images, key=lambda x: int(x.split('_')[1].split('.')[0]))
                                     
-                                    # Responsive columns: 2 columns on mobile, 3 on desktop
+                                    # Display slides in 3 columns
                                     cols = st.columns([1, 1, 1])
                                     
                                     for idx, img in enumerate(sorted_images):
                                         col_idx = idx % 3
                                         with cols[col_idx]:
                                             img_path = os.path.join(output_folder, img)
-                                            # Show slide number clearly
-                                            st.markdown(f"**Slide {idx+1}**")
-                                            st.image(img_path, width=400)
-                                            with open(img_path, "rb") as f:
-                                                st.download_button(
-                                                    label=f"📥 Download",
-                                                    data=f,
-                                                    file_name=f"slide_{idx+1}.png",
-                                                    mime="image/png",
-                                                    key=f"img_{idx}",
-                                                    use_container_width=True
-                                                )
+                                            if os.path.exists(img_path):
+                                                st.markdown(f"**Slide {idx+1}**")
+                                                st.image(img_path, use_column_width=True)
                                 else:
-                                    raise Exception("No images generated")
+                                    st.info("📄 Image preview could not be generated")
                         else:
-                            raise Exception("Image conversion library not available")
+                            st.info("📄 Image conversion not available - PPT is ready to download")
                     except Exception as e:
-                        # Show helpful message when preview unavailable
-                        st.warning("⚠️ **Slide Preview Unavailable on Cloud**")
-                        st.markdown("""
-                        <div style="background: linear-gradient(145deg, #fff3cd 0%, #fff8e1 100%); 
-                                    padding: 1.5rem; border-radius: 10px; border-left: 4px solid #ffc107;">
-                            <h4 style="color: #856404; margin-top: 0;">📥 Download Your Presentation</h4>
-                            <p style="color: #856404; margin-bottom: 0.5rem;">
-                                The PowerPoint file has been created successfully! Image preview requires additional 
-                                libraries not available in cloud deployment.
-                            </p>
-                            <p style="color: #856404; margin: 0;">
-                                <strong>✨ Next Steps:</strong><br>
-                                1. Click "Download PowerPoint (PPTX)" button above<br>
-                                2. Open the file in PowerPoint, Google Slides, or LibreOffice<br>
-                                3. View your beautiful presentation with all slides!
-                            </p>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.info("📄 Image preview could not be generated - PPT is ready to download")
                 else:
                     st.error("❌ PPT generation failed")
         
@@ -1180,65 +1228,7 @@ if script_content and st.session_state.get('main_menu'):
                         use_container_width=True
                     )
 
-# Display previously generated files if they exist (after page refresh from download)
-if st.session_state.get('ppt_generated') and os.path.exists(st.session_state.get('ppt_path', '')):
-    st.markdown("---")
-    st.markdown('<div class="step-indicator">📥 Previously Generated Files</div>', unsafe_allow_html=True)
-    
-    # Add clear button
-    if st.button("🔄 Start New Generation", type="secondary", use_container_width=True):
-        # Clear all session state
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
-    
-    st.markdown("")
-    
-    ppt_path = st.session_state['ppt_path']
-    with open(ppt_path, "rb") as f:
-        st.download_button(
-            label="📥 Re-download PowerPoint (PPTX)",
-            data=f,
-            file_name="presentation.pptx",
-            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            use_container_width=True,
-            key="redownload_ppt"
-        )
-    
-    # Show slide images if available
-    if st.session_state.get('slide_images'):
-        images = st.session_state['slide_images']
-        images_folder = st.session_state['images_folder']
-        
-        with st.expander(f"🖼️ View {len(images)} Slide Images", expanded=False):
-            cols = st.columns(3)
-            for idx, img in enumerate(images):
-                with cols[idx % 3]:
-                    img_path = os.path.join(images_folder, img)
-                    if os.path.exists(img_path):
-                        st.image(img_path, caption=f"Slide {idx+1}")
-
-if st.session_state.get('youtube_generated') and os.path.exists(st.session_state.get('youtube_path', '')):
-    if not st.session_state.get('ppt_generated'):
-        st.markdown("---")
-        st.markdown('<div class="step-indicator">📥 Previously Generated Files</div>', unsafe_allow_html=True)
-    
-    youtube_path = st.session_state['youtube_path']
-    with open(youtube_path, "rb") as f:
-        st.download_button(
-            label="📥 Re-download YouTube Script (DOCX)",
-            data=f,
-            file_name="youtube_script.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            use_container_width=True,
-            key="redownload_youtube"
-        )
-    
-    if st.session_state.get('youtube_script'):
-        with st.expander("📺 View YouTube Script", expanded=False):
-            st.markdown(st.session_state['youtube_script'])
-
-# Footer
+# Footer - appears on all pages
 from datetime import datetime
 import pytz
 
@@ -1248,38 +1238,9 @@ total_visitors = update_visitor_count()
 # Get conversion stats
 visits, ppts_generated, conversion_rate = get_conversion_stats()
 
-# Get current time in IST
-ist = pytz.timezone('Asia/Kolkata')
-current_time = datetime.now(ist).strftime('%Y-%m-%d %H:%M:%S IST')
-
-st.markdown(f"""
-<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; margin-top: 3rem; border-radius: 15px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);">
-    <div style="text-align: center;">
-        <h3 style="color: white; margin-bottom: 1rem;">📊 Analytics Dashboard</h3>
-        <div style="display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap; margin-bottom: 1rem;">
-            <div>
-                <p style="color: #f0f4ff; margin-bottom: 0.3rem; font-size: 0.9rem;">Last Updated</p>
-                <p style="color: white; font-weight: bold; margin: 0;">{current_time}</p>
-            </div>
-            <div>
-                <p style="color: #f0f4ff; margin-bottom: 0.3rem; font-size: 0.9rem;">👥 Total Visitors</p>
-                <p style="color: #ffd700; font-weight: bold; font-size: 1.5rem; margin: 0;">{visits:,}</p>
-            </div>
-            <div>
-                <p style="color: #f0f4ff; margin-bottom: 0.3rem; font-size: 0.9rem;">📊 PPTs Generated</p>
-                <p style="color: #4ade80; font-weight: bold; font-size: 1.5rem; margin: 0;">{ppts_generated:,}</p>
-            </div>
-            <div>
-                <p style="color: #f0f4ff; margin-bottom: 0.3rem; font-size: 0.9rem;">🎯 Conversion Rate</p>
-                <p style="color: #fb923c; font-weight: bold; font-size: 1.5rem; margin: 0;">{conversion_rate:.1f}%</p>
-            </div>
-        </div>
-        <p style="color: #e8ecf1; font-size: 0.9rem; margin-bottom: 1rem;">
-            ✅ All systems operational | Hindi & English support | 5-25 slides generation
-        </p>
-        <p style="color: #d4d9e8; font-size: 0.85rem; margin-top: 1.5rem; opacity: 0.9; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 1rem;">
-            Developed by Alok Mohan
-        </p>
-    </div>
+st.markdown("""
+<div class='footer'>
+    All systems operational | Hindi & English support | 5-25 slides generation<br>
+    Developed by Alok Mohan. verson v2: 20/01/2026
 </div>
 """, unsafe_allow_html=True)

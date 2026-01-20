@@ -1,6 +1,6 @@
 # 🎨 AI PowerPoint Generator
 
-Transform your ideas into beautiful presentations instantly! This Streamlit-based web application uses Groq AI to generate professional PowerPoint presentations and YouTube scripts from your content.
+Transform your ideas into beautiful presentations instantly! This Streamlit-based web application uses DeepSeek AI to generate professional PowerPoint presentations and YouTube scripts from your content.
 
 ## ✨ Features
 
@@ -18,7 +18,7 @@ Transform your ideas into beautiful presentations instantly! This Streamlit-base
 
 - Python 3.8+
 - LibreOffice (for PPT to image conversion)
-- Groq API Key
+DeepSeek API Key
 
 ### Installation
 
@@ -41,7 +41,7 @@ Transform your ideas into beautiful presentations instantly! This Streamlit-base
 
 4. **Set up environment variables**
    \`\`\`bash
-   export GROQ_API_KEY=your_groq_api_key_here
+   export DEEPSEEK_API_KEY=your_deepseek_api_key_here
    \`\`\`
 
 5. **Run the application**
@@ -75,4 +75,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
-Made with ❤️ using Streamlit & Groq AI
+Made with ❤️ using Streamlit & DeepSeek AI

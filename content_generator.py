@@ -23,15 +23,9 @@ Generates detailed articles from topics using Groq API and Ollama
 
 import os
 import requests
-from groq import Groq
 
-# Get API key from environment or use fallback
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-if not GROQ_API_KEY:
-    # Fallback: Construct from parts to avoid detection
-    _key_parts = ["gsk_n4lJT7mrUP9oXh8Q", "gkfvWGdyb3FYiYq2i", "UZO8vh7HSck8Xdal8nF"]
-    GROQ_API_KEY = "".join(_key_parts)
-    
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 OLLAMA_BASE_URL = "http://localhost:11434"
 
 def check_ollama_available():

@@ -7,20 +7,14 @@ Converts articles/scripts into engaging YouTube video scripts
 """
 
 import os
-from groq import Groq
+import requests
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-if not GROQ_API_KEY:
-    # Fallback: Construct from parts
-    _key_parts = ["gsk_n4lJT7mrUP9oXh8Q", "gkfvWGdyb3FYiYq2i", "UZO8vh7HSck8Xdal8nF"]
-    GROQ_API_KEY = "".join(_key_parts)
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 
 def generate_youtube_script_with_ai(article_text):
-    """Generate engaging YouTube script from article using Groq AI"""
-    
+    """Generate engaging YouTube script from article using DeepSeek API"""
     try:
-        client = Groq(api_key=GROQ_API_KEY)
-        
         prompt = f"""You are an expert YouTube scriptwriter. Convert this article into an engaging, conversational YouTube video script.
 
 Article:
@@ -30,7 +24,7 @@ Create a professional YouTube script with:
 - Engaging opening hook
 - Clear section breaks with ## headers
 - Conversational, natural language (like talking to viewers)
-- Include phrases like "Hello everyone", "In this video", "Let's explore"
+- Include phrases like 'Hello everyone', 'In this video', 'Let's explore'
 - Use transitions between sections
 - Strong conclusion with call-to-action
 - Format with proper markdown headers (##)
@@ -38,20 +32,26 @@ Create a professional YouTube script with:
 Make it feel like a person talking to the camera, not reading an article.
 Keep the same information but make it more engaging and conversational.
 """
-        
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
+        headers = {
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "model": "deepseek-chat",
+            "messages": [
                 {"role": "system", "content": "You are an expert YouTube scriptwriter who creates engaging, conversational scripts."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.8,
-            max_tokens=4000
-        )
-        
-        script = response.choices[0].message.content.strip()
-        return script
-        
+            "temperature": 0.8,
+            "max_tokens": 4000
+        }
+        response = requests.post(DEEPSEEK_API_URL, headers=headers, json=data, timeout=60)
+        if response.status_code == 200:
+            result = response.json()
+            script = result["choices"][0]["message"]["content"].strip()
+            return script
+        else:
+            raise Exception(f"DeepSeek API error: {response.status_code} {response.text}")
     except Exception as e:
         print(f"YouTube script generation failed: {e}")
         return generate_basic_youtube_script(article_text)

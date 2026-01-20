@@ -1238,9 +1238,15 @@ total_visitors = update_visitor_count()
 # Get conversion stats
 visits, ppts_generated, conversion_rate = get_conversion_stats()
 
-st.markdown("""
 <div class='footer'>
     All systems operational | Hindi & English support | 5-25 slides generation<br>
+    Developed by Alok Mohan. verson v2: 20/01/2026
+</div>
+""", unsafe_allow_html=True)
+st.markdown(f"""
+<div class='footer'>
+    All systems operational | Hindi & English support | 5-25 slides generation<br>
+    <b>Visits:</b> {visits} &nbsp;|&nbsp; <b>PPTs Generated:</b> {ppts_generated}<br>
     Developed by Alok Mohan. verson v2: 20/01/2026
 </div>
 """, unsafe_allow_html=True)

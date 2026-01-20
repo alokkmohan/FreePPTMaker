@@ -1244,6 +1244,7 @@ visits, ppts_generated, conversion_rate = get_conversion_stats()
 </div>
 """, unsafe_allow_html=True)
 st.markdown(f"""
+st.markdown(f"""
 <div class='footer'>
     All systems operational | Hindi & English support | 5-25 slides generation<br>
     <b>Visits:</b> {visits} &nbsp;|&nbsp; <b>PPTs Generated:</b> {ppts_generated}<br>

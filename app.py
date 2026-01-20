@@ -1240,7 +1240,7 @@ visits, ppts_generated, conversion_rate = get_conversion_stats()
 
 <div class='footer'>
     All systems operational | Hindi & English support | 5-25 slides generation<br>
-    Developed by Alok Mohan. verson v2: 20/01/2026
+    Developed by Alok Mohan. verson v2: 20/1/2026
 </div>
 """, unsafe_allow_html=True)
 st.markdown(f"""

@@ -1,35 +1,22 @@
+# API Keys and Secrets
+.env
+.env.local
+*.key
+secrets.txt
+config.json
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-.venv/
+env/
 venv/
 ENV/
-env/
-
-# Environment variables
-.env
-
-# Output files
-output/
-input/
+build/
+dist/
+*.egg-info/
 
 # IDE
 .vscode/
@@ -42,11 +29,16 @@ input/
 .DS_Store
 Thumbs.db
 
-# Node
-node_modules/
-
-# Generated files
+# Project specific
+temp_uploads/
+outputs/
 *.pptx
 *.docx
-*.png
 *.pdf
+QR-Code.jpeg
+
+# Logs
+*.log
+
+# Cache
+.cache/

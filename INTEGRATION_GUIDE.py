@@ -10,10 +10,12 @@ STEP-BY-STEP INTEGRATION INSTRUCTIONS
 
 2. SET UP CLAUDE API KEY
    Option A: Environment variable
-   export CLAUDE_API_KEY="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"
+   export CLAUDE_API_KEY="your-claude-api-key-here"
    
-   Option B: In code (for testing)
+   Option B: In code (for testing only - NOT for production)
    CLAUDE_API_KEY = "your-api-key-here"
+   
+   Get your API key from: https://console.anthropic.com/
 
 3. COPY FILES TO YOUR PROJECT
    - claude_content_analyzer.py

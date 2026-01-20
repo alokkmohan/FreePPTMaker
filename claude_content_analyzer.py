@@ -15,7 +15,10 @@ import PyPDF2
 from pathlib import Path
 
 # Claude API configuration
-CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY", "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")
+# IMPORTANT: Set your API key as environment variable
+# export CLAUDE_API_KEY="your-api-key-here"
+# Or pass it directly when initializing the class
+CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY")
 
 class ClaudeContentAnalyzer:
     """Analyze content and generate professional PPT structures using Claude"""

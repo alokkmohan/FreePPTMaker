@@ -13,7 +13,7 @@ from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 import os
 from typing import Dict, List, Optional
-from claude_content_analyzer import ClaudeContentAnalyzer, analyze_file_for_ppt, generate_ppt_from_topic
+from claude_content_analyzer import ClaudeContentAnalyzer
 
 # Professional color schemes
 COLOR_SCHEMES = {

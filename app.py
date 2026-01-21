@@ -738,7 +738,7 @@ elif st.session_state.get('input_method') == 'write_topic':
                 output_folder = "outputs"
                 os.makedirs(output_folder, exist_ok=True)
                 import re
-                safe_title = re.sub(r'[^\w\s-]', '', topic_input)[:50]
+                safe_title = re.sub(r'[^-\w\s-]', '', topic_input)[:50]
                 safe_title = re.sub(r'[-\s]+', '_', safe_title)
                 output_path = os.path.join(output_folder, f"{safe_title}_{ai_choice.lower()}.pptx")
                 # TODO: Call the appropriate backend function for Deepseek, Gemini, Groq, or Hugging Face here

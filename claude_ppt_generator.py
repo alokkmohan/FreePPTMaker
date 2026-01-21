@@ -298,10 +298,13 @@ def create_ppt_from_file(
         if isinstance(file_path, list):
             all_text = []
             for fp in file_path:
+                print(f"[DEBUG] Processing file: {fp}")
                 all_text.append(analyzer.extract_text_from_file(fp))
             combined_content = '\n\n'.join(all_text)
         else:
+            print(f"[DEBUG] Processing file: {file_path}")
             combined_content = analyzer.extract_text_from_file(file_path)
+        print(f"[DEBUG] Combined content length: {len(combined_content)}")
         ppt_structure = analyzer.analyze_for_ppt(
             content=combined_content,
             style=style,
@@ -311,6 +314,7 @@ def create_ppt_from_file(
             custom_instructions=custom_instructions
         )
         print(f"✅ Analysis complete: {len(ppt_structure['slides'])} slides planned")
+        print(f"[DEBUG] PPT Structure: {ppt_structure}")
         print("🎨 Creating professional presentation...")
         generator = ClaudePPTGenerator(color_scheme=style)
         success = generator.generate_from_structure(
@@ -327,6 +331,8 @@ def create_ppt_from_file(
             return False
     except Exception as e:
         print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return False
 
 

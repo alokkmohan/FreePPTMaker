@@ -37,9 +37,11 @@ class ClaudeContentAnalyzer:
         file_ext = Path(file_path).suffix.lower()
         
         try:
+            print(f"[DEBUG] Extracting text from: {file_path} (ext: {file_ext})")
             if file_ext == '.docx':
                 doc = docx.Document(file_path)
                 text = '\n'.join([para.text for para in doc.paragraphs])
+                print(f"[DEBUG] Extracted {len(text)} chars from DOCX")
                 return text
             
             elif file_ext == '.pdf':
@@ -48,16 +50,20 @@ class ClaudeContentAnalyzer:
                     pdf_reader = PyPDF2.PdfReader(file)
                     for page in pdf_reader.pages:
                         text += page.extract_text() + "\n"
+                print(f"[DEBUG] Extracted {len(text)} chars from PDF")
                 return text
             
             elif file_ext in ['.txt', '.md']:
                 with open(file_path, 'r', encoding='utf-8') as file:
-                    return file.read()
+                    text = file.read()
+                print(f"[DEBUG] Extracted {len(text)} chars from TXT/MD")
+                return text
             
             else:
                 raise ValueError(f"Unsupported file format: {file_ext}")
         
         except Exception as e:
+            print(f"[ERROR] Error extracting text from file: {file_path} - {str(e)}")
             raise Exception(f"Error extracting text from file: {str(e)}")
     
     def analyze_for_ppt(
@@ -103,7 +109,7 @@ class ClaudeContentAnalyzer:
         
         style_guide = style_guidelines.get(style, style_guidelines["professional"])
         audience_guide = audience_guidelines.get(audience, audience_guidelines["general"])
-        
+        def analyze_for_ppt(
         # Build Claude prompt
         prompt = f"""You are an expert presentation designer and content strategist. Analyze the following content and create a professional PowerPoint presentation structure.
 
@@ -144,11 +150,6 @@ Return ONLY a valid JSON object with this exact structure:
     }}
   ]
 }}
-
-**CRITICAL REQUIREMENTS:**
-1. Each slide should have 3-5 bullet points
-2. Bullet points should be detailed (10-15 words each), not just short phrases
-3. Include specific data, numbers, examples where possible from the source content
 4. Maintain logical flow between slides
 5. Speaker notes should provide additional context
 6. Return ONLY valid JSON - no markdown formatting, no code blocks
@@ -190,6 +191,8 @@ Generate the presentation structure now:"""
         except Exception as e:
             raise Exception(f"Claude API error: {str(e)}")
     
+                print(f"[DEBUG] Sending content to Claude (length: {len(content)})")
+                print(f"[DEBUG] Prompt sample: {prompt[:500]} ...")
     def generate_from_topic(
         self,
         topic: str,
@@ -202,6 +205,7 @@ Generate the presentation structure now:"""
         """
         Generate PPT structure directly from a topic (without file upload)
         
+                print(f"[DEBUG] Claude API response (first 500 chars): {response_text[:500]}")
         Args:
             topic: Presentation topic
             style: PPT style
@@ -209,18 +213,26 @@ Generate the presentation structure now:"""
             max_slides: Maximum slides
             audience: Target audience
             custom_instructions: Additional instructions
-        
+                try:
+                    ppt_structure = json.loads(response_text)
+                except Exception as e:
+                    print(f"[ERROR] JSON parsing failed: {str(e)}\nResponse: {response_text[:1000]}")
+                    raise
         Returns:
             Dict with structured PPT content
         """
-        
+                    print(f"[ERROR] Invalid response: missing 'slides' key. Response: {response_text[:1000]}")
+                    raise ValueError("Invalid response: missing 'slides' key")
         # First, generate comprehensive content on the topic using Claude
+                print(f"[DEBUG] Parsed PPT structure: {ppt_structure}")
         content_prompt = f"""You are an expert researcher and content writer. Create comprehensive, factual content on the following topic for a presentation:
 
-**TOPIC:** {topic}
-
-**REQUIREMENTS:**
-- Length: Sufficient for {min_slides} to {max_slides} presentation slides
+            except json.JSONDecodeError as e:
+                print(f"[ERROR] Failed to parse Claude response as JSON: {str(e)}\nResponse: {response_text[:500]}")
+                raise Exception(f"Failed to parse Claude response as JSON: {str(e)}\nResponse: {response_text[:500]}")
+            except Exception as e:
+                print(f"[ERROR] Claude API error: {str(e)}")
+                raise Exception(f"Claude API error: {str(e)}")
 - Include specific facts, statistics, real data
 - Provide concrete examples and case studies
 - Use authoritative, professional tone

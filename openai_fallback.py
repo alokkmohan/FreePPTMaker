@@ -34,4 +34,3 @@ def generate_with_openai(topic, user_instructions="", min_slides=10, max_slides=
                 print(f"❌ OpenAI API error ({model_name}): {response.status_code}")
         except Exception as e:
             print(f"❌ OpenAI Exception ({model_name}): {e}")
-    return None

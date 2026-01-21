@@ -1,6 +1,5 @@
 def generate_content_from_topic(topic, user_instructions="", min_slides=10, max_slides=15):
-    """Main function to generate content from topic using Ollama or fallback to OpenAI."""
-    from openai_fallback import generate_with_openai
+    """Main function to generate content from topic using Ollama only."""
     # Inject high-quality government/policy advisor prompt
     advisor_prompt = f"""
 You are a senior government officer and policy advisor with experience in digital governance.
@@ -58,10 +57,10 @@ Output Format Rules:
 - Each bullet point should be practical and complete
 - Avoid vague or filler language
 """
-    content = generate_with_openai(advisor_prompt, user_instructions, min_slides, max_slides)
+    # Call Ollama API for content generation (replace this with your actual Ollama call)
+    content = ollama_generate_content(advisor_prompt, user_instructions, min_slides, max_slides)
     if content and len(content) > 500:
         return content
-    # Fallback to basic content if OpenAI also fails
     return generate_basic_content(topic)
 
 #!/usr/bin/env python3

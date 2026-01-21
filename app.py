@@ -7,6 +7,13 @@ import json
 import base64
 from docx import Document
 import time
+
+# Get Claude API key from Streamlit secrets or environment
+if "CLAUDE_API_KEY" not in os.environ:
+    try:
+        os.environ["CLAUDE_API_KEY"] = st.secrets["CLAUDE_API_KEY"]
+    except (KeyError, FileNotFoundError):
+        pass
 try:
     from ppt_to_images import ppt_to_images
     PPT_TO_IMAGES_AVAILABLE = True
@@ -74,6 +81,9 @@ def add_claude_file_upload_section():
                 os.makedirs(output_folder, exist_ok=True)
                 output_path = os.path.join(output_folder, f"presentation_{int(time.time())}.pptx")
                 try:
+                    # Get API key from environment or secrets
+                    api_key = os.environ.get("CLAUDE_API_KEY")
+                    
                     # Pass the list of file_paths to your PPT generation logic
                     success = create_ppt_from_file(
                         file_path=file_paths,
@@ -83,7 +93,8 @@ def add_claude_file_upload_section():
                         max_slides=max_slides,
                         audience=audience,
                         presenter=presenter_name,
-                        custom_instructions=custom_instructions
+                        custom_instructions=custom_instructions,
+                        api_key=api_key
                     )
                     if success:
                         st.success("✅ Professional PowerPoint created successfully!")

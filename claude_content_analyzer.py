@@ -94,6 +94,11 @@ class ClaudeContentAnalyzer:
         style_guidelines = {
             "professional": "Use clear, concise language. Focus on key points. Professional business tone.",
             "government": "Use formal language. Policy-focused. Include data and statistics. Official tone aligned with government presentations.",
+            "corporate": "Business-oriented. ROI-focused. Executive summary style. Data-driven insights.",
+            "technical": "Detailed technical explanations. Include diagrams descriptions. Technical terminology appropriate.",
+            "academic": "Research-oriented. Citations and references. Scholarly tone."
+        }
+        
         audience_guidelines = {
             "general": "Explain concepts clearly. Avoid jargon. Accessible to all.",
             "executives": "Focus on high-level insights. Strategic implications. Business impact.",
@@ -185,8 +190,6 @@ Generate the presentation structure now:"""
         except Exception as e:
             raise Exception(f"Claude API error: {str(e)}")
     
-                print(f"[DEBUG] Sending content to Claude (length: {len(content)})")
-                print(f"[DEBUG] Prompt sample: {prompt[:500]} ...")
     def generate_from_topic(
         self,
         topic: str,
@@ -199,7 +202,6 @@ Generate the presentation structure now:"""
         """
         Generate PPT structure directly from a topic (without file upload)
         
-                print(f"[DEBUG] Claude API response (first 500 chars): {response_text[:500]}")
         Args:
             topic: Presentation topic
             style: PPT style
@@ -207,22 +209,12 @@ Generate the presentation structure now:"""
             max_slides: Maximum slides
             audience: Target audience
             custom_instructions: Additional instructions
-                try:
-                    ppt_structure = json.loads(response_text)
-                except Exception as e:
-                    print(f"[ERROR] JSON parsing failed: {str(e)}\nResponse: {response_text[:1000]}")
-                    raise
+        
         Returns:
             Dict with structured PPT content
         """
-                    print(f"[ERROR] Invalid response: missing 'slides' key. Response: {response_text[:1000]}")
-                    raise ValueError("Invalid response: missing 'slides' key")
         # First, generate comprehensive content on the topic using Claude
-                print(f"[DEBUG] Parsed PPT structure: {ppt_structure}")
         content_prompt = f"""You are an expert researcher and content writer. Create comprehensive, factual content on the following topic for a presentation:
-
-            except json.JSONDecodeError as e:
-                print(f"[ERROR] Failed to parse Claude response as JSON: {str(e)}\nResponse: {response_text[:500]}")
                 raise Exception(f"Failed to parse Claude response as JSON: {str(e)}\nResponse: {response_text[:500]}")
             except Exception as e:
                 print(f"[ERROR] Claude API error: {str(e)}")

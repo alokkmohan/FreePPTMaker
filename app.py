@@ -727,6 +727,7 @@ elif st.session_state.get('input_method') == 'write_topic':
     # Professional topic generation UI
     if use_professional and topic_input:
         # Auto mode only: Ollama generation will be triggered by main PowerPoint button below
+        pass
 
 elif st.session_state.get('input_method') == 'paste_article':
     st.markdown("### 📝 Paste Your Content")

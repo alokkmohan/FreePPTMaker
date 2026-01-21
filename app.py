@@ -702,42 +702,42 @@ elif st.session_state.get('input_method') == 'write_topic':
     if use_professional and topic_input:
         st.markdown("---")
         st.markdown("### 🤖 Generate Professional PPT from Topic")
+        ai_choice = st.selectbox(
+            "Select AI Model",
+            ["Deepseek", "Gemini", "Groq", "Hugging Face"],
+            key="ai_model_choice"
+        )
         col1, col2 = st.columns(2)
         with col1:
             ppt_style = st.selectbox(
-                "Presentation Style (Claude)",
+                "Presentation Style",
                 ["professional", "government", "corporate", "technical"],
-                key="claude_topic_style"
+                key="topic_style"
             )
-            min_slides = st.slider("Minimum Slides", 5, 15, 10, key="claude_topic_min")
+            min_slides = st.slider("Minimum Slides", 5, 15, 10, key="topic_min")
         with col2:
             audience = st.selectbox(
-                "Target Audience (Claude)",
+                "Target Audience",
                 ["general", "executives", "technical", "government"],
-                key="claude_topic_aud"
+                key="topic_aud"
             )
-            max_slides = st.slider("Maximum Slides", 10, 25, 15, key="claude_topic_max")
+            max_slides = st.slider("Maximum Slides", 10, 25, 15, key="topic_max")
         custom_instructions = st.text_area(
             "Additional Instructions (Optional)",
             placeholder="E.g., Include recent statistics, Focus on implementation, etc.",
             height=100,
-            key="claude_topic_instr"
+            key="topic_instr"
         )
-        if st.button("🚀 Generate with Claude AI", type="primary", key="claude_topic_btn"):
-            with st.spinner("🤖 Claude is researching and creating your presentation..."):
+        if st.button(f"🚀 Generate with {ai_choice}", type="primary", key="topic_btn"):
+            with st.spinner(f"🤖 {ai_choice} is researching and creating your presentation..."):
                 output_folder = "outputs"
                 os.makedirs(output_folder, exist_ok=True)
                 import re
                 safe_title = re.sub(r'[^\w\s-]', '', topic_input)[:50]
                 safe_title = re.sub(r'[-\s]+', '_', safe_title)
-                output_path = os.path.join(output_folder, f"{safe_title}_claude.pptx")
-                try:
-                    success = create_ppt_from_topic(
-                        topic=topic_input,
-                        output_path=output_path,
-                        style=ppt_style,
-                        min_slides=min_slides,
-                        max_slides=max_slides,
+                output_path = os.path.join(output_folder, f"{safe_title}_{ai_choice.lower()}.pptx")
+                # TODO: Call the appropriate backend function for Deepseek, Gemini, or Groq here
+                st.info(f"(Backend call for {ai_choice} will be implemented here.)")
                         audience=audience,
                         custom_instructions=custom_instructions
                     )

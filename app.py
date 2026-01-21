@@ -863,30 +863,8 @@ if script_content and st.session_state.get('main_menu'):
         auto_slides = "15-25 slides"
         default_min, default_max = 15, 25
     
-    # Slide count selection
-    st.markdown("### 📊 Presentation Length")
-    
-    slide_preference = st.radio(
-        "Choose presentation style:",
-        ["✨ Auto (Recommended)", "🎯 Quick (5-8 slides)", "📄 Standard (10-15 slides)", "📚 Detailed (15-25 slides)"],
-        horizontal=True,
-        help="Auto mode intelligently adjusts based on content length"
-    )
-
-    if slide_preference == "✨ Auto (Recommended)":
-        min_slides, max_slides = default_min, default_max
-        st.session_state['slide_preference'] = 'auto'
-    elif slide_preference == "🎯 Quick (5-8 slides)":
-        min_slides, max_slides = 5, 8
-        st.session_state['slide_preference'] = 'quick'
-    elif slide_preference == "📄 Standard (10-15 slides)":
-        min_slides, max_slides = 10, 15
-        st.session_state['slide_preference'] = 'standard'
-    else:  # Detailed
-        min_slides, max_slides = 15, 25
-        st.session_state['slide_preference'] = 'detailed'
-
-    # Store in session state
+    # Presentation Length is now auto-set, no manual selection
+    min_slides, max_slides = default_min, default_max
     st.session_state['min_slides'] = min_slides
     st.session_state['max_slides'] = max_slides
     

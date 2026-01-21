@@ -4,6 +4,7 @@
 *.key
 secrets.txt
 config.json
+.streamlit/secrets.toml
 
 # Python
 __pycache__/

@@ -77,20 +77,25 @@ def add_claude_file_upload_section():
         )
         ai_choice = st.selectbox(
             "Select AI Model",
-            ["Claude", "Deepseek", "Gemini", "Groq", "Hugging Face"],
+            ["Claude", "Deepseek", "Gemini", "Groq", "Hugging Face", "Ollama (local, free)"],
             help="Choose which AI to use for content generation"
         )
         if st.button("🎨 Generate Professional PPT", type="primary", use_container_width=True):
             with st.spinner(f"🤖 {ai_choice} is analyzing your documents and creating a professional presentation..."):
                 output_folder = "outputs"
                 os.makedirs(output_folder, exist_ok=True)
-                output_path = os.path.join(output_folder, f"presentation_{int(time.time())}_{ai_choice.lower()}.pptx")
+                output_path = os.path.join(output_folder, f"presentation_{int(time.time())}_{ai_choice.lower().replace(' ', '_')}.pptx")
                 try:
-                    # Get API key for selected AI
-                    env_key = f"{ai_choice.upper().replace(' ', '_')}_API_KEY"
-                    api_key = os.environ.get(env_key) or st.secrets.get(env_key)
-                    if not api_key:
-                        raise Exception(f"{ai_choice} API key not found. Set {env_key} in environment or Streamlit secrets.")
+                    # Determine AI model string for backend
+                    ai_model_key = ai_choice.lower().replace(" ", "")
+                    if "ollama" in ai_model_key:
+                        ai_model_key = "ollama"
+                        api_key = None  # Ollama does not require API key
+                    else:
+                        env_key = f"{ai_choice.upper().replace(' ', '_')}_API_KEY"
+                        api_key = os.environ.get(env_key) or st.secrets.get(env_key)
+                        if not api_key:
+                            raise Exception(f"{ai_choice} API key not found. Set {env_key} in environment or Streamlit secrets.")
                     # Extract text from all files
                     all_text = []
                     for fp in file_paths:
@@ -116,7 +121,7 @@ def add_claude_file_upload_section():
                     from multi_ai_generator import generate_ppt_from_topic_with_ai
                     ppt_structure = generate_ppt_from_topic_with_ai(
                         topic=combined_content,
-                        ai_model=ai_choice.lower().replace(" ", ""),
+                        ai_model=ai_model_key,
                         style=ppt_style,
                         min_slides=min_slides,
                         max_slides=max_slides,
@@ -756,7 +761,7 @@ elif st.session_state.get('input_method') == 'write_topic':
         st.markdown("### 🤖 Generate Professional PPT from Topic")
         ai_choice = st.selectbox(
             "Select AI Model",
-            ["Deepseek", "Gemini", "Groq", "Hugging Face"],
+            ["Claude", "Deepseek", "Gemini", "Groq", "Hugging Face", "Ollama (local, free)"],
             key="ai_model_choice"
         )
         col1, col2 = st.columns(2)
@@ -785,11 +790,54 @@ elif st.session_state.get('input_method') == 'write_topic':
                 output_folder = "outputs"
                 os.makedirs(output_folder, exist_ok=True)
                 import re
-                safe_title = re.sub(r'[^-\w\s-]', '', topic_input)[:50]
+                safe_title = re.sub(r'[^\w\s-]', '', topic_input)[:50]
                 safe_title = re.sub(r'[-\s]+', '_', safe_title)
-                output_path = os.path.join(output_folder, f"{safe_title}_{ai_choice.lower()}.pptx")
-                # TODO: Call the appropriate backend function for Deepseek, Gemini, Groq, or Hugging Face here
-                st.info(f"(Backend call for {ai_choice} will be implemented here.)")
+                output_path = os.path.join(output_folder, f"{safe_title}_{ai_choice.lower().replace(' ', '_')}.pptx")
+                # Determine AI model string for backend
+                ai_model_key = ai_choice.lower().replace(" ", "")
+                if "ollama" in ai_model_key:
+                    ai_model_key = "ollama"
+                    api_key = None  # Ollama does not require API key
+                else:
+                    env_key = f"{ai_choice.upper().replace(' ', '_')}_API_KEY"
+                    api_key = os.environ.get(env_key) or st.secrets.get(env_key)
+                    if not api_key:
+                        raise Exception(f"{ai_choice} API key not found. Set {env_key} in environment or Streamlit secrets.")
+                # Use multi_ai_generator for backend
+                from multi_ai_generator import generate_ppt_from_topic_with_ai
+                ppt_structure = generate_ppt_from_topic_with_ai(
+                    topic=topic_input,
+                    ai_model=ai_model_key,
+                    style=ppt_style,
+                    min_slides=min_slides,
+                    max_slides=max_slides,
+                    audience=audience,
+                    custom_instructions=custom_instructions,
+                    api_key=api_key
+                )
+                # Generate PPT using ClaudePPTGenerator (universal)
+                from claude_ppt_generator import ClaudePPTGenerator
+                generator = ClaudePPTGenerator(color_scheme=ppt_style)
+                success = generator.generate_from_structure(
+                    ppt_structure=ppt_structure,
+                    presenter=""
+                )
+                if success:
+                    generator.save(output_path)
+                    st.success("✅ Professional PowerPoint created successfully!")
+                    with open(output_path, "rb") as f:
+                        ppt_data = f.read()
+                    st.download_button(
+                        label="📥 Download PowerPoint",
+                        data=ppt_data,
+                        file_name="professional_presentation.pptx",
+                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                        use_container_width=True,
+                        type="primary"
+                    )
+                    st.info("💡 Your presentation has been generated with professional formatting!")
+                else:
+                    st.error("❌ Failed to generate presentation. Please try again.")
 
 elif st.session_state.get('input_method') == 'paste_article':
     st.markdown("### 📝 Paste Your Content")

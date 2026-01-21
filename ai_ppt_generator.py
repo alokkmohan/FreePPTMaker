@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
 AI-Powered PPT Generator
 Uses OpenAI to structure content intelligently
@@ -17,6 +14,7 @@ from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 
 # Try to import image generator
+
 try:
     from image_generator import get_slide_image, download_image, search_image
     IMAGE_GENERATION_AVAILABLE = True
@@ -35,33 +33,41 @@ def structure_content_with_ai(script_text, user_instructions="", min_slides=10, 
     # Detect if script has Hindi content
     has_hindi = any(ord(char) >= 0x0900 and ord(char) <= 0x097F for char in script_text[:500])
     if has_hindi:
-        lang_instruction = """भाषा: हिंदी में slides बनाएं
-        - Title slide: मुख्य शीर्षक और उपशीर्षक
-        - कम से कम 10 slides, अधिकतम 20 slides
-        - हर content slide में 4-6 bullet points (अनिवार्य)
-        - हर bullet में पूर्ण, सार्थक वाक्य (60-120 characters)
-        - Section dividers का उपयोग करें
-        - Conclusion slide में मुख्य बिंदु"""
-        content_preservation = """महत्वपूर्ण: ORIGINAL CONTENT को preserve करें
-        - Script में दी गई जानकारी को ज्यों का त्यों रखें
-        - सिर्फ formatting और organization improve करें
-        - नई जानकारी न जोड़ें, script में जो है वही use करें
-        - Bullets में script के exact words और phrases use करें
-        - बस proper sections बनाएं और clear titles दें"""
+        lang_instruction = (
+            "भाषा: हिंदी में slides बनाएं\n"
+            "- Title slide: मुख्य शीर्षक और उपशीर्षक\n"
+            "- कम से कम 10 slides, अधिकतम 20 slides\n"
+            "- हर content slide में 4-6 bullet points (अनिवार्य)\n"
+            "- हर bullet में पूर्ण, सार्थक वाक्य (60-120 characters)\n"
+            "- Section dividers का उपयोग करें\n"
+            "- Conclusion slide में मुख्य बिंदु"
+        )
+        content_preservation = (
+            "महत्वपूर्ण: ORIGINAL CONTENT को preserve करें\n"
+            "- Script में दी गई जानकारी को ज्यों का त्यों रखें\n"
+            "- सिर्फ formatting और organization improve करें\n"
+            "- नई जानकारी न जोड़ें, script में जो है वही use करें\n"
+            "- Bullets में script के exact words और phrases use करें\n"
+            "- बस proper sections बनाएं और clear titles दें"
+        )
     else:
-        lang_instruction = """Language: Create slides in English
-        - Title slide with main title and subtitle
-        - Minimum 10 slides, maximum 20 slides
-        - Each content slide: 4-6 bullet points (MANDATORY)
-        - Each bullet: complete, meaningful sentence (80-150 chars)
-        - Use section dividers for major topics
-        - Conclusion slide with key takeaways"""
-        content_preservation = """CRITICAL: PRESERVE ORIGINAL CONTENT
-        - Keep the information from the script AS IS
-        - Only improve formatting and organization
-        - DO NOT add new information - use only what's in the script
-        - Use exact words and phrases from the script in bullets
-        - Just create proper sections and clear titles"""
+        lang_instruction = (
+            "Language: Create slides in English\n"
+            "- Title slide with main title and subtitle\n"
+            "- Minimum 10 slides, maximum 20 slides\n"
+            "- Each content slide: 4-6 bullet points (MANDATORY)\n"
+            "- Each bullet: complete, meaningful sentence (80-150 chars)\n"
+            "- Use section dividers for major topics\n"
+            "- Conclusion slide with key takeaways"
+        )
+        content_preservation = (
+            "CRITICAL: PRESERVE ORIGINAL CONTENT\n"
+            "- Keep the information from the script AS IS\n"
+            "- Only improve formatting and organization\n"
+            "- DO NOT add new information - use only what's in the script\n"
+            "- Use exact words and phrases from the script in bullets\n"
+            "- Just create proper sections and clear titles"
+        )
     prompt = f"""You are a professional presentation designer. Your task is to RESTRUCTURE (not rewrite) the following script into a well-organized PowerPoint presentation.\n\nScript:\n{script_text}{extra_instructions}\n\n{lang_instruction}\n\n{content_preservation}\n\nIMPORTANT REQUIREMENTS:\n- Extract a clear TITLE from the script content (first line or main topic)\n- Create a relevant SUBTITLE based on script theme\n- MINIMUM {min_slides} slides (excluding title)\n- MAXIMUM {max_slides} slides total\n- Break the script into logical sections\n- Each section gets a clear, descriptive title\n- Convert each section's content into 4-6 bullet points\n- Use the EXACT information from the script - don't invent new content\n- Keep technical terms, names, numbers exactly as given in script\n\nReturn ONLY valid JSON (no markdown):\n{{\n    \"title\": \"Extract or infer main title from script\",\n    \"subtitle\": \"Brief subtitle based on script theme\",\n    \"slides\": [\n        {{\n            \"type\": \"content\",\n            \"title\": \"Section Title (from script context)\",\n            \"bullets\": [\"Point from script\", \"Another point from script\", \"Third point from script\", \"Fourth point from script\"]\n        }},\n        {{\n            \"type\": \"section\",\n            \"title\": \"Major Topic Divider\"\n        }},\n        {{\n            \"type\": \"content\",\n            \"title\": \"Another Section Title\",\n            \"bullets\": [\"Script content 1\", \"Script content 2\", \"Script content 3\", \"Script content 4\"]\n        }}\n    ]\n}}\n\nImportant Rules:\n- PRESERVE original content - only reorganize it\n- Extract title and subtitle from script itself\n- MINIMUM 4 bullets per content slide (ideal 5-6)\n- Each bullet uses information directly from the script\n- Create clear section titles that reflect the content\n- Natural flow following script's structure\n- DO NOT use emojis or special icons (⚠️ ❌ ✅ etc.) - plain text only\n- Return ONLY the JSON, no extra text"""
     try:
         content_text = generate_with_openai(prompt, "", min_slides, max_slides)
@@ -258,20 +264,6 @@ class ModernPPTDesigner:
         p2.font.name = 'Calibri'
         p2.font.italic = True
         return slide
-                    raise Exception("OpenAI failed or returned insufficient content.")
-                import json
-                content_text = content_text.replace('```json', '').replace('```', '').strip()
-                result = json.loads(content_text)
-                return result
-            except Exception as e:
-                print(f"AI structuring failed: {e}")
-                return structure_content_basic(script_text)
-        elif len(subtitle) > 60:
-            p.font.size = Pt(20)
-        else:
-            p.font.size = Pt(24)
-            
-        p.font.color.rgb = self.colors["secondary"]
         p.font.name = 'Calibri'
         p.font.italic = True
         

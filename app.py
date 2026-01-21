@@ -726,40 +726,7 @@ elif st.session_state.get('input_method') == 'write_topic':
     script_content = st.session_state.get('confirmed_content') if st.session_state.get('confirmed_content', '').startswith('TOPIC:') else None
     # Professional topic generation UI
     if use_professional and topic_input:
-        st.markdown("---")
-        st.markdown("### 🤖 Generate Professional PPT from Topic")
-        # Hide AI model selection, always use Ollama
-        ai_choice = "Ollama (local, free)"
-        col1, col2 = st.columns(2)
-        with col1:
-            ppt_style = st.selectbox(
-                "Presentation Style",
-                ["professional", "government", "corporate", "technical"],
-                key="topic_style"
-            )
-            min_slides = st.slider("Minimum Slides", 5, 15, 10, key="topic_min")
-        with col2:
-            audience = st.selectbox(
-                "Target Audience",
-                ["general", "executives", "technical", "government"],
-                key="topic_aud"
-            )
-            max_slides = st.slider("Maximum Slides", 10, 25, 15, key="topic_max")
-        custom_instructions = st.text_area(
-            "Additional Instructions (Optional)",
-            placeholder="E.g., Include recent statistics, Focus on implementation, etc.",
-            height=100,
-            key="topic_instr"
-        )
-        if st.button(f"🚀 Generate with Ollama", type="primary", key="topic_btn"):
-            with st.spinner(f"🤖 Ollama is researching and creating your presentation..."):
-                output_folder = "outputs"
-                os.makedirs(output_folder, exist_ok=True)
-                import re
-                safe_title = re.sub(r'[^\w\s-]', '', topic_input)[:50]
-                safe_title = re.sub(r'[-\s]+', '_', safe_title)
-                output_path = os.path.join(output_folder, f"{safe_title}_ollama.pptx")
-                # ...existing code for Ollama-based content and PPT generation...
+        # Auto mode only: Ollama generation will be triggered by main PowerPoint button below
 
 elif st.session_state.get('input_method') == 'paste_article':
     st.markdown("### 📝 Paste Your Content")

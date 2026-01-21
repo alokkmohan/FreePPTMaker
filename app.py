@@ -94,15 +94,15 @@ def add_document_upload_section():
                             raise Exception(f"Unsupported file format: {ext}")
                     combined_content = "\n\n".join(all_text)
                     # Use Ollama for content analysis and PPT structure
-                    from content_generator import generate_with_ollama
-                    content = generate_with_ollama(
+                    from content_generator import generate_content_from_topic
+                    content = generate_content_from_topic(
                         topic=combined_content,
                         user_instructions=custom_instructions,
                         min_slides=min_slides,
                         max_slides=max_slides
                     )
                     if not content:
-                        st.error("❌ Ollama failed to generate content. Please check your input and try again.")
+                        st.error("❌ Content generation failed. Please check your input and try again.")
                         return
                     # Now create PPT from content
                     from create_ppt import process_script

@@ -57,10 +57,9 @@ Output Format Rules:
 - Each bullet point should be practical and complete
 - Avoid vague or filler language
 """
-    # Call DeepSeek API for content generation (cloud-compatible)
-    from multi_ai_generator import MultiAIGenerator
-    generator = MultiAIGenerator(ai_model="deepseek", api_key=os.getenv("DEEPSEEK_API_KEY"))
-    content = generator._deepseek_generate(
+    # Call Ollama API for content generation (local only)
+    from multi_ai_generator import generate_ppt_from_topic_with_ai
+    content = generate_ppt_from_topic_with_ai(
         topic=advisor_prompt,
         min_slides=min_slides,
         max_slides=max_slides,

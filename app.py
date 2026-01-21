@@ -714,7 +714,7 @@ elif st.session_state.get('input_method') == 'write_topic':
         label="Enter your topic",
         placeholder="Example:\n• Artificial Intelligence in Healthcare\n• Climate Change and Its Effects\n• Future of Electric Vehicles\n• Digital Marketing Strategies 2025"
     )
-    use_professional = st.checkbox("🤖 Use Professional PPT Generation", value=False, help="Enable to use advanced AI-powered generation for this topic")
+    use_professional = True  # Always active, hide checkbox
     if topic_input:
         if st.session_state.get('last_topic') != topic_input:
             st.session_state['confirmed_content'] = f"TOPIC:{topic_input}"

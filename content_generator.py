@@ -82,6 +82,9 @@ Generates detailed articles from topics using Groq API and Ollama
 
 import os
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"

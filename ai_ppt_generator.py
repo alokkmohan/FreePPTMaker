@@ -3,7 +3,7 @@
 
 """
 AI-Powered PPT Generator
-Uses Google Gemini to structure content intelligently
+Uses OpenAI to structure content intelligently
 """
 
 import os
@@ -23,107 +23,50 @@ try:
 except ImportError:
     IMAGE_GENERATION_AVAILABLE = False
 
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 
-def deepseek_generate_content(prompt, system_prompt=None, temperature=0.7, max_tokens=2048):
-    """
-    Call DeepSeek API for text generation
-    """
-    headers = {
-        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    messages = []
-    if system_prompt:
-        messages.append({"role": "system", "content": system_prompt})
-    messages.append({"role": "user", "content": prompt})
-    data = {
-        "model": "deepseek-chat",
-        "messages": messages,
-        "temperature": temperature,
-        "max_tokens": max_tokens
-    }
-    response = requests.post(DEEPSEEK_API_URL, headers=headers, json=data, timeout=60)
-    if response.status_code == 200:
-        result = response.json()
-        return result["choices"][0]["message"]["content"]
-    else:
-        raise Exception(f"DeepSeek API error: {response.status_code} {response.text}")
-
-def ollama_generate_content(prompt, system_prompt=None, temperature=0.7, max_tokens=2048):
-    """
-    Try to generate content using local Ollama LLM (e.g. llama3)
-    """
-    try:
-        payload = {
-            "model": "llama3",
-            "prompt": prompt,
-            "options": {"temperature": temperature, "num_predict": max_tokens}
-        }
-        if system_prompt:
-            payload["system"] = system_prompt
-        response = requests.post("http://localhost:11434/api/generate", json=payload, timeout=60)
-        if response.status_code == 200:
-            # Ollama streams output, so we need to parse lines
-            lines = response.text.splitlines()
-            content = ""
-            for line in lines:
-                if line.strip():
-                    try:
-                        obj = json.loads(line)
-                        content += obj.get("response", "")
-                    except Exception:
-                        continue
-            return content.strip()
-        else:
-            raise Exception(f"Ollama error: {response.status_code} {response.text}")
-    except Exception as e:
-        print(f"Ollama failed: {e}")
-        return None
 
 def structure_content_with_ai(script_text, user_instructions="", min_slides=10, max_slides=20):
-    """Try Ollama first, fallback to DeepSeek if Ollama fails"""
+    """Use OpenAI to structure content for slides (OpenAI only)"""
+    from openai_fallback import generate_with_openai
+    # Add user instructions to prompt if provided
+    extra_instructions = ""
+    if user_instructions:
+        extra_instructions = f"\n\nUser's specific instructions:\n{user_instructions}\n\nPlease incorporate these instructions while structuring the presentation."
+    # Detect if script has Hindi content
+    has_hindi = any(ord(char) >= 0x0900 and ord(char) <= 0x097F for char in script_text[:500])
+    if has_hindi:
+        lang_instruction = """भाषा: हिंदी में slides बनाएं
+        - Title slide: मुख्य शीर्षक और उपशीर्षक
+        - कम से कम 10 slides, अधिकतम 20 slides
+        - हर content slide में 4-6 bullet points (अनिवार्य)
+        - हर bullet में पूर्ण, सार्थक वाक्य (60-120 characters)
+        - Section dividers का उपयोग करें
+        - Conclusion slide में मुख्य बिंदु"""
+        content_preservation = """महत्वपूर्ण: ORIGINAL CONTENT को preserve करें
+        - Script में दी गई जानकारी को ज्यों का त्यों रखें
+        - सिर्फ formatting और organization improve करें
+        - नई जानकारी न जोड़ें, script में जो है वही use करें
+        - Bullets में script के exact words और phrases use करें
+        - बस proper sections बनाएं और clear titles दें"""
+    else:
+        lang_instruction = """Language: Create slides in English
+        - Title slide with main title and subtitle
+        - Minimum 10 slides, maximum 20 slides
+        - Each content slide: 4-6 bullet points (MANDATORY)
+        - Each bullet: complete, meaningful sentence (80-150 chars)
+        - Use section dividers for major topics
+        - Conclusion slide with key takeaways"""
+        content_preservation = """CRITICAL: PRESERVE ORIGINAL CONTENT
+        - Keep the information from the script AS IS
+        - Only improve formatting and organization
+        - DO NOT add new information - use only what's in the script
+        - Use exact words and phrases from the script in bullets
+        - Just create proper sections and clear titles"""
+    prompt = f"""You are a professional presentation designer. Your task is to RESTRUCTURE (not rewrite) the following script into a well-organized PowerPoint presentation.\n\nScript:\n{script_text}{extra_instructions}\n\n{lang_instruction}\n\n{content_preservation}\n\nIMPORTANT REQUIREMENTS:\n- Extract a clear TITLE from the script content (first line or main topic)\n- Create a relevant SUBTITLE based on script theme\n- MINIMUM {min_slides} slides (excluding title)\n- MAXIMUM {max_slides} slides total\n- Break the script into logical sections\n- Each section gets a clear, descriptive title\n- Convert each section's content into 4-6 bullet points\n- Use the EXACT information from the script - don't invent new content\n- Keep technical terms, names, numbers exactly as given in script\n\nReturn ONLY valid JSON (no markdown):\n{{\n    \"title\": \"Extract or infer main title from script\",\n    \"subtitle\": \"Brief subtitle based on script theme\",\n    \"slides\": [\n        {{\n            \"type\": \"content\",\n            \"title\": \"Section Title (from script context)\",\n            \"bullets\": [\"Point from script\", \"Another point from script\", \"Third point from script\", \"Fourth point from script\"]\n        }},\n        {{\n            \"type\": \"section\",\n            \"title\": \"Major Topic Divider\"\n        }},\n        {{\n            \"type\": \"content\",\n            \"title\": \"Another Section Title\",\n            \"bullets\": [\"Script content 1\", \"Script content 2\", \"Script content 3\", \"Script content 4\"]\n        }}\n    ]\n}}\n\nImportant Rules:\n- PRESERVE original content - only reorganize it\n- Extract title and subtitle from script itself\n- MINIMUM 4 bullets per content slide (ideal 5-6)\n- Each bullet uses information directly from the script\n- Create clear section titles that reflect the content\n- Natural flow following script's structure\n- DO NOT use emojis or special icons (⚠️ ❌ ✅ etc.) - plain text only\n- Return ONLY the JSON, no extra text"""
     try:
-        # Add user instructions to prompt if provided
-        extra_instructions = ""
-        if user_instructions:
-            extra_instructions = f"\n\nUser's specific instructions:\n{user_instructions}\n\nPlease incorporate these instructions while structuring the presentation."
-        # Detect if script has Hindi content
-        has_hindi = any(ord(char) >= 0x0900 and ord(char) <= 0x097F for char in script_text[:500])
-        if has_hindi:
-            lang_instruction = """भाषा: हिंदी में slides बनाएं
-- Title slide: मुख्य शीर्षक और उपशीर्षक
-- कम से कम 10 slides, अधिकतम 20 slides
-- हर content slide में 4-6 bullet points (अनिवार्य)
-- हर bullet में पूर्ण, सार्थक वाक्य (60-120 characters)
-- Section dividers का उपयोग करें
-- Conclusion slide में मुख्य बिंदु"""
-            content_preservation = """महत्वपूर्ण: ORIGINAL CONTENT को preserve करें
-- Script में दी गई जानकारी को ज्यों का त्यों रखें
-- सिर्फ formatting और organization improve करें
-- नई जानकारी न जोड़ें, script में जो है वही use करें
-- Bullets में script के exact words और phrases use करें
-- बस proper sections बनाएं और clear titles दें"""
-        else:
-            lang_instruction = """Language: Create slides in English
-- Title slide with main title and subtitle
-- Minimum 10 slides, maximum 20 slides
-- Each content slide: 4-6 bullet points (MANDATORY)
-- Each bullet: complete, meaningful sentence (80-150 chars)
-- Use section dividers for major topics
-- Conclusion slide with key takeaways"""
-            content_preservation = """CRITICAL: PRESERVE ORIGINAL CONTENT
-- Keep the information from the script AS IS
-- Only improve formatting and organization
-- DO NOT add new information - use only what's in the script
-- Use exact words and phrases from the script in bullets
-- Just create proper sections and clear titles"""
-        prompt = f"""You are a professional presentation designer. Your task is to RESTRUCTURE (not rewrite) the following script into a well-organized PowerPoint presentation.\n\nScript:\n{script_text}{extra_instructions}\n\n{lang_instruction}\n\n{content_preservation}\n\nIMPORTANT REQUIREMENTS:\n- Extract a clear TITLE from the script content (first line or main topic)\n- Create a relevant SUBTITLE based on script theme\n- MINIMUM {min_slides} slides (excluding title)\n- MAXIMUM {max_slides} slides total\n- Break the script into logical sections\n- Each section gets a clear, descriptive title\n- Convert each section's content into 4-6 bullet points\n- Use the EXACT information from the script - don't invent new content\n- Keep technical terms, names, numbers exactly as given in script\n\nReturn ONLY valid JSON (no markdown):\n{{\n    \"title\": \"Extract or infer main title from script\",\n    \"subtitle\": \"Brief subtitle based on script theme\",\n    \"slides\": [\n        {{\n            \"type\": \"content\",\n            \"title\": \"Section Title (from script context)\",\n            \"bullets\": [\"Point from script\", \"Another point from script\", \"Third point from script\", \"Fourth point from script\"]\n        }},\n        {{\n            \"type\": \"section\",\n            \"title\": \"Major Topic Divider\"\n        }},\n        {{\n            \"type\": \"content\",\n            \"title\": \"Another Section Title\",\n            \"bullets\": [\"Script content 1\", \"Script content 2\", \"Script content 3\", \"Script content 4\"]\n        }}\n    ]\n}}\n\nImportant Rules:\n- PRESERVE original content - only reorganize it\n- Extract title and subtitle from script itself\n- MINIMUM 4 bullets per content slide (ideal 5-6)\n- Each bullet uses information directly from the script\n- Create clear section titles that reflect the content\n- Natural flow following script's structure\n- DO NOT use emojis or special icons (⚠️ ❌ ✅ etc.) - plain text only\n- Return ONLY the JSON, no extra text"""
-        # Try Ollama first
-        content_text = ollama_generate_content(prompt, system_prompt=None, temperature=0.3, max_tokens=6000)
+        content_text = generate_with_openai(prompt, "", min_slides, max_slides)
         if not content_text or len(content_text) < 100:
-            raise Exception("Ollama failed or returned insufficient content.")
+            raise Exception("OpenAI failed or returned insufficient content.")
         content_text = content_text.replace('```json', '').replace('```', '').strip()
         result = json.loads(content_text)
         return result
@@ -287,29 +230,34 @@ class ModernPPTDesigner:
     def create_title_slide(self, title, subtitle):
         """Beautiful title slide"""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
-        
         # Add decorative shape at top
         shape = slide.shapes.add_shape(
             MSO_SHAPE.RECTANGLE,
             Inches(0), Inches(0),
-            try:
-                from openai_fallback import generate_with_openai
-                # Add user instructions to prompt if provided
-                extra_instructions = ""
-                if user_instructions:
-                    extra_instructions = f"\n\nUser's specific instructions:\n{user_instructions}\n\nPlease incorporate these instructions while structuring the presentation."
-                # Detect if script has Hindi content
-                has_hindi = any(ord(char) >= 0x0900 and ord(char) <= 0x097F for char in script_text[:500])
-                if has_hindi:
-                    lang_instruction = """भाषा: हिंदी में slides बनाएं
-                    content_preservation = """महत्वपूर्ण: ORIGINAL CONTENT को preserve करें
-                else:
-                    lang_instruction = """Language: Create slides in English
-                    content_preservation = """CRITICAL: PRESERVE ORIGINAL CONTENT
-                prompt = f"""You are a professional presentation designer. Your task is to RESTRUCTURE (not rewrite) the following script into a well-organized PowerPoint presentation.\n\nScript:\n{script_text}{extra_instructions}\n\n{lang_instruction}\n\n{content_preservation}\n\nIMPORTANT REQUIREMENTS:\n- Extract a clear TITLE from the script content (first line or main topic)\n- Create a relevant SUBTITLE based on script theme\n- MINIMUM {min_slides} slides (excluding title)\n- MAXIMUM {max_slides} slides total\n- Break the script into logical sections\n- Each section gets a clear, descriptive title\n- Convert each section's content into 4-6 bullet points\n- Use the EXACT information from the script - don't invent new content\n- Keep technical terms, names, numbers exactly as given in script\n\nReturn ONLY valid JSON (no markdown):\n{{\n    \"title\": \"Extract or infer main title from script\",\n    \"subtitle\": \"Brief subtitle based on script theme\",\n    \"slides\": [\n        {{\n            \"type\": \"content\",\n            \"title\": \"Section Title (from script context)\",\n            \"bullets\": [\"Point from script\", \"Another point from script\", \"Third point from script\", \"Fourth point from script\"]\n        }},\n        {{\n            \"type\": \"section\",\n            \"title\": \"Major Topic Divider\"\n        }},\n        {{\n            \"type\": \"content\",\n            \"title\": \"Another Section Title\",\n            \"bullets\": [\"Script content 1\", \"Script content 2\", \"Script content 3\", \"Script content 4\"]\n        }}\n    ]\n}}\n\nImportant Rules:\n- PRESERVE original content - only reorganize it\n- Extract title and subtitle from script itself\n- MINIMUM 4 bullets per content slide (ideal 5-6)\n- Each bullet uses information directly from the script\n- Create clear section titles that reflect the content\n- Natural flow following script's structure\n- DO NOT use emojis or special icons (⚠️ ❌ ✅ etc.) - plain text only\n- Return ONLY the JSON, no extra text"""
-                # Use OpenAI to generate slide structure as JSON
-                content_text = generate_with_openai(prompt, "", min_slides, max_slides)
-                if not content_text or len(content_text) < 100:
+            Inches(10), Inches(1.2)
+        )
+        shape.fill.solid()
+        shape.fill.fore_color.rgb = self.colors["primary"]
+        shape.line.fill.background()
+        # Add title
+        title_box = slide.shapes.add_textbox(Inches(0.5), Inches(1.5), Inches(9), Inches(1.5))
+        tf = title_box.text_frame
+        tf.text = title
+        p = tf.paragraphs[0]
+        p.font.size = Pt(40)
+        p.font.bold = True
+        p.font.color.rgb = self.colors["text"]
+        p.font.name = 'Calibri'
+        # Add subtitle
+        subtitle_box = slide.shapes.add_textbox(Inches(0.5), Inches(3), Inches(9), Inches(1))
+        tf2 = subtitle_box.text_frame
+        tf2.text = subtitle
+        p2 = tf2.paragraphs[0]
+        p2.font.size = Pt(24)
+        p2.font.color.rgb = self.colors["secondary"]
+        p2.font.name = 'Calibri'
+        p2.font.italic = True
+        return slide
                     raise Exception("OpenAI failed or returned insufficient content.")
                 import json
                 content_text = content_text.replace('```json', '').replace('```', '').strip()

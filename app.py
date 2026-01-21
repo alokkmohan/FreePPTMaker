@@ -106,13 +106,10 @@ def add_document_upload_section():
                         return
                     # Now create PPT from content
                     from create_ppt import process_script
-                    ppt_success = process_script(
-                        script=content,
-                        output_path=output_path,
-                        presenter=presenter_name,
-                        style=ppt_style,
-                        audience=audience
-                    )
+                    temp_input_path = os.path.join(output_folder, "script.txt")
+                    with open(temp_input_path, "w", encoding="utf-8") as f:
+                        f.write(content)
+                    ppt_success = process_script(temp_input_path, output_path)
                     if ppt_success:
                         st.success("✅ Professional PowerPoint created successfully!")
                         with open(output_path, "rb") as f:

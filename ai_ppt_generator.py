@@ -28,7 +28,6 @@ def structure_content_with_ai(script_text, user_instructions="", min_slides=10, 
     # Call Ollama API for structuring content (replace this with your actual Ollama call)
     result = ollama_structure_content(script_text, user_instructions, min_slides, max_slides)
     return result
-        return structure_content_basic(script_text)
 
 def structure_content_basic(script_text):
     """Basic fallback structuring - flexible slide count based on content"""

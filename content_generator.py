@@ -7,12 +7,6 @@ def generate_content_from_topic(topic, user_instructions="", min_slides=10, max_
         return content
     # Fallback to basic content if OpenAI also fails
     return generate_basic_content(topic)
-def generate_content_from_topic(topic, user_instructions="", min_slides=10, max_slides=15):
-    """Main function to generate content from topic using Ollama or fallback."""
-    content = generate_with_ollama(topic, user_instructions, min_slides, max_slides)
-    if content and len(content) > 500:
-        return content
-    return generate_basic_content(topic)
 
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-

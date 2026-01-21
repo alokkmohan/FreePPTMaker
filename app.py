@@ -75,28 +75,64 @@ def add_claude_file_upload_section():
             "Presenter Name (Optional)",
             placeholder="Your name"
         )
+        ai_choice = st.selectbox(
+            "Select AI Model",
+            ["Claude", "Deepseek", "Gemini", "Groq", "Hugging Face"],
+            help="Choose which AI to use for content generation"
+        )
         if st.button("🎨 Generate Professional PPT", type="primary", use_container_width=True):
-            with st.spinner("🤖 Analyzing your documents and creating a professional presentation..."):
+            with st.spinner(f"🤖 {ai_choice} is analyzing your documents and creating a professional presentation..."):
                 output_folder = "outputs"
                 os.makedirs(output_folder, exist_ok=True)
-                output_path = os.path.join(output_folder, f"presentation_{int(time.time())}.pptx")
+                output_path = os.path.join(output_folder, f"presentation_{int(time.time())}_{ai_choice.lower()}.pptx")
                 try:
-                    # Get API key from environment or secrets
-                    api_key = os.environ.get("CLAUDE_API_KEY")
-                    
-                    # Pass the list of file_paths to your PPT generation logic
-                    success = create_ppt_from_file(
-                        file_path=file_paths,
-                        output_path=output_path,
+                    # Get API key for selected AI
+                    env_key = f"{ai_choice.upper().replace(' ', '_')}_API_KEY"
+                    api_key = os.environ.get(env_key) or st.secrets.get(env_key)
+                    if not api_key:
+                        raise Exception(f"{ai_choice} API key not found. Set {env_key} in environment or Streamlit secrets.")
+                    # Extract text from all files
+                    all_text = []
+                    for fp in file_paths:
+                        ext = os.path.splitext(fp)[1].lower()
+                        if ext == ".docx":
+                            doc = Document(fp)
+                            all_text.append("\n".join([para.text for para in doc.paragraphs]))
+                        elif ext == ".pdf":
+                            import PyPDF2
+                            text = ""
+                            with open(fp, "rb") as f:
+                                pdf_reader = PyPDF2.PdfReader(f)
+                                for page in pdf_reader.pages:
+                                    text += page.extract_text() + "\n"
+                            all_text.append(text)
+                        elif ext in [".txt", ".md"]:
+                            with open(fp, "r", encoding="utf-8") as f:
+                                all_text.append(f.read())
+                        else:
+                            raise Exception(f"Unsupported file format: {ext}")
+                    combined_content = "\n\n".join(all_text)
+                    # Use multi_ai_generator for backend
+                    from multi_ai_generator import generate_ppt_from_topic_with_ai
+                    ppt_structure = generate_ppt_from_topic_with_ai(
+                        topic=combined_content,
+                        ai_model=ai_choice.lower().replace(" ", ""),
                         style=ppt_style,
                         min_slides=min_slides,
                         max_slides=max_slides,
                         audience=audience,
-                        presenter=presenter_name,
                         custom_instructions=custom_instructions,
                         api_key=api_key
                     )
+                    # Generate PPT using ClaudePPTGenerator (universal)
+                    from claude_ppt_generator import ClaudePPTGenerator
+                    generator = ClaudePPTGenerator(color_scheme=ppt_style)
+                    success = generator.generate_from_structure(
+                        ppt_structure=ppt_structure,
+                        presenter=presenter_name
+                    )
                     if success:
+                        generator.save(output_path)
                         st.success("✅ Professional PowerPoint created successfully!")
                         with open(output_path, "rb") as f:
                             ppt_data = f.read()

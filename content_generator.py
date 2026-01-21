@@ -1,8 +1,64 @@
 def generate_content_from_topic(topic, user_instructions="", min_slides=10, max_slides=15):
     """Main function to generate content from topic using Ollama or fallback to OpenAI."""
     from openai_fallback import generate_with_openai
-    # Use only OpenAI for content generation
-    content = generate_with_openai(topic, user_instructions, min_slides, max_slides)
+    # Inject high-quality government/policy advisor prompt
+    advisor_prompt = f"""
+You are a senior government officer and policy advisor with experience in digital governance.
+
+Task:
+Create HIGH-QUALITY, meaningful content for a PowerPoint presentation.
+
+Topic:
+"{topic}"
+
+Context:
+- Audience: Government officers and administrative staff
+- Country context: India
+- Purpose: Awareness, planning, and decision-making
+- Tone: Formal, practical, and policy-oriented
+- Avoid generic statements
+
+Content Rules:
+- Do NOT write placeholders like "important aspect"
+- Do NOT repeat the topic unnecessarily
+- Each point must be specific and meaningful
+- Use real government-office examples where possible
+- Focus on how this topic changes daily office work
+
+Presentation Structure:
+1. Introduction
+   - Explain the topic in the context of government offices
+   - Why it is relevant now
+2. Current Use Cases in Government Offices
+   - At least 4 concrete examples
+   - Example: file processing, grievance redressal, data analysis
+3. Benefits
+   - Efficiency
+   - Transparency
+   - Decision support
+   - Citizen services
+4. Challenges and Risks
+   - Data privacy
+   - Skill gaps
+   - Ethical concerns
+   - Infrastructure limitations
+5. Way Forward / Recommendations
+   - Capacity building
+   - Pilot projects
+   - Policy safeguards
+6. Conclusion
+   - Clear summary
+   - Future readiness message
+
+Output Format Rules:
+- Write slide-wise content
+- Each slide must have:
+  - A clear title
+  - 4–5 bullet points
+- Each bullet point should be practical and complete
+- Avoid vague or filler language
+"""
+    content = generate_with_openai(advisor_prompt, user_instructions, min_slides, max_slides)
     if content and len(content) > 500:
         return content
     # Fallback to basic content if OpenAI also fails

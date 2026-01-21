@@ -94,11 +94,6 @@ class ClaudeContentAnalyzer:
         style_guidelines = {
             "professional": "Use clear, concise language. Focus on key points. Professional business tone.",
             "government": "Use formal language. Policy-focused. Include data and statistics. Official tone aligned with government presentations.",
-            "corporate": "Business-oriented. ROI-focused. Executive summary style. Data-driven insights.",
-            "technical": "Detailed technical explanations. Include diagrams descriptions. Technical terminology appropriate.",
-            "academic": "Research-oriented. Citations and references. Scholarly tone."
-        }
-        
         audience_guidelines = {
             "general": "Explain concepts clearly. Avoid jargon. Accessible to all.",
             "executives": "Focus on high-level insights. Strategic implications. Business impact.",

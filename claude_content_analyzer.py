@@ -109,7 +109,6 @@ class ClaudeContentAnalyzer:
         
         style_guide = style_guidelines.get(style, style_guidelines["professional"])
         audience_guide = audience_guidelines.get(audience, audience_guidelines["general"])
-        def analyze_for_ppt(
         # Build Claude prompt
         prompt = f"""You are an expert presentation designer and content strategist. Analyze the following content and create a professional PowerPoint presentation structure.
 

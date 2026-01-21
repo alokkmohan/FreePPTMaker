@@ -8,12 +8,6 @@ import base64
 from docx import Document
 import time
 
-# Get Claude API key from Streamlit secrets or environment
-if "CLAUDE_API_KEY" not in os.environ:
-    try:
-        os.environ["CLAUDE_API_KEY"] = st.secrets["CLAUDE_API_KEY"]
-    except (KeyError, FileNotFoundError):
-        pass
 try:
     from ppt_to_images import ppt_to_images
     PPT_TO_IMAGES_AVAILABLE = True
@@ -29,10 +23,7 @@ from ai_ppt_generator import generate_beautiful_ppt
 from youtube_script_generator import generate_youtube_script_with_ai
 from content_generator import generate_content_from_topic
 from image_generator import get_slide_image, download_image, search_image
-# Claude integration
-from claude_ppt_generator import create_ppt_from_file, create_ppt_from_topic
-# === CLAUDE FILE UPLOAD SECTION ===
-def add_claude_file_upload_section():
+def add_document_upload_section():
     st.markdown("### 🤖 Upload Documents for Professional PPT Generation")
     st.markdown("Upload one or more Word, PDF, or text files to create a professional presentation.")
     uploaded_files = st.file_uploader(
@@ -75,8 +66,6 @@ def add_claude_file_upload_section():
             "Presenter Name (Optional)",
             placeholder="Your name"
         )
-        # Hide AI model selection, always use Ollama
-        ai_choice = "Ollama (local, free)"
         if st.button("🎨 Generate Professional PPT", type="primary", use_container_width=True):
             with st.spinner(f"🤖 Ollama is analyzing your documents and creating a professional presentation..."):
                 output_folder = "outputs"
@@ -104,25 +93,27 @@ def add_claude_file_upload_section():
                         else:
                             raise Exception(f"Unsupported file format: {ext}")
                     combined_content = "\n\n".join(all_text)
-                    # Use multi_ai_generator for backend (Ollama only)
-                    from multi_ai_generator import generate_ppt_from_topic_with_ai
-                    ppt_structure = generate_ppt_from_topic_with_ai(
+                    # Use Ollama for content analysis and PPT structure
+                    from content_generator import generate_with_ollama
+                    content = generate_with_ollama(
                         topic=combined_content,
-                        style=ppt_style,
+                        user_instructions=custom_instructions,
                         min_slides=min_slides,
-                        max_slides=max_slides,
-                        audience=audience,
-                        custom_instructions=custom_instructions
+                        max_slides=max_slides
                     )
-                    # Generate PPT using ClaudePPTGenerator (universal)
-                    from claude_ppt_generator import ClaudePPTGenerator
-                    generator = ClaudePPTGenerator(color_scheme=ppt_style)
-                    success = generator.generate_from_structure(
-                        ppt_structure=ppt_structure,
-                        presenter=presenter_name
+                    if not content:
+                        st.error("❌ Ollama failed to generate content. Please check your input and try again.")
+                        return
+                    # Now create PPT from content
+                    from create_ppt import process_script
+                    ppt_success = process_script(
+                        script=content,
+                        output_path=output_path,
+                        presenter=presenter_name,
+                        style=ppt_style,
+                        audience=audience
                     )
-                    if success:
-                        generator.save(output_path)
+                    if ppt_success:
                         st.success("✅ Professional PowerPoint created successfully!")
                         with open(output_path, "rb") as f:
                             ppt_data = f.read()
@@ -675,7 +666,6 @@ if st.session_state['current_tab'] == 'help':
 3. **Generate PPT:** Click the generate button and download your presentation.
 
 **Features:**
-- Claude AI-powered professional PPT generation
 - Supports Word, PDF, and text files
 - Hindi & English content supported
 - Custom themes and slide counts
@@ -721,7 +711,7 @@ script_content = None
 
 # Only show upload section if on PowerPoint tab
 if st.session_state.get('current_tab') == 'powerpoint' and st.session_state.get('input_method') == 'upload':
-    add_claude_file_upload_section()
+    add_document_upload_section()
 
 elif st.session_state.get('input_method') == 'write_topic':
     st.markdown("### 🎯 Enter Your Topic")
@@ -775,39 +765,7 @@ elif st.session_state.get('input_method') == 'write_topic':
                 safe_title = re.sub(r'[^\w\s-]', '', topic_input)[:50]
                 safe_title = re.sub(r'[-\s]+', '_', safe_title)
                 output_path = os.path.join(output_folder, f"{safe_title}_ollama.pptx")
-                # Use multi_ai_generator for backend (Ollama only)
-                from multi_ai_generator import generate_ppt_from_topic_with_ai
-                ppt_structure = generate_ppt_from_topic_with_ai(
-                    topic=topic_input,
-                    style=ppt_style,
-                    min_slides=min_slides,
-                    max_slides=max_slides,
-                    audience=audience,
-                    custom_instructions=custom_instructions
-                )
-                # Generate PPT using ClaudePPTGenerator (universal)
-                from claude_ppt_generator import ClaudePPTGenerator
-                generator = ClaudePPTGenerator(color_scheme=ppt_style)
-                success = generator.generate_from_structure(
-                    ppt_structure=ppt_structure,
-                    presenter=""
-                )
-                if success:
-                    generator.save(output_path)
-                    st.success("✅ Professional PowerPoint created successfully!")
-                    with open(output_path, "rb") as f:
-                        ppt_data = f.read()
-                    st.download_button(
-                        label="📥 Download PowerPoint",
-                        data=ppt_data,
-                        file_name="professional_presentation.pptx",
-                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                        use_container_width=True,
-                        type="primary"
-                    )
-                    st.info("💡 Your presentation has been generated with professional formatting!")
-                else:
-                    st.error("❌ Failed to generate presentation. Please try again.")
+                # ...existing code for Ollama-based content and PPT generation...
 
 elif st.session_state.get('input_method') == 'paste_article':
     st.markdown("### 📝 Paste Your Content")

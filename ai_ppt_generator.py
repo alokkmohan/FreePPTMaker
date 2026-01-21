@@ -123,9 +123,7 @@ def structure_content_with_ai(script_text, user_instructions="", min_slides=10, 
         # Try Ollama first
         content_text = ollama_generate_content(prompt, system_prompt=None, temperature=0.3, max_tokens=6000)
         if not content_text or len(content_text) < 100:
-            # Fallback to DeepSeek
-            print("Ollama failed or empty, using DeepSeek...")
-            content_text = deepseek_generate_content(prompt, system_prompt=None, temperature=0.3, max_tokens=6000)
+            raise Exception("Ollama failed or returned insufficient content.")
         content_text = content_text.replace('```json', '').replace('```', '').strip()
         result = json.loads(content_text)
         return result

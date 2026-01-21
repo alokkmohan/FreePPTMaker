@@ -26,20 +26,24 @@ from image_generator import get_slide_image, download_image, search_image
 from claude_ppt_generator import create_ppt_from_file, create_ppt_from_topic
 # === CLAUDE FILE UPLOAD SECTION ===
 def add_claude_file_upload_section():
-    st.markdown("### 🤖 Upload Document for Professional PPT Generation")
-    st.markdown("Upload a Word document, PDF, or text file to create a professional presentation.")
-    uploaded_file = st.file_uploader(
+    st.markdown("### 🤖 Upload Documents for Professional PPT Generation")
+    st.markdown("Upload one or more Word, PDF, or text files to create a professional presentation.")
+    uploaded_files = st.file_uploader(
         "Upload your document(s)",
         type=['docx', 'pdf', 'txt', 'md'],
-        help="Upload Word, PDF, or text files for professional PPT generation"
+        help="Upload Word, PDF, or text files for professional PPT generation",
+        accept_multiple_files=True
     )
-    if uploaded_file:
+    if uploaded_files:
         temp_dir = "temp_uploads"
         os.makedirs(temp_dir, exist_ok=True)
-        file_path = os.path.join(temp_dir, uploaded_file.name)
-        with open(file_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-        st.success(f"✅ File uploaded: {uploaded_file.name}")
+        file_paths = []
+        for uploaded_file in uploaded_files:
+            file_path = os.path.join(temp_dir, uploaded_file.name)
+            with open(file_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            file_paths.append(file_path)
+        st.success(f"✅ {len(file_paths)} file(s) uploaded: {', '.join([os.path.basename(fp) for fp in file_paths])}")
         col1, col2 = st.columns(2)
         with col1:
             ppt_style = st.selectbox(
@@ -65,13 +69,14 @@ def add_claude_file_upload_section():
             placeholder="Your name"
         )
         if st.button("🎨 Generate Professional PPT", type="primary", use_container_width=True):
-            with st.spinner("🤖 Analyzing your document and creating a professional presentation..."):
+            with st.spinner("🤖 Analyzing your documents and creating a professional presentation..."):
                 output_folder = "outputs"
                 os.makedirs(output_folder, exist_ok=True)
                 output_path = os.path.join(output_folder, f"presentation_{int(time.time())}.pptx")
                 try:
+                    # Pass the list of file_paths to your PPT generation logic (update create_ppt_from_file to accept multiple files if needed)
                     success = create_ppt_from_file(
-                        file_path=file_path,
+                        file_path=file_paths,
                         output_path=output_path,
                         style=ppt_style,
                         min_slides=min_slides,

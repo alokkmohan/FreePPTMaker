@@ -57,9 +57,17 @@ Output Format Rules:
 - Each bullet point should be practical and complete
 - Avoid vague or filler language
 """
-    # Call Ollama API for content generation (replace this with your actual Ollama call)
-    content = ollama_generate_content(advisor_prompt, user_instructions, min_slides, max_slides)
-    if content and len(content) > 500:
+    # Call Ollama API for content generation
+    from multi_ai_generator import generate_ppt_from_topic_with_ai
+    content = generate_ppt_from_topic_with_ai(
+        topic=advisor_prompt,
+        min_slides=min_slides,
+        max_slides=max_slides,
+        style="professional",
+        audience="government officers",
+        custom_instructions=user_instructions
+    )
+    if content and len(str(content)) > 500:
         return content
     return generate_basic_content(topic)
 

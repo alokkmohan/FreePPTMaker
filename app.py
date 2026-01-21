@@ -74,7 +74,7 @@ def add_claude_file_upload_section():
                 os.makedirs(output_folder, exist_ok=True)
                 output_path = os.path.join(output_folder, f"presentation_{int(time.time())}.pptx")
                 try:
-                    # Pass the list of file_paths to your PPT generation logic (update create_ppt_from_file to accept multiple files if needed)
+                    # Pass the list of file_paths to your PPT generation logic
                     success = create_ppt_from_file(
                         file_path=file_paths,
                         output_path=output_path,
@@ -85,24 +85,24 @@ def add_claude_file_upload_section():
                         presenter=presenter_name,
                         custom_instructions=custom_instructions
                     )
+                    if success:
+                        st.success("✅ Professional PowerPoint created successfully!")
+                        with open(output_path, "rb") as f:
+                            ppt_data = f.read()
+                        st.download_button(
+                            label="📥 Download PowerPoint",
+                            data=ppt_data,
+                            file_name="professional_presentation.pptx",
+                            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                            use_container_width=True,
+                            type="primary"
+                        )
+                        st.info("💡 Your presentation has been generated with professional formatting!")
+                    else:
+                        st.error("❌ Failed to generate presentation. Please try again.")
                 except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
-                    success = False
-                if success:
-                    st.success("✅ Professional PowerPoint created successfully!")
-                    with open(output_path, "rb") as f:
-                        ppt_data = f.read()
-                    st.download_button(
-                        label="📥 Download PowerPoint",
-                        data=ppt_data,
-                        file_name="professional_presentation.pptx",
-                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                        use_container_width=True,
-                        type="primary"
-                    )
-                    st.info("💡 Your presentation has been generated with professional formatting!")
-                else:
-                    st.error("❌ Failed to generate presentation. Please try again.")
+                    st.error(f"❌ Error generating presentation:\n\n{str(e)}")
+                    st.info("📌 Debug info has been logged. Please check your document and try again.")
 
 # Simple visitor counter and conversion tracking
 def update_visitor_count():

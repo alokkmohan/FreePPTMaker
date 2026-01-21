@@ -333,7 +333,7 @@ def create_ppt_from_file(
         print(f"❌ Error: {str(e)}")
         import traceback
         traceback.print_exc()
-        return False
+        raise Exception(f"Failed to generate PPT: {str(e)}") from e
 
 
 def create_ppt_from_topic(

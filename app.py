@@ -736,28 +736,8 @@ elif st.session_state.get('input_method') == 'write_topic':
                 safe_title = re.sub(r'[^\w\s-]', '', topic_input)[:50]
                 safe_title = re.sub(r'[-\s]+', '_', safe_title)
                 output_path = os.path.join(output_folder, f"{safe_title}_{ai_choice.lower()}.pptx")
-                # TODO: Call the appropriate backend function for Deepseek, Gemini, or Groq here
+                # TODO: Call the appropriate backend function for Deepseek, Gemini, Groq, or Hugging Face here
                 st.info(f"(Backend call for {ai_choice} will be implemented here.)")
-                        audience=audience,
-                        custom_instructions=custom_instructions
-                    )
-                except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
-                    success = False
-                if success:
-                    st.balloons()
-                    st.success("✅ Professional presentation created!")
-                    with open(output_path, "rb") as f:
-                        st.download_button(
-                            "📥 Download Presentation",
-                            data=f.read(),
-                            file_name=f"{safe_title}_presentation.pptx",
-                            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                            use_container_width=True,
-                            type="primary"
-                        )
-                else:
-                    st.error("❌ Failed to generate presentation. Please try again.")
 
 elif st.session_state.get('input_method') == 'paste_article':
     st.markdown("### 📝 Paste Your Content")

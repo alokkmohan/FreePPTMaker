@@ -263,7 +263,7 @@ class ClaudePPTGenerator:
 # High-level convenience functions
 
 def create_ppt_from_file(
-    file_path: str,
+    file_path,
     output_path: str,
     style: str = "professional",
     min_slides: int = 10,
@@ -291,30 +291,32 @@ def create_ppt_from_file(
         True if successful
     """
     try:
-        print("📄 Analyzing file with Claude...")
-        
-        # Analyze file with Claude
-        ppt_structure = analyze_file_for_ppt(
-            file_path=file_path,
+        print("📄 Analyzing file(s) with Claude...")
+        from claude_content_analyzer import ClaudeContentAnalyzer
+        analyzer = ClaudeContentAnalyzer(api_key=api_key)
+        # Support both single file and list of files
+        if isinstance(file_path, list):
+            all_text = []
+            for fp in file_path:
+                all_text.append(analyzer.extract_text_from_file(fp))
+            combined_content = '\n\n'.join(all_text)
+        else:
+            combined_content = analyzer.extract_text_from_file(file_path)
+        ppt_structure = analyzer.analyze_for_ppt(
+            content=combined_content,
             style=style,
             min_slides=min_slides,
             max_slides=max_slides,
             audience=audience,
-            custom_instructions=custom_instructions,
-            api_key=api_key
+            custom_instructions=custom_instructions
         )
-        
         print(f"✅ Analysis complete: {len(ppt_structure['slides'])} slides planned")
-        
-        # Generate PPT
         print("🎨 Creating professional presentation...")
         generator = ClaudePPTGenerator(color_scheme=style)
-        
         success = generator.generate_from_structure(
             ppt_structure=ppt_structure,
             presenter=presenter
         )
-        
         if success:
             print("💾 Saving presentation...")
             generator.save(output_path)
@@ -323,7 +325,6 @@ def create_ppt_from_file(
         else:
             print("❌ Failed to generate presentation")
             return False
-    
     except Exception as e:
         print(f"❌ Error: {str(e)}")
         return False

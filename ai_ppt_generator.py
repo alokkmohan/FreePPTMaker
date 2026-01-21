@@ -292,74 +292,32 @@ class ModernPPTDesigner:
         shape = slide.shapes.add_shape(
             MSO_SHAPE.RECTANGLE,
             Inches(0), Inches(0),
-            Inches(10), Inches(2.5)
-        )
-        shape.fill.solid()
-        shape.fill.fore_color.rgb = self.colors["primary"]
-        shape.line.fill.background()
-        
-        # Accent stripe
-        stripe = slide.shapes.add_shape(
-            MSO_SHAPE.RECTANGLE,
-            Inches(0), Inches(2.5),
-            Inches(10), Inches(0.2)
-        )
-        stripe.fill.solid()
-        stripe.fill.fore_color.rgb = self.colors["accent"]
-        stripe.line.fill.background()
-        
-        # Title - adjusted for longer text with better constraints
-        title_box = slide.shapes.add_textbox(
-            Inches(0.5), Inches(0.3),
-            Inches(9), Inches(2)
-        )
-        tf = title_box.text_frame
-        # Truncate very long titles
-        if len(title) > 120:
-            tf.text = title[:117] + "..."
-        else:
-            tf.text = title
-        tf.word_wrap = True
-        tf.vertical_anchor = MSO_ANCHOR.MIDDLE
-        
-        p = tf.paragraphs[0]
-        p.alignment = PP_ALIGN.CENTER
-        
-        # More aggressive dynamic font sizing for titles
-        if len(title) > 100:
-            p.font.size = Pt(24)  # Very small for very long titles
-        elif len(title) > 80:
-            p.font.size = Pt(28)  # Smaller for long titles
-        elif len(title) > 60:
-            p.font.size = Pt(32)  # Medium-small for moderate titles
-        elif len(title) > 40:
-            p.font.size = Pt(36)  # Medium for shorter titles
-        else:
-            p.font.size = Pt(40)  # Large for short titles
-            
-        p.font.bold = True
-        p.font.color.rgb = RGBColor(255, 255, 255)
-        p.font.name = 'Calibri'
-        
-        # Subtitle with better positioning
-        subtitle_box = slide.shapes.add_textbox(
-            Inches(1), Inches(3),
-            Inches(8), Inches(1.5)
-        )
-        tf = subtitle_box.text_frame
-        # Truncate very long subtitles
-        if len(subtitle) > 100:
-            tf.text = subtitle[:97] + "..."
-        else:
-            tf.text = subtitle
-        tf.word_wrap = True
-        
-        p = tf.paragraphs[0]
-        p.alignment = PP_ALIGN.CENTER
-        
-        # More aggressive dynamic subtitle sizing
-        if len(subtitle) > 80:
-            p.font.size = Pt(18)
+            try:
+                from openai_fallback import generate_with_openai
+                # Add user instructions to prompt if provided
+                extra_instructions = ""
+                if user_instructions:
+                    extra_instructions = f"\n\nUser's specific instructions:\n{user_instructions}\n\nPlease incorporate these instructions while structuring the presentation."
+                # Detect if script has Hindi content
+                has_hindi = any(ord(char) >= 0x0900 and ord(char) <= 0x097F for char in script_text[:500])
+                if has_hindi:
+                    lang_instruction = """भाषा: हिंदी में slides बनाएं
+                    content_preservation = """महत्वपूर्ण: ORIGINAL CONTENT को preserve करें
+                else:
+                    lang_instruction = """Language: Create slides in English
+                    content_preservation = """CRITICAL: PRESERVE ORIGINAL CONTENT
+                prompt = f"""You are a professional presentation designer. Your task is to RESTRUCTURE (not rewrite) the following script into a well-organized PowerPoint presentation.\n\nScript:\n{script_text}{extra_instructions}\n\n{lang_instruction}\n\n{content_preservation}\n\nIMPORTANT REQUIREMENTS:\n- Extract a clear TITLE from the script content (first line or main topic)\n- Create a relevant SUBTITLE based on script theme\n- MINIMUM {min_slides} slides (excluding title)\n- MAXIMUM {max_slides} slides total\n- Break the script into logical sections\n- Each section gets a clear, descriptive title\n- Convert each section's content into 4-6 bullet points\n- Use the EXACT information from the script - don't invent new content\n- Keep technical terms, names, numbers exactly as given in script\n\nReturn ONLY valid JSON (no markdown):\n{{\n    \"title\": \"Extract or infer main title from script\",\n    \"subtitle\": \"Brief subtitle based on script theme\",\n    \"slides\": [\n        {{\n            \"type\": \"content\",\n            \"title\": \"Section Title (from script context)\",\n            \"bullets\": [\"Point from script\", \"Another point from script\", \"Third point from script\", \"Fourth point from script\"]\n        }},\n        {{\n            \"type\": \"section\",\n            \"title\": \"Major Topic Divider\"\n        }},\n        {{\n            \"type\": \"content\",\n            \"title\": \"Another Section Title\",\n            \"bullets\": [\"Script content 1\", \"Script content 2\", \"Script content 3\", \"Script content 4\"]\n        }}\n    ]\n}}\n\nImportant Rules:\n- PRESERVE original content - only reorganize it\n- Extract title and subtitle from script itself\n- MINIMUM 4 bullets per content slide (ideal 5-6)\n- Each bullet uses information directly from the script\n- Create clear section titles that reflect the content\n- Natural flow following script's structure\n- DO NOT use emojis or special icons (⚠️ ❌ ✅ etc.) - plain text only\n- Return ONLY the JSON, no extra text"""
+                # Use OpenAI to generate slide structure as JSON
+                content_text = generate_with_openai(prompt, "", min_slides, max_slides)
+                if not content_text or len(content_text) < 100:
+                    raise Exception("OpenAI failed or returned insufficient content.")
+                import json
+                content_text = content_text.replace('```json', '').replace('```', '').strip()
+                result = json.loads(content_text)
+                return result
+            except Exception as e:
+                print(f"AI structuring failed: {e}")
+                return structure_content_basic(script_text)
         elif len(subtitle) > 60:
             p.font.size = Pt(20)
         else:

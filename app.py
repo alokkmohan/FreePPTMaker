@@ -75,27 +75,14 @@ def add_claude_file_upload_section():
             "Presenter Name (Optional)",
             placeholder="Your name"
         )
-        ai_choice = st.selectbox(
-            "Select AI Model",
-            ["Claude", "Deepseek", "Gemini", "Groq", "Hugging Face", "Ollama (local, free)"],
-            help="Choose which AI to use for content generation"
-        )
+        # Hide AI model selection, always use Ollama
+        ai_choice = "Ollama (local, free)"
         if st.button("🎨 Generate Professional PPT", type="primary", use_container_width=True):
-            with st.spinner(f"🤖 {ai_choice} is analyzing your documents and creating a professional presentation..."):
+            with st.spinner(f"🤖 Ollama is analyzing your documents and creating a professional presentation..."):
                 output_folder = "outputs"
                 os.makedirs(output_folder, exist_ok=True)
-                output_path = os.path.join(output_folder, f"presentation_{int(time.time())}_{ai_choice.lower().replace(' ', '_')}.pptx")
+                output_path = os.path.join(output_folder, f"presentation_{int(time.time())}_ollama.pptx")
                 try:
-                    # Determine AI model string for backend
-                    ai_model_key = ai_choice.lower().replace(" ", "")
-                    if "ollama" in ai_model_key:
-                        ai_model_key = "ollama"
-                        api_key = None  # Ollama does not require API key
-                    else:
-                        env_key = f"{ai_choice.upper().replace(' ', '_')}_API_KEY"
-                        api_key = os.environ.get(env_key) or st.secrets.get(env_key)
-                        if not api_key:
-                            raise Exception(f"{ai_choice} API key not found. Set {env_key} in environment or Streamlit secrets.")
                     # Extract text from all files
                     all_text = []
                     for fp in file_paths:
@@ -117,17 +104,15 @@ def add_claude_file_upload_section():
                         else:
                             raise Exception(f"Unsupported file format: {ext}")
                     combined_content = "\n\n".join(all_text)
-                    # Use multi_ai_generator for backend
+                    # Use multi_ai_generator for backend (Ollama only)
                     from multi_ai_generator import generate_ppt_from_topic_with_ai
                     ppt_structure = generate_ppt_from_topic_with_ai(
                         topic=combined_content,
-                        ai_model=ai_model_key,
                         style=ppt_style,
                         min_slides=min_slides,
                         max_slides=max_slides,
                         audience=audience,
-                        custom_instructions=custom_instructions,
-                        api_key=api_key
+                        custom_instructions=custom_instructions
                     )
                     # Generate PPT using ClaudePPTGenerator (universal)
                     from claude_ppt_generator import ClaudePPTGenerator
@@ -759,11 +744,8 @@ elif st.session_state.get('input_method') == 'write_topic':
     if use_professional and topic_input:
         st.markdown("---")
         st.markdown("### 🤖 Generate Professional PPT from Topic")
-        ai_choice = st.selectbox(
-            "Select AI Model",
-            ["Claude", "Deepseek", "Gemini", "Groq", "Hugging Face", "Ollama (local, free)"],
-            key="ai_model_choice"
-        )
+        # Hide AI model selection, always use Ollama
+        ai_choice = "Ollama (local, free)"
         col1, col2 = st.columns(2)
         with col1:
             ppt_style = st.selectbox(
@@ -785,35 +767,23 @@ elif st.session_state.get('input_method') == 'write_topic':
             height=100,
             key="topic_instr"
         )
-        if st.button(f"🚀 Generate with {ai_choice}", type="primary", key="topic_btn"):
-            with st.spinner(f"🤖 {ai_choice} is researching and creating your presentation..."):
+        if st.button(f"🚀 Generate with Ollama", type="primary", key="topic_btn"):
+            with st.spinner(f"🤖 Ollama is researching and creating your presentation..."):
                 output_folder = "outputs"
                 os.makedirs(output_folder, exist_ok=True)
                 import re
                 safe_title = re.sub(r'[^\w\s-]', '', topic_input)[:50]
                 safe_title = re.sub(r'[-\s]+', '_', safe_title)
-                output_path = os.path.join(output_folder, f"{safe_title}_{ai_choice.lower().replace(' ', '_')}.pptx")
-                # Determine AI model string for backend
-                ai_model_key = ai_choice.lower().replace(" ", "")
-                if "ollama" in ai_model_key:
-                    ai_model_key = "ollama"
-                    api_key = None  # Ollama does not require API key
-                else:
-                    env_key = f"{ai_choice.upper().replace(' ', '_')}_API_KEY"
-                    api_key = os.environ.get(env_key) or st.secrets.get(env_key)
-                    if not api_key:
-                        raise Exception(f"{ai_choice} API key not found. Set {env_key} in environment or Streamlit secrets.")
-                # Use multi_ai_generator for backend
+                output_path = os.path.join(output_folder, f"{safe_title}_ollama.pptx")
+                # Use multi_ai_generator for backend (Ollama only)
                 from multi_ai_generator import generate_ppt_from_topic_with_ai
                 ppt_structure = generate_ppt_from_topic_with_ai(
                     topic=topic_input,
-                    ai_model=ai_model_key,
                     style=ppt_style,
                     min_slides=min_slides,
                     max_slides=max_slides,
                     audience=audience,
-                    custom_instructions=custom_instructions,
-                    api_key=api_key
+                    custom_instructions=custom_instructions
                 )
                 # Generate PPT using ClaudePPTGenerator (universal)
                 from claude_ppt_generator import ClaudePPTGenerator

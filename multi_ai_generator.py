@@ -13,19 +13,12 @@ from typing import Dict, Optional
 class MultiAIGenerator:
     """Generate content using multiple AI providers"""
     
-    def __init__(self, ai_model: str, api_key: str = None):
+    def __init__(self, ai_model: str = "ollama", api_key: str = None):
         """
-        Initialize AI generator
-        
-        Args:
-            ai_model: AI model to use (claude, deepseek, gemini, groq, huggingface, ollama)
-            api_key: API key for the service (not required for ollama)
+        Initialize AI generator (Ollama only)
         """
-        self.ai_model = ai_model.lower()
-        self.api_key = api_key or os.getenv(f"{ai_model.upper()}_API_KEY")
-        # Ollama does not require an API key
-        if self.ai_model != "ollama" and not self.api_key:
-            raise ValueError(f"{ai_model} API key not found. Set {ai_model.upper()}_API_KEY environment variable.")
+        self.ai_model = "ollama"
+        self.api_key = None  # Ollama does not require API key
     
     def generate_ppt_content(
         self,
@@ -37,84 +30,58 @@ class MultiAIGenerator:
         custom_instructions: str = ""
     ) -> Dict:
         """
-        Generate PPT structure from topic using selected AI
-        
-        Args:
-            topic: Presentation topic
-            min_slides: Minimum slides
-            max_slides: Maximum slides
-            style: Presentation style
-            audience: Target audience
-            custom_instructions: Additional instructions
-        
-        Returns:
-            Dict with PPT structure
+        Generate PPT structure from topic using Ollama only
         """
-        
-        if self.ai_model == "claude":
-            return self._claude_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
-        elif self.ai_model == "deepseek":
-            return self._deepseek_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
-        elif self.ai_model == "gemini":
-            return self._gemini_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
-        elif self.ai_model == "groq":
-            return self._groq_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
-        elif self.ai_model == "huggingface":
-            return self._huggingface_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
-        elif self.ai_model == "ollama":
-            return self._ollama_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
-        else:
-            raise ValueError(f"Unsupported AI model: {self.ai_model}")
-        def _ollama_generate(self, topic, min_slides, max_slides, style, audience, custom_instructions):
-            """Generate using Ollama local API"""
-            print(f"🤖 Using Ollama local API for content generation...")
-            try:
-                import requests
-                # Default Ollama model (can be parameterized)
-                ollama_model = "llama3"
-                prompt = f"""You are an expert presentation designer. Create a professional PowerPoint presentation structure for this topic:
+        return self._ollama_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
+    def _ollama_generate(self, topic, min_slides, max_slides, style, audience, custom_instructions):
+        """Generate using Ollama local API"""
+        print(f"🤖 Using Ollama local API for content generation...")
+        try:
+            import requests
+            ollama_model = "llama3"
+            prompt = f"""You are an expert presentation designer. Create a professional PowerPoint presentation structure for this topic:
 
-    **TOPIC:** {topic}
+**TOPIC:** {topic}
 
-    **REQUIREMENTS:**
-    - {min_slides} to {max_slides} slides
-    - Professional {style} style
-    - For {audience} audience
-    - Include specific data and examples
-    {f'- Custom: {custom_instructions}' if custom_instructions else ''}
+**REQUIREMENTS:**
+- {min_slides} to {max_slides} slides
+- Professional {style} style
+- For {audience} audience
+- Include specific data and examples
+{f'- Custom: {custom_instructions}' if custom_instructions else ''}
 
-    **OUTPUT:**
-    Return valid JSON with:
-    {{'title': '...', 'subtitle': '...', 'slides': [{{'title': '...', 'content': ['...', '...'], 'speaker_notes': '...'}}]}}
+**OUTPUT:**
+Return valid JSON with:
+{{'title': '...', 'subtitle': '...', 'slides': [{{'title': '...', 'content': ['...', '...'], 'speaker_notes': '...'}}]}}
 
-    Return ONLY JSON, no markdown."""
-                response = requests.post(
-                    "http://localhost:11434/api/generate",
-                    json={
-                        "model": ollama_model,
-                        "prompt": prompt,
-                        "options": {"temperature": 0.7},
-                        "stream": False
-                    }
-                )
-                if response.status_code == 200:
-                    result = response.json()
-                    content = result.get("response", "")
-                    # Clean JSON
-                    if content.startswith("```json"):
-                        content = content.split("```json")[1].split("```")[0].strip()
-                    elif content.startswith("```"):
-                        content = content.split("```")[1].split("```")[0].strip()
-                    # Find JSON in response
-                    start_idx = content.find("{")
-                    end_idx = content.rfind("}") + 1
-                    if start_idx != -1 and end_idx > start_idx:
-                        content = content[start_idx:end_idx]
-                    return json.loads(content)
-                else:
-                    raise Exception(f"Ollama API error: {response.text}")
-            except Exception as e:
-                raise Exception(f"Ollama generation failed: {str(e)}")
+Return ONLY JSON, no markdown."""
+            response = requests.post(
+                "http://localhost:11434/api/generate",
+                json={
+                    "model": ollama_model,
+                    "prompt": prompt,
+                    "options": {"temperature": 0.7},
+                    "stream": False
+                }
+            )
+            if response.status_code == 200:
+                result = response.json()
+                content = result.get("response", "")
+                # Clean JSON
+                if content.startswith("```json"):
+                    content = content.split("```json")[1].split("```")[0].strip()
+                elif content.startswith("```"):
+                    content = content.split("```")[1].split("```")[0].strip()
+                # Find JSON in response
+                start_idx = content.find("{")
+                end_idx = content.rfind("}") + 1
+                if start_idx != -1 and end_idx > start_idx:
+                    content = content[start_idx:end_idx]
+                return json.loads(content)
+            else:
+                raise Exception(f"Ollama API error: {response.text}")
+        except Exception as e:
+            raise Exception(f"Ollama generation failed: {str(e)}")
     
     def _claude_generate(self, topic, min_slides, max_slides, style, audience, custom_instructions):
         """Generate using Claude API"""
@@ -354,34 +321,19 @@ Return ONLY JSON, no markdown."""
             raise Exception(f"Hugging Face generation failed: {str(e)}")
 
 
-# Convenience function for topic-based generation with selected AI
+# Convenience function for topic-based generation with Ollama only
 def generate_ppt_from_topic_with_ai(
     topic: str,
-    ai_model: str = "claude",
     style: str = "professional",
     min_slides: int = 10,
     max_slides: int = 20,
     audience: str = "general",
-    custom_instructions: str = "",
-    api_key: str = None
+    custom_instructions: str = ""
 ) -> Dict:
     """
-    Generate PPT structure from topic using selected AI model
-    
-    Args:
-        topic: Presentation topic
-        ai_model: AI model (claude, deepseek, gemini, groq, huggingface, ollama)
-        style: Presentation style
-        min_slides: Minimum slides
-        max_slides: Maximum slides
-        audience: Target audience
-        custom_instructions: Additional instructions
-        api_key: API key (optional, uses env var if not provided)
-    
-    Returns:
-        Dict with PPT structure
+    Generate PPT structure from topic using Ollama only
     """
-    generator = MultiAIGenerator(ai_model=ai_model, api_key=api_key)
+    generator = MultiAIGenerator()
     return generator.generate_ppt_content(
         topic=topic,
         min_slides=min_slides,

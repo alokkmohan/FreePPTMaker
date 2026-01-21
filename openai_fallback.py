@@ -7,7 +7,7 @@ def generate_with_openai(topic, user_instructions="", min_slides=10, max_slides=
     if not api_key:
         print("❌ OpenAI API key not found in environment variable OPENAI_API_KEY")
         return None
-    prompt = f"You are an expert researcher and content writer. Create a COMPREHENSIVE, FACTUAL, and DETAILED article on the following topic for a presentation.\n\nTopic: {topic}\n{user_instructions}\n\nREQUIREMENTS:\n- Length: enough for {min_slides}-{max_slides} slides/sections\n- Include SPECIFIC FACTS, STATISTICS, REAL DATA\n- Provide CONCRETE EXAMPLES and case studies\n- Use authoritative, professional tone\n- Include actual company names, technologies, specific numbers\n- Cite recent developments and trends\n\nArticle Structure:\n1. Introduction\n2. Main Content\n3. Future Outlook\n4. Conclusion\n\nEach section heading MUST be on its own line followed by a COLON (:). Expand content to cover at least {min_slides} and at most {max_slides} sections/slides. Write the complete article now:"
+    prompt = topic  # topic now contains the full advisor prompt
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"

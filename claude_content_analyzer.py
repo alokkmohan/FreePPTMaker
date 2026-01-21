@@ -215,10 +215,11 @@ Generate the presentation structure now:"""
         """
         # First, generate comprehensive content on the topic using Claude
         content_prompt = f"""You are an expert researcher and content writer. Create comprehensive, factual content on the following topic for a presentation:
-                raise Exception(f"Failed to parse Claude response as JSON: {str(e)}\nResponse: {response_text[:500]}")
-            except Exception as e:
-                print(f"[ERROR] Claude API error: {str(e)}")
-                raise Exception(f"Claude API error: {str(e)}")
+
+**TOPIC:** {topic}
+
+**REQUIREMENTS:**
+- Length: Sufficient for {min_slides} to {max_slides} presentation slides
 - Include specific facts, statistics, real data
 - Provide concrete examples and case studies
 - Use authoritative, professional tone

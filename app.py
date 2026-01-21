@@ -42,21 +42,18 @@ def add_document_upload_section():
                 f.write(uploaded_file.getbuffer())
             file_paths.append(file_path)
         st.success(f"✅ {len(file_paths)} file(s) uploaded: {', '.join([os.path.basename(fp) for fp in file_paths])}")
-        col1, col2 = st.columns(2)
-        with col1:
-            ppt_style = st.selectbox(
-                "Presentation Style",
-                ["professional", "government", "corporate", "technical"],
-                help="Choose the style of your presentation"
-            )
-            min_slides = st.slider("Minimum Slides", 5, 15, 10)
-        with col2:
-            audience = st.selectbox(
-                "Target Audience",
-                ["general", "executives", "technical", "government"],
-                help="Who will view this presentation?"
-            )
-            max_slides = st.slider("Maximum Slides", 10, 25, 15)
+        ppt_style = st.selectbox(
+            "Presentation Style",
+            ["professional", "government", "corporate", "technical"],
+            help="Choose the style of your presentation"
+        )
+        audience = st.selectbox(
+            "Target Audience",
+            ["general", "executives", "technical", "government"],
+            help="Who will view this presentation?"
+        )
+        # Always use default slide count
+        min_slides, max_slides = 10, 15
         custom_instructions = st.text_area(
             "Additional Instructions (Optional)",
             placeholder="E.g., Focus on data analysis, Include case studies, etc.",

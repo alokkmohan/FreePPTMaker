@@ -708,26 +708,138 @@ if st.session_state.get('current_tab') == 'powerpoint' and st.session_state.get(
     add_document_upload_section()
 
 elif st.session_state.get('input_method') == 'write_topic':
-    st.markdown("### 🎯 Enter Your Topic")
-    st.markdown("AI will generate a detailed article and create presentation from your topic")
-    topic_input = st.text_area(
-        label="Enter your topic",
-        placeholder="Example:\n• Artificial Intelligence in Healthcare\n• Climate Change and Its Effects\n• Future of Electric Vehicles\n• Digital Marketing Strategies 2025"
+    st.markdown("### Enter Your Topic")
+    topic_input = st.text_input(
+        label="Topic",
+        placeholder="e.g. Artificial Intelligence in Healthcare",
+        label_visibility="collapsed"
     )
-    use_professional = True  # Always active, hide checkbox
+
+    # Theme selection in expander (collapsed by default)
+    with st.expander("Change Theme (Optional)", expanded=False):
+        theme_cols = st.columns(5)
+        with theme_cols[0]:
+            if st.button("Ocean", key="theme_ocean", use_container_width=True):
+                st.session_state['theme'] = 'ocean'
+        with theme_cols[1]:
+            if st.button("Forest", key="theme_forest", use_container_width=True):
+                st.session_state['theme'] = 'forest'
+        with theme_cols[2]:
+            if st.button("Sunset", key="theme_sunset", use_container_width=True):
+                st.session_state['theme'] = 'sunset'
+        with theme_cols[3]:
+            if st.button("Corporate", key="theme_corporate", use_container_width=True):
+                st.session_state['theme'] = 'corporate'
+        with theme_cols[4]:
+            if st.button("EG Theme", key="theme_eg", use_container_width=True):
+                st.session_state['theme'] = 'eg'
+        st.caption(f"Selected: {st.session_state.get('theme', 'corporate').upper()}")
+
+    # Direct Generate button
     if topic_input:
-        if st.session_state.get('last_topic') != topic_input:
-            st.session_state['confirmed_content'] = f"TOPIC:{topic_input}"
-            st.session_state['last_topic'] = topic_input
-        st.success(f"✅ Topic confirmed: **{topic_input}**")
-        st.info("📊 Your AI-powered presentation is being prepared... scroll down to configure your presentation!")
-    else:
-        st.warning("⬇️ Enter a topic above to get started")
-    script_content = st.session_state.get('confirmed_content') if st.session_state.get('confirmed_content', '').startswith('TOPIC:') else None
-    # Professional topic generation UI
-    if use_professional and topic_input:
-        # Auto mode only: Ollama generation will be triggered by main PowerPoint button below
-        pass
+        if st.button("Generate PPT", type="primary", use_container_width=True):
+            st.session_state['generating'] = True
+            st.session_state['topic_to_generate'] = topic_input
+            st.rerun()
+
+    # Handle generation
+    if st.session_state.get('generating') and st.session_state.get('topic_to_generate'):
+        topic = st.session_state['topic_to_generate']
+        selected_theme = st.session_state.get('theme', 'corporate')
+
+        with st.spinner(f"Generating PPT on: {topic}..."):
+            try:
+                # Generate content
+                from content_generator import generate_content_from_topic
+                generated_content = generate_content_from_topic(topic, "", 10, 15)
+
+                # Create output folder
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                output_folder = os.path.join("output", f"output_{timestamp}")
+                os.makedirs(output_folder, exist_ok=True)
+
+                # Save script
+                script_path = os.path.join("input", "RawScript.txt")
+                with open(script_path, "w", encoding="utf-8") as f:
+                    f.write(generated_content)
+
+                # Generate PPT
+                import re
+                safe_title = re.sub(r'[^\w\s-]', '', topic)[:50]
+                safe_title = re.sub(r'[-\s]+', '_', safe_title)
+                ppt_filename = f"{safe_title}.pptx"
+                ppt_path = os.path.join(output_folder, ppt_filename)
+
+                from ai_ppt_generator import generate_beautiful_ppt
+                success = generate_beautiful_ppt(
+                    generated_content,
+                    ppt_path,
+                    color_scheme=selected_theme,
+                    use_ai=False,
+                    original_topic=topic,
+                    min_slides=10,
+                    max_slides=15
+                )
+
+                if success:
+                    st.session_state['ppt_generated'] = True
+                    st.session_state['ppt_path'] = ppt_path
+                    st.session_state['output_folder'] = output_folder
+                    st.session_state['generating'] = False
+                    st.rerun()
+                else:
+                    st.error("PPT generation failed")
+                    st.session_state['generating'] = False
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+                st.session_state['generating'] = False
+
+    # Show download and preview after generation
+    if st.session_state.get('ppt_generated') and st.session_state.get('ppt_path'):
+        ppt_path = st.session_state['ppt_path']
+        output_folder = st.session_state.get('output_folder', '')
+
+        st.success("PPT Generated Successfully!")
+
+        # Download button
+        with open(ppt_path, "rb") as f:
+            ppt_data = f.read()
+        st.download_button(
+            label="Download PowerPoint",
+            data=ppt_data,
+            file_name="presentation.pptx",
+            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            use_container_width=True,
+            type="primary"
+        )
+
+        # Preview in expander
+        with st.expander("Preview Slides", expanded=True):
+            try:
+                if PPT_TO_IMAGES_AVAILABLE:
+                    from ppt_to_images import ppt_to_images
+                    ppt_to_images(ppt_path, output_dir=output_folder)
+                    images = sorted([f for f in os.listdir(output_folder) if f.startswith("slide_") and f.endswith(".png")])
+                    if images:
+                        cols = st.columns(3)
+                        for idx, img in enumerate(images):
+                            with cols[idx % 3]:
+                                st.image(os.path.join(output_folder, img), caption=f"Slide {idx+1}", use_column_width=True)
+                    else:
+                        st.info("Preview not available")
+                else:
+                    st.info("Preview not available - download PPT to view")
+            except:
+                st.info("Preview not available - download PPT to view")
+
+        # Reset button
+        if st.button("Create New PPT"):
+            st.session_state['ppt_generated'] = False
+            st.session_state['ppt_path'] = None
+            st.session_state['topic_to_generate'] = None
+            st.rerun()
+
+    script_content = None  # Handled internally now
 
 elif st.session_state.get('input_method') == 'paste_article':
     st.markdown("### 📝 Paste Your Content")

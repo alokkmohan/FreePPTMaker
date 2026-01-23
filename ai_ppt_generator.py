@@ -494,14 +494,14 @@ def generate_ppt_from_template(script_text, output_path, template_path, use_ai=T
         min_slides: Minimum number of slides (optional)
         max_slides: Maximum number of slides (optional)
     """
-    print(f"📋 Using template: {template_path}")
+    print(f"[INFO] Using template: {template_path}")
     
     # Structure content
     if use_ai:
-        print("🤖 Using AI to structure content...")
+        print("[AI] Using AI to structure content...")
         content = structure_content_with_ai(script_text, ai_instructions, min_slides, max_slides)
     else:
-        print("📝 Using basic structuring...")
+        print("[INFO] Using basic structuring...")
         content = structure_content_basic(script_text)
     
     # Load template
@@ -570,7 +570,7 @@ def generate_ppt_from_template(script_text, output_path, template_path, use_ai=T
     
     # Save
     prs.save(output_path)
-    print(f"✅ PPT created from template: {output_path}")
+    print(f"[OK] PPT created from template: {output_path}")
     
     return True
 
@@ -597,14 +597,14 @@ def generate_beautiful_ppt(script_text, output_path, color_scheme="corporate", u
     
     # Structure content
     if use_ai:
-        print("🤖 Using AI to structure content...")
+        print("[AI] Using AI to structure content...")
         content = structure_content_with_ai(script_text, ai_instructions, min_slides, max_slides)
     else:
-        print("📝 Using basic structuring...")
+        print("[INFO] Using basic structuring...")
         content = structure_content_basic(script_text)
     
     # Create presentation
-    print("🎨 Creating beautiful presentation...")
+    print("[INFO] Creating beautiful presentation...")
     designer = ModernPPTDesigner(scheme=color_scheme)
     
     # Title slide
@@ -637,15 +637,15 @@ def generate_beautiful_ppt(script_text, output_path, color_scheme="corporate", u
                 
                 if not skip_image:
                     try:
-                        print(f"🖼️ Fetching image for slide {idx}: {slide_title[:40]}...")
+                        print(f"[IMG] Fetching image for slide {idx}: {slide_title[:40]}...")
                         image_path = get_slide_image(slide_title, slide_content, temp_img_dir)
                         if image_path:
-                            print(f"✅ Added image for slide {idx}")
+                            print(f"[OK] Added image for slide {idx}")
                             images_added += 1
                         else:
-                            print(f"ℹ️ No image found for slide {idx}")
+                            print(f"[INFO] No image found for slide {idx}")
                     except Exception as e:
-                        print(f"⚠️ Image generation error for slide {idx}: {str(e)}")
+                        print(f"[WARN] Image generation error for slide {idx}: {str(e)}")
             
             # Use content slide with image support
             designer.create_content_slide_with_image(
@@ -656,14 +656,14 @@ def generate_beautiful_ppt(script_text, output_path, color_scheme="corporate", u
             slide_count += 1
     
     # Log summary
-    print(f"📸 Image summary: {images_added} images added to {total_slides} slides")
+    print(f"[IMG] Image summary: {images_added} images added to {total_slides} slides")
     
     # End slide
     designer.create_end_slide()
     
     # Save
     designer.save(output_path)
-    print(f"✅ Beautiful PPT created: {output_path}")
+    print(f"[OK] Beautiful PPT created: {output_path}")
     
     return True
 

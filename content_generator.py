@@ -67,8 +67,22 @@ Output Format Rules:
         audience="government officers",
         custom_instructions=user_instructions
     )
-    if content and len(str(content)) > 500:
-        return content
+    if content and isinstance(content, dict):
+        # Convert dict to formatted string for PPT
+        result = []
+        if content.get('title'):
+            result.append(content['title'])
+        if content.get('subtitle'):
+            result.append(content['subtitle'])
+        result.append("")
+        for slide in content.get('slides', []):
+            if slide.get('title'):
+                result.append(f"\n{slide['title']}")
+            for point in slide.get('content', []):
+                result.append(f"- {point}")
+        return "\n".join(result)
+    elif content and len(str(content)) > 500:
+        return str(content)
     return generate_basic_content(topic)
 
 #!/usr/bin/env python3

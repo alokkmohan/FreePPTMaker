@@ -12,14 +12,18 @@ from typing import Dict, Optional
 
 class MultiAIGenerator:
     """Generate content using multiple AI providers"""
-    
-    def __init__(self, ai_model: str = "ollama", api_key: str = None):
+
+    def __init__(self, ai_model: str = "auto", api_key: str = None):
         """
-        Initialize AI generator (Ollama only)
+        Initialize AI generator (Groq - FREE)
         """
-        self.ai_model = "ollama"
-        self.api_key = None  # Ollama does not require API key
-    
+        from dotenv import load_dotenv
+        load_dotenv()
+        self.groq_key = os.getenv("GROQ_API_KEY")
+        self.deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+        self.ai_model = ai_model
+        self.api_key = api_key
+
     def generate_ppt_content(
         self,
         topic: str,
@@ -30,15 +34,19 @@ class MultiAIGenerator:
         custom_instructions: str = ""
     ) -> Dict:
         """
-        Generate PPT structure from topic using Ollama only
+        Generate PPT structure using Groq (FREE)
         """
-        return self._ollama_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
+        if not self.groq_key:
+            raise Exception("Groq API key not found. Please set GROQ_API_KEY in .env file")
+
+        print("[AI] Using Groq API (FREE)...")
+        return self._groq_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
     def _ollama_generate(self, topic, min_slides, max_slides, style, audience, custom_instructions):
         """Generate using Ollama local API"""
-        print(f"🤖 Using Ollama local API for content generation...")
+        print(f"[AI] Using Ollama local API for content generation...")
         try:
             import requests
-            ollama_model = "llama3"
+            ollama_model = "mistral"
             prompt = f"""You are an expert presentation designer. Create a professional PowerPoint presentation structure for this topic:
 
 **TOPIC:** {topic}
@@ -138,7 +146,7 @@ Return as JSON only."""
     
     def _deepseek_generate(self, topic, min_slides, max_slides, style, audience, custom_instructions):
         """Generate using Deepseek API"""
-        print(f"🤖 Using Deepseek API for content generation...")
+        print(f"[AI] Using Deepseek API for content generation...")
         try:
             import requests
             
@@ -161,7 +169,7 @@ Return ONLY JSON, no markdown."""
 
             response = requests.post(
                 "https://api.deepseek.com/chat/completions",
-                headers={"Authorization": f"Bearer {self.api_key}"},
+                headers={"Authorization": f"Bearer {self.deepseek_key}"},
                 json={
                     "model": "deepseek-chat",
                     "messages": [{"role": "user", "content": prompt}],
@@ -229,11 +237,11 @@ Return ONLY JSON, no markdown."""
     
     def _groq_generate(self, topic, min_slides, max_slides, style, audience, custom_instructions):
         """Generate using Groq API"""
-        print(f"🤖 Using Groq API for content generation...")
+        print(f"[AI] Using Groq API for content generation...")
         try:
             from groq import Groq
-            
-            client = Groq(api_key=self.api_key)
+
+            client = Groq(api_key=self.groq_key)
             
             prompt = f"""You are an expert presentation designer. Create a professional PowerPoint presentation structure for this topic:
 
@@ -254,7 +262,7 @@ Return ONLY JSON, no markdown."""
 
             message = client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
-                model="mixtral-8x7b-32768",
+                model="llama-3.3-70b-versatile",
                 temperature=0.7,
                 max_tokens=4000
             )

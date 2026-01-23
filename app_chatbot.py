@@ -443,36 +443,64 @@ if st.session_state.ppt_ready and st.session_state.ppt_path:
         st.session_state.user_input = ""
         st.rerun()
 
-# --- WhatsApp-style Bottom Chat Composer ---
+# --- WhatsApp-style Inline Chat Composer (Place after main content/cards) ---
 st.markdown("""
+<div class="chat-composer-inline">
+  <div class="composer-row-inline">
+    <div class="composer-file-inline">
+      <!-- File upload button -->
+""", unsafe_allow_html=True)
+
+file = st.file_uploader("", type=["txt", "docx", "pdf"], key="file_upload", label_visibility="collapsed")
+
+st.markdown("""
+    </div>
+    <div class="composer-input-inline">
+""", unsafe_allow_html=True)
+
+user_input = st.text_area(
+    "",
+    placeholder="Type a message...",
+    key="main_input",
+    label_visibility="collapsed"
+)
+
+st.markdown("""
+    </div>
+    <div class="composer-send-inline">
+""", unsafe_allow_html=True)
+
+send_clicked = st.button("➤", key="send_btn")
+
+st.markdown("""
+    </div>
+  </div>
+</div>
 <style>
-.chat-composer {
-    position: fixed;
-    left: 0; right: 0; bottom: 0;
-    width: 100vw;
-    background: #fff;
-    border-top: 1px solid #e0e0e0;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.07);
-    padding: 10px 8px 10px 8px;
-    z-index: 9999;
+.chat-composer-inline {
+    width: 100%;
+    margin: 8px auto 0 auto;
+    padding: 0;
+    max-width: 700px;
 }
-.composer-row {
+.composer-row-inline {
     display: flex;
     align-items: center;
     gap: 8px;
-    max-width: 700px;
-    margin: 0 auto;
+    width: 100%;
+    min-height: 48px;
 }
-.composer-file {
+.composer-file-inline {
     flex: 0 0 44px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
-.composer-input {
+.composer-input-inline {
     flex: 1 1 auto;
+    min-width: 0;
 }
-.composer-send {
+.composer-send-inline {
     flex: 0 0 44px;
     display: flex;
     align-items: center;
@@ -494,47 +522,18 @@ st.markdown("""
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     color: #fff !important;
     border: none !important;
+    margin: 0 !important;
 }
 .stFileUploader {
     padding: 0 !important;
 }
 @media (max-width: 600px) {
-    .chat-composer {padding: 8px 2px;}
-    .composer-row {max-width: 100vw;}
+    .chat-composer-inline {max-width: 100vw;}
+    .composer-row-inline {gap: 6px;}
 }
 </style>
-<div class="chat-composer">
-  <div class="composer-row">
-    <div class="composer-file">
-      <!-- File upload button -->
 """, unsafe_allow_html=True)
-
-file = st.file_uploader("", type=["txt", "docx", "pdf"], key="file_upload", label_visibility="collapsed")
-
-st.markdown("""
-    </div>
-    <div class="composer-input">
-""", unsafe_allow_html=True)
-
-user_input = st.text_area(
-    "",
-    placeholder="Type a message...",
-    key="main_input",
-    label_visibility="collapsed"
-)
-
-st.markdown("""
-    </div>
-    <div class="composer-send">
-""", unsafe_allow_html=True)
-
-send_clicked = st.button("➤", key="send_btn")
-
-st.markdown("""
-    </div>
-  </div>
-</div>
-""", unsafe_allow_html=True)
+# --- End WhatsApp-style Inline Chat Composer ---
 
 # Submission logic (unchanged)
 if (send_clicked or st.session_state.get("main_input_submit", False)) and user_input:
@@ -565,4 +564,3 @@ document.addEventListener('keydown', function(e) {
 </script>
 """, unsafe_allow_html=True)
 st.session_state["main_input_submit"] = False
-# --- End WhatsApp-style Bottom Chat Composer ---

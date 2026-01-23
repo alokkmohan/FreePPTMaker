@@ -1,3 +1,6 @@
+
+# NOTE: Do NOT make Streamlit UI changes in this file.
+# For mobile UI fixes, update app.py only.
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
@@ -10,6 +13,18 @@ import os
 import json
 from typing import Dict, Optional
 
+def get_secret(key):
+    """Get secret from Streamlit Cloud or .env file"""
+    # Try Streamlit secrets first (for cloud deployment)
+    try:
+        import streamlit as st
+        if hasattr(st, 'secrets') and key in st.secrets:
+            return st.secrets[key]
+    except:
+        pass
+    # Fall back to environment variable (for local)
+    return os.getenv(key)
+
 class MultiAIGenerator:
     """Generate content using multiple AI providers"""
 
@@ -19,8 +34,8 @@ class MultiAIGenerator:
         """
         from dotenv import load_dotenv
         load_dotenv()
-        self.groq_key = os.getenv("GROQ_API_KEY")
-        self.deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+        self.groq_key = get_secret("GROQ_API_KEY")
+        self.deepseek_key = get_secret("DEEPSEEK_API_KEY")
         self.ai_model = ai_model
         self.api_key = api_key
 

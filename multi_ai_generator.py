@@ -264,47 +264,80 @@ Return ONLY JSON, no markdown."""
             raise Exception(f"Gemini generation failed: {str(e)}")
     
     def _groq_generate(self, topic, min_slides, max_slides, style, audience, custom_instructions):
-        """Generate using Groq API"""
+        """Generate using Groq API with improved prompting"""
         print(f"[AI] Using Groq API for content generation...")
         try:
             from groq import Groq
 
             client = Groq(api_key=self.groq_key)
-            
-            prompt = f"""You are an expert presentation designer. Create a professional PowerPoint presentation structure for this topic:
+
+            # Improved prompt with explicit quality instructions
+            prompt = f"""You are an expert presentation designer creating a HIGH-QUALITY PowerPoint presentation.
 
 **TOPIC:** {topic}
 
-**REQUIREMENTS:**
-- {min_slides} to {max_slides} slides
-- Professional {style} style
-- For {audience} audience
-- Include specific data and examples
-{f"- Custom: {custom_instructions}" if custom_instructions else ""}
+**STRICT REQUIREMENTS:**
+1. Create exactly {min_slides} to {max_slides} slides
+2. Style: Professional {style}
+3. Audience: {audience}
+{f"4. Additional: {custom_instructions}" if custom_instructions else ""}
 
-**OUTPUT:**
-Return valid JSON with:
-{{"title": "...", "subtitle": "...", "slides": [{{"title": "...", "content": ["...", "..."], "speaker_notes": "..."}}]}}
+**QUALITY RULES - VERY IMPORTANT:**
+- NEVER break words across spaces (write "Consultant" not "Consult ant")
+- NEVER truncate sentences mid-word
+- Each bullet point MUST be a complete, grammatically correct sentence
+- Each bullet should be 15-30 words (not too short, not too long)
+- Use proper capitalization and punctuation
+- Avoid filler words and generic statements
+- Be specific with facts, numbers, and examples
+- Each slide title should be clear and descriptive (5-8 words max)
 
-Return ONLY JSON, no markdown."""
+**SLIDE STRUCTURE:**
+- Slide 1: Title slide with compelling subtitle
+- Slides 2-{max_slides-1}: Content slides with 4-5 bullet points each
+- Last slide: Conclusion/Summary
+
+**OUTPUT FORMAT (JSON only, no markdown):**
+{{"title": "Main Title", "subtitle": "Engaging Subtitle", "slides": [{{"title": "Clear Slide Title", "content": ["Complete sentence as bullet point 1.", "Complete sentence as bullet point 2.", "Complete sentence as bullet point 3.", "Complete sentence as bullet point 4."], "speaker_notes": "Detailed notes for speaker"}}]}}
+
+Return ONLY valid JSON. No markdown code blocks. No explanations."""
 
             message = client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
+                messages=[
+                    {"role": "system", "content": "You are a professional presentation designer. Always output valid JSON only. Never break words with spaces. Write complete sentences."},
+                    {"role": "user", "content": prompt}
+                ],
                 model="llama-3.3-70b-versatile",
-                temperature=0.7,
-                max_tokens=4000
+                temperature=0.5,
+                max_tokens=6000
             )
-            
+
             content = message.choices[0].message.content
-            
+
             # Clean JSON
             if content.startswith("```json"):
                 content = content.split("```json")[1].split("```")[0].strip()
             elif content.startswith("```"):
                 content = content.split("```")[1].split("```")[0].strip()
-            
-            return json.loads(content)
-        
+
+            # Find JSON in response
+            start_idx = content.find("{")
+            end_idx = content.rfind("}") + 1
+            if start_idx != -1 and end_idx > start_idx:
+                content = content[start_idx:end_idx]
+
+            parsed = json.loads(content)
+
+            # Post-process to fix any remaining issues
+            try:
+                from text_processor import post_process_ai_response
+                parsed = post_process_ai_response(parsed)
+                print("[AI] Post-processing applied successfully")
+            except ImportError:
+                print("[WARN] text_processor not available, skipping post-processing")
+
+            return parsed
+
         except Exception as e:
             raise Exception(f"Groq generation failed: {str(e)}")
     

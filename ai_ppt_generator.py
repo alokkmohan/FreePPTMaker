@@ -13,8 +13,27 @@ from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 
-# Try to import image generator
+# Try to import text processor for smart truncation
+try:
+    from text_processor import smart_truncate, fix_broken_words, clean_bullet_point
+    TEXT_PROCESSOR_AVAILABLE = True
+except ImportError:
+    TEXT_PROCESSOR_AVAILABLE = False
+    def smart_truncate(text, max_len, suffix="..."):
+        """Fallback smart truncation at word boundary"""
+        if not text or len(text) <= max_len:
+            return text
+        truncated = text[:max_len]
+        last_space = truncated.rfind(' ')
+        if last_space > max_len * 0.7:
+            return truncated[:last_space].rstrip('.,;:-') + suffix
+        return truncated.rstrip('.,;:-') + suffix
+    def fix_broken_words(text):
+        return text if text else ""
+    def clean_bullet_point(text):
+        return text.strip() if text else ""
 
+# Try to import image generator
 try:
     from image_generator import get_slide_image, download_image, search_image
     IMAGE_GENERATION_AVAILABLE = True
@@ -372,10 +391,14 @@ class ModernPPTDesigner:
                 p = tf.paragraphs[0]
             else:
                 p = tf.add_paragraph()
-            
-            # Truncate very long bullets based on language
-            bullet_text = bullet[:max_chars] + "..." if len(bullet) > max_chars else bullet
-            
+
+            # Clean and fix broken words first
+            bullet_text = fix_broken_words(clean_bullet_point(bullet))
+
+            # Smart truncate at word boundary (not mid-word)
+            if len(bullet_text) > max_chars:
+                bullet_text = smart_truncate(bullet_text, max_chars)
+
             p.text = "●  " + bullet_text
             p.font.size = Pt(font_size)
             p.font.color.rgb = self.colors["text"]
@@ -394,10 +417,11 @@ class ModernPPTDesigner:
         header.fill.fore_color.rgb = self.colors["primary"]
         header.line.fill.background()
         
-        # Title
+        # Title (with smart truncation)
         title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.15), Inches(9), Inches(0.7))
         tf = title_box.text_frame
-        tf.text = title[:67] + "..." if len(title) > 70 else title
+        clean_title = fix_broken_words(title)
+        tf.text = smart_truncate(clean_title, 70, "") if len(clean_title) > 70 else clean_title
         tf.word_wrap = True
         p = tf.paragraphs[0]
         p.font.size = Pt(28 if len(title) > 50 else 32 if len(title) > 35 else 36)
@@ -429,7 +453,9 @@ class ModernPPTDesigner:
         
         for i, bullet in enumerate(bullets):
             p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-            p.text = "● " + (bullet[:150] + "..." if len(bullet) > 150 else bullet)
+            # Clean and smart truncate
+            clean_text = fix_broken_words(clean_bullet_point(bullet))
+            p.text = "● " + (smart_truncate(clean_text, 150) if len(clean_text) > 150 else clean_text)
             p.font.size = Pt(font_size)
             p.font.color.rgb = self.colors["text"]
             p.space_after = Pt(10)

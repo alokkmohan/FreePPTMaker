@@ -2,7 +2,6 @@ import streamlit as st
 import os
 import re
 from datetime import datetime
-from docx import Document
 
 # Imports
 try:
@@ -275,8 +274,6 @@ if 'ppt_path' not in st.session_state:
     st.session_state.ppt_path = None
 if 'theme' not in st.session_state:
     st.session_state.theme = 'corporate'
-if 'show_upload' not in st.session_state:
-    st.session_state.show_upload = False
 if 'user_input' not in st.session_state:
     st.session_state.user_input = ""
 
@@ -322,45 +319,7 @@ if not st.session_state.generating and not st.session_state.ppt_ready:
     </div>
     ''', unsafe_allow_html=True)
 
-# Upload panel
-if st.session_state.show_upload:
-    st.markdown("---")
-    st.markdown("**Upload Document**")
-    uploaded_file = st.file_uploader(
-        "Choose file",
-        type=['txt', 'docx', 'md', 'pdf'],
-        label_visibility="collapsed"
-    )
-
-    if uploaded_file:
-        try:
-            if uploaded_file.name.endswith('.docx'):
-                import io
-                doc = Document(io.BytesIO(uploaded_file.read()))
-                content = '\n'.join([p.text for p in doc.paragraphs])
-            elif uploaded_file.name.endswith('.pdf'):
-                import PyPDF2
-                import io
-                pdf_reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.read()))
-                content = '\n'.join([page.extract_text() for page in pdf_reader.pages])
-            else:
-                content = uploaded_file.read().decode('utf-8')
-
-            st.success(f"Loaded: {uploaded_file.name}")
-
-            if st.button("Generate PPT", type="primary", use_container_width=True):
-                st.session_state.generating = True
-                st.session_state.content_to_process = content
-                st.session_state.topic_name = uploaded_file.name.rsplit('.', 1)[0]
-                st.session_state.show_upload = False
-                st.rerun()
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
-
-    if st.button("Cancel", use_container_width=True):
-        st.session_state.show_upload = False
-        st.rerun()
-    st.markdown("---")
+# Upload panel removed - using text input only
 
 # AI Generation Status
 if st.session_state.generating:
@@ -445,19 +404,60 @@ if st.session_state.ppt_ready and st.session_state.ppt_path:
 
 # ============ BOTTOM INPUT BAR (WhatsApp Style) ============
 st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
-st.markdown("---")
 
-# WhatsApp style CSS
+# WhatsApp style CSS for input row
 st.markdown("""
 <style>
-    /* Text input styling */
+    /* Bottom input bar container */
+    .input-bar-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: white;
+        border-radius: 30px;
+        border: 1px solid #ddd;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        max-width: 100%;
+    }
+
+    /* File upload button - clip icon */
+    .attach-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: none;
+        background: transparent;
+        color: #666;
+        font-size: 1.3rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .attach-btn:hover {
+        background: #f0f0f0;
+    }
+
+    /* Input container - flex row */
+    [data-testid="stHorizontalBlock"] {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 8px !important;
+        flex-wrap: nowrap !important;
+    }
+
+    /* Text input styling - full width */
     .stTextInput input {
         border-radius: 24px !important;
-        padding: 12px 16px !important;
+        padding: 14px 18px !important;
         font-size: 16px !important;
-        height: 48px !important;
+        height: 50px !important;
         border: 1px solid #ddd !important;
         background: #f5f5f5 !important;
+        width: 100% !important;
     }
     .stTextInput input:focus {
         border-color: #667eea !important;
@@ -465,39 +465,137 @@ st.markdown("""
         background: white !important;
     }
 
-    /* Send button - right side */
-    div[data-testid="column"]:last-child button {
-        width: 48px !important;
-        height: 48px !important;
-        min-height: 48px !important;
+    /* First column (attach) button */
+    [data-testid="stHorizontalBlock"] > div:first-child button {
+        width: 44px !important;
+        height: 44px !important;
+        min-width: 44px !important;
+        max-width: 44px !important;
         border-radius: 50% !important;
         padding: 0 !important;
         font-size: 1.2rem !important;
+        background: #f0f0f0 !important;
+        border: none !important;
+        color: #666 !important;
+    }
+    [data-testid="stHorizontalBlock"] > div:first-child button:hover {
+        background: #e0e0e0 !important;
+    }
+
+    /* Last column (send) button */
+    [data-testid="stHorizontalBlock"] > div:last-child button {
+        width: 50px !important;
+        height: 50px !important;
+        min-width: 50px !important;
+        min-height: 50px !important;
+        max-width: 50px !important;
+        border-radius: 50% !important;
+        padding: 0 !important;
+        font-size: 1.3rem !important;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
         border: none !important;
         color: white !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
     }
-    div[data-testid="column"]:last-child button:hover {
+    [data-testid="stHorizontalBlock"] > div:last-child button:hover {
         opacity: 0.9 !important;
+        transform: scale(1.05) !important;
+    }
+
+    /* Hide default file uploader, show custom */
+    .stFileUploader {
+        position: absolute !important;
+        opacity: 0 !important;
+        width: 44px !important;
+        height: 44px !important;
+        cursor: pointer !important;
+    }
+    .stFileUploader > div {
+        padding: 0 !important;
+    }
+
+    /* Mobile responsive - force horizontal layout */
+    @media (max-width: 768px) {
+        [data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap !important;
+            gap: 6px !important;
+        }
+        .stTextInput input {
+            font-size: 16px !important;
+            height: 46px !important;
+            padding: 10px 14px !important;
+        }
+        [data-testid="stHorizontalBlock"] > div:first-child button {
+            width: 40px !important;
+            height: 40px !important;
+            min-width: 40px !important;
+            max-width: 40px !important;
+        }
+        [data-testid="stHorizontalBlock"] > div:last-child button {
+            width: 46px !important;
+            height: 46px !important;
+            min-width: 46px !important;
+            min-height: 46px !important;
+            max-width: 46px !important;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
 
-# WhatsApp Layout: [____input____] [send]
-col1, col2 = st.columns([9, 1])
+# Input row: [attach] [____wide input____] [send]
+col_attach, col_input, col_btn = st.columns([1, 10, 1])
 
-with col1:
+with col_attach:
+    # File upload button (clip icon)
+    uploaded_file = st.file_uploader("Upload", type=["txt", "docx", "pdf"], key="file_upload", label_visibility="collapsed")
+    if not uploaded_file:
+        st.button("📎", key="attach_btn", help="Attach file")
+
+with col_input:
     user_input = st.text_input(
-        "Topic",
+        "Enter topic",
         placeholder="Type topic or paste content...",
         label_visibility="collapsed",
         key="main_input"
     )
 
-with col2:
+with col_btn:
     send_clicked = st.button("➤", key="send_btn", help="Generate PPT")
 
-# Handle submission
+# Handle file upload
+if uploaded_file is not None:
+    file_content = ""
+    file_name = uploaded_file.name
+
+    if file_name.endswith('.txt'):
+        file_content = uploaded_file.read().decode('utf-8')
+    elif file_name.endswith('.docx'):
+        try:
+            from docx import Document
+            import io
+            doc = Document(io.BytesIO(uploaded_file.read()))
+            file_content = '\n'.join([para.text for para in doc.paragraphs])
+        except:
+            st.error("Could not read DOCX file")
+    elif file_name.endswith('.pdf'):
+        try:
+            import PyPDF2
+            import io
+            pdf_reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.read()))
+            file_content = '\n'.join([page.extract_text() for page in pdf_reader.pages])
+        except:
+            st.error("Could not read PDF file")
+
+    if file_content:
+        st.session_state.generating = True
+        st.session_state.content_to_process = file_content
+        st.session_state.topic_name = file_name.rsplit('.', 1)[0][:50]
+        st.rerun()
+
+# Handle text submission
 if send_clicked and user_input:
     word_count = len(user_input.split())
     st.session_state.generating = True

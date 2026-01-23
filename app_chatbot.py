@@ -10,6 +10,62 @@ try:
 except:
     PPT_TO_IMAGES_AVAILABLE = False
 
+from content_generator import generate_content_from_topic
+from ai_ppt_generator import generate_beautiful_ppt
+
+# Page Config - MUST be first Streamlit command
+st.set_page_config(
+    page_title="PPT Generator",
+    page_icon="P",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
+
+# Mobile-first CSS - Hide all Streamlit defaults
+st.markdown("""
+<style>
+    /* FORCE HIDE all Streamlit default elements */
+    #MainMenu, footer, header, .stDeployButton,
+    [data-testid="stHeader"], [data-testid="stToolbar"],
+    .viewerBadge_container__1QSob, .styles_viewerBadge__1yB5_ {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+    }
+
+    /* Remove top padding that Streamlit adds */
+    .stApp > header {
+        display: none !important;
+    }
+
+    .block-container {
+        padding-top: 0 !important;
+        padding-bottom: 80px !important;
+        max-width: 100% !important;
+    }
+
+    /* Custom Header - compact for mobile */
+    .app-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 12px 16px;
+        text-align: center;
+        border-radius: 0 0 16px 16px;
+        margin: -1rem -1rem 1rem -1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .app-header h1 {
+        margin: 0;
+        font-size: 1.3rem;
+        font-weight: 700;
+    }
+    .app-header p {
+        margin: 4px 0 0 0;
+        font-size: 0.8rem;
+        opacity: 0.9;
+    }
+
+    /* Features box - mobile optimized */
     .features-box {
         background: linear-gradient(145deg, #f8f9ff 0%, #fff 100%);
         border: 1px solid #e8ecf1;

@@ -402,143 +402,52 @@ if st.session_state.ppt_ready and st.session_state.ppt_path:
         st.session_state.user_input = ""
         st.rerun()
 
-# ============ BOTTOM INPUT BAR (WhatsApp Style) ============
-st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
+# ============ BOTTOM INPUT BAR (Claude Style) ============
 
-# WhatsApp style CSS for input row
+# Style for chat input
 st.markdown("""
 <style>
-    /* Input container - flex row */
-    [data-testid="stHorizontalBlock"] {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        gap: 6px !important;
-        flex-wrap: nowrap !important;
-    }
-
-    /* Text input styling */
-    .stTextInput input {
+    /* Chat input styling - works on mobile & desktop */
+    [data-testid="stChatInput"] {
+        background: #f4f4f4 !important;
         border-radius: 24px !important;
-        padding: 14px 50px 14px 18px !important;
-        font-size: 16px !important;
-        height: 50px !important;
         border: 1px solid #ddd !important;
-        background: #f5f5f5 !important;
-        width: 100% !important;
     }
-    .stTextInput input:focus {
+    [data-testid="stChatInput"]:focus-within {
         border-color: #667eea !important;
-        box-shadow: 0 0 0 2px rgba(102,126,234,0.2) !important;
         background: white !important;
     }
-
-    /* Attach button (inside input area - 2nd column) */
-    [data-testid="stHorizontalBlock"] > div:nth-child(2) button {
-        width: 38px !important;
-        height: 38px !important;
-        min-width: 38px !important;
-        max-width: 38px !important;
-        border-radius: 50% !important;
-        padding: 0 !important;
-        font-size: 1.1rem !important;
-        background: transparent !important;
-        border: none !important;
-        color: #666 !important;
-    }
-    [data-testid="stHorizontalBlock"] > div:nth-child(2) button:hover {
-        background: #e8e8e8 !important;
+    [data-testid="stChatInput"] textarea {
+        font-size: 16px !important;
     }
 
-    /* Send button (last column) */
-    [data-testid="stHorizontalBlock"] > div:last-child button {
-        width: 50px !important;
-        height: 50px !important;
-        min-width: 50px !important;
-        min-height: 50px !important;
-        max-width: 50px !important;
-        border-radius: 50% !important;
-        padding: 0 !important;
-        font-size: 1.3rem !important;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        border: none !important;
-        color: white !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        flex-shrink: 0 !important;
-    }
-    [data-testid="stHorizontalBlock"] > div:last-child button:hover {
-        opacity: 0.9 !important;
-        transform: scale(1.05) !important;
-    }
-
-    /* Hide file uploader visually but keep functional */
+    /* File uploader compact style */
     .stFileUploader {
-        position: absolute !important;
-        opacity: 0 !important;
-        width: 38px !important;
-        height: 38px !important;
-        cursor: pointer !important;
-        z-index: 10 !important;
+        margin-bottom: 10px !important;
     }
-    .stFileUploader > div {
-        padding: 0 !important;
+    .stFileUploader > div > div {
+        padding: 10px !important;
     }
     .stFileUploader label {
-        display: none !important;
-    }
-
-    /* Mobile responsive */
-    @media (max-width: 768px) {
-        [data-testid="stHorizontalBlock"] {
-            flex-wrap: nowrap !important;
-            gap: 4px !important;
-        }
-        .stTextInput input {
-            font-size: 16px !important;
-            height: 46px !important;
-            padding: 10px 45px 10px 14px !important;
-        }
-        [data-testid="stHorizontalBlock"] > div:nth-child(2) button {
-            width: 34px !important;
-            height: 34px !important;
-            min-width: 34px !important;
-            max-width: 34px !important;
-        }
-        [data-testid="stHorizontalBlock"] > div:last-child button {
-            width: 46px !important;
-            height: 46px !important;
-            min-width: 46px !important;
-            min-height: 46px !important;
-            max-width: 46px !important;
-        }
+        font-size: 14px !important;
+        color: #666 !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Input row: [____input____] [📎] [➤]
-col_input, col_attach, col_btn = st.columns([10, 1, 1])
+# File uploader (compact, above input)
+uploaded_file = st.file_uploader(
+    "Attach file (txt, docx, pdf)",
+    type=["txt", "docx", "pdf"],
+    key="file_upload"
+)
 
-with col_input:
-    user_input = st.text_input(
-        "Enter topic",
-        placeholder="Type topic or paste content...",
-        label_visibility="collapsed",
-        key="main_input"
-    )
-
-with col_attach:
-    # File upload with clip icon overlay
-    uploaded_file = st.file_uploader("Upload", type=["txt", "docx", "pdf"], key="file_upload", label_visibility="collapsed")
-    if not uploaded_file:
-        st.button("📎", key="attach_btn", help="Attach file (txt, docx, pdf)")
-
-with col_btn:
-    send_clicked = st.button("➤", key="send_btn", help="Generate PPT")
+# Claude-style chat input - works perfectly on mobile
+user_input = st.chat_input("Enter topic or paste content...")
+send_clicked = user_input is not None
 
 # Handle file upload
-if uploaded_file is not None:
+if uploaded_file is not None and not st.session_state.generating:
     file_content = ""
     file_name = uploaded_file.name
 
@@ -567,8 +476,8 @@ if uploaded_file is not None:
         st.session_state.topic_name = file_name.rsplit('.', 1)[0][:50]
         st.rerun()
 
-# Handle text submission
-if send_clicked and user_input:
+# Handle chat input submission
+if user_input:
     word_count = len(user_input.split())
     st.session_state.generating = True
 

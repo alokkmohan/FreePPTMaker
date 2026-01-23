@@ -10,8 +10,28 @@ try:
 except:
     PPT_TO_IMAGES_AVAILABLE = False
 
+
 from content_generator import generate_content_from_topic
 from ai_ppt_generator import generate_beautiful_ppt
+
+# For visitor and ppt count
+import json
+def get_conversion_stats():
+    counter_file = "visitor_count.json"
+    try:
+        if os.path.exists(counter_file):
+            with open(counter_file, 'r') as f:
+                data = json.load(f)
+                visits = data.get('total_visits', 0)
+                ppts = data.get('ppt_generated', 0)
+                if visits > 0:
+                    conversion_rate = (ppts / visits) * 100
+                else:
+                    conversion_rate = 0
+                return visits, ppts, conversion_rate
+    except:
+        pass
+    return 0, 0, 0
 
 # Page Config - MUST be first Streamlit command
 st.set_page_config(
@@ -345,7 +365,34 @@ def generate_ppt_func(content, topic, theme):
     )
     return success, ppt_path, output_folder
 
+
 # ============ MAIN CONTENT AREA ============
+# ============ FOOTER ============
+visits, ppts, _ = get_conversion_stats()
+st.markdown(f'''
+<style>
+.custom-footer {{
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    text-align: center;
+    font-size: 0.95rem;
+    padding: 10px 0 8px 0;
+    z-index: 99999;
+    letter-spacing: 0.2px;
+    box-shadow: 0 -2px 10px rgba(60,72,180,0.08);
+}}
+@media (max-width: 600px) {{
+    .custom-footer {{font-size: 0.85rem; padding: 8px 0 6px 0;}}
+}}
+</style>
+<div class="custom-footer">
+👀 Visitors: <b>{visits}</b> &nbsp;|&nbsp; 📝 PPTs Generated: <b>{ppts}</b>
+</div>
+''', unsafe_allow_html=True)
 
 # Show features when idle
 if not st.session_state.generating and not st.session_state.ppt_ready:

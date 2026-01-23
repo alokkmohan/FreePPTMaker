@@ -10,34 +10,6 @@ try:
 except:
     PPT_TO_IMAGES_AVAILABLE = False
 
-from content_generator import generate_content_from_topic
-from ai_ppt_generator import generate_beautiful_ppt
-
-# Page Config - MUST be first Streamlit command
-st.set_page_config(
-    page_title="PPT Generator",
-    page_icon="P",
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
-
-# Mobile-first CSS - Hide all Streamlit defaults
-st.markdown("""
-<style>
-    /* FORCE HIDE all Streamlit default elements */
-    #MainMenu, footer, header, .stDeployButton,
-    [data-testid="stHeader"], [data-testid="stToolbar"],
-    .viewerBadge_container__1QSob, .styles_viewerBadge__1yB5_ {
-        display: none !important;
-        visibility: hidden !important;
-        height: 0 !important;
-    }
-
-    /* Remove top padding that Streamlit adds */
-    .stApp > header {
-        display: none !important;
-    }
-
     .block-container {
         padding-top: 0 !important;
         padding-bottom: 80px !important;

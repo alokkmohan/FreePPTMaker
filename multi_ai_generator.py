@@ -18,11 +18,24 @@ def get_secret(key):
     # Try Streamlit secrets first (for cloud deployment)
     try:
         import streamlit as st
-        if hasattr(st, 'secrets') and key in st.secrets:
-            return st.secrets[key]
+        if hasattr(st, 'secrets'):
+            try:
+                value = st.secrets.get(key, None)
+                if value:
+                    return value
+            except:
+                pass
+            # Also try direct access
+            try:
+                if key in st.secrets:
+                    return st.secrets[key]
+            except:
+                pass
     except:
         pass
     # Fall back to environment variable (for local)
+    from dotenv import load_dotenv
+    load_dotenv()
     return os.getenv(key)
 
 class MultiAIGenerator:
@@ -52,7 +65,7 @@ class MultiAIGenerator:
         Generate PPT structure using Groq (FREE)
         """
         if not self.groq_key:
-            raise Exception("Groq API key not found. Please set GROQ_API_KEY in .env file")
+            raise Exception("Groq API key not found. Set GROQ_API_KEY in Streamlit Secrets (cloud) or .env file (local)")
 
         print("[AI] Using Groq API (FREE)...")
         return self._groq_generate(topic, min_slides, max_slides, style, audience, custom_instructions)

@@ -443,100 +443,62 @@ if st.session_state.ppt_ready and st.session_state.ppt_path:
         st.session_state.user_input = ""
         st.rerun()
 
-# --- WhatsApp-style Inline Chat Composer (Place after main content/cards) ---
+# ============ BOTTOM INPUT BAR (WhatsApp Style) ============
+st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
+st.markdown("---")
+
+# WhatsApp style CSS
 st.markdown("""
-<div class="chat-composer-inline">
-  <div class="composer-row-inline">
-    <div class="composer-file-inline">
-      <!-- File upload button -->
-""", unsafe_allow_html=True)
-
-file = st.file_uploader("", type=["txt", "docx", "pdf"], key="file_upload", label_visibility="collapsed")
-
-st.markdown("""
-    </div>
-    <div class="composer-input-inline">
-""", unsafe_allow_html=True)
-
-user_input = st.text_area(
-    "",
-    placeholder="Type a message...",
-    key="main_input",
-    label_visibility="collapsed"
-)
-
-st.markdown("""
-    </div>
-    <div class="composer-send-inline">
-""", unsafe_allow_html=True)
-
-send_clicked = st.button("➤", key="send_btn")
-
-st.markdown("""
-    </div>
-  </div>
-</div>
 <style>
-.chat-composer-inline {
-    width: 100%;
-    margin: 8px auto 0 auto;
-    padding: 0;
-    max-width: 700px;
-}
-.composer-row-inline {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    min-height: 48px;
-}
-.composer-file-inline {
-    flex: 0 0 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.composer-input-inline {
-    flex: 1 1 auto;
-    min-width: 0;
-}
-.composer-send-inline {
-    flex: 0 0 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.stTextArea textarea {
-    min-height: 44px !important;
-    max-height: 120px !important;
-    border-radius: 24px !important;
-    padding: 12px 16px !important;
-    font-size: 1rem !important;
-    resize: vertical !important;
-}
-.stButton > button {
-    width: 44px !important;
-    height: 44px !important;
-    border-radius: 50% !important;
-    font-size: 1.3rem !important;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-    color: #fff !important;
-    border: none !important;
-    margin: 0 !important;
-}
-.stFileUploader {
-    padding: 0 !important;
-}
-@media (max-width: 600px) {
-    .chat-composer-inline {max-width: 100vw;}
-    .composer-row-inline {gap: 6px;}
-}
+    /* Text input styling */
+    .stTextInput input {
+        border-radius: 24px !important;
+        padding: 12px 16px !important;
+        font-size: 16px !important;
+        height: 48px !important;
+        border: 1px solid #ddd !important;
+        background: #f5f5f5 !important;
+    }
+    .stTextInput input:focus {
+        border-color: #667eea !important;
+        box-shadow: 0 0 0 2px rgba(102,126,234,0.2) !important;
+        background: white !important;
+    }
+
+    /* Send button - right side */
+    div[data-testid="column"]:last-child button {
+        width: 48px !important;
+        height: 48px !important;
+        min-height: 48px !important;
+        border-radius: 50% !important;
+        padding: 0 !important;
+        font-size: 1.2rem !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        border: none !important;
+        color: white !important;
+    }
+    div[data-testid="column"]:last-child button:hover {
+        opacity: 0.9 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
-# --- End WhatsApp-style Inline Chat Composer ---
 
-# Submission logic (unchanged)
-if (send_clicked or st.session_state.get("main_input_submit", False)) and user_input:
+# WhatsApp Layout: [____input____] [send]
+col1, col2 = st.columns([9, 1])
+
+with col1:
+    user_input = st.text_input(
+        "Topic",
+        placeholder="Type topic or paste content...",
+        label_visibility="collapsed",
+        key="main_input"
+    )
+
+with col2:
+    send_clicked = st.button("➤", key="send_btn", help="Generate PPT")
+
+# Handle submission
+if send_clicked and user_input:
     word_count = len(user_input.split())
     st.session_state.generating = True
 
@@ -548,19 +510,3 @@ if (send_clicked or st.session_state.get("main_input_submit", False)) and user_i
         st.session_state.content_to_process = None
 
     st.rerun()
-
-# To allow Enter key to submit, add this at the end of your file:
-st.markdown("""
-<script>
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        var textarea = document.querySelector('textarea');
-        if (document.activeElement === textarea) {
-            e.preventDefault();
-            window.parent.postMessage({isStreamlitMessage: true, type: 'streamlit:setComponentValue', value: true, key: 'main_input_submit'}, '*');
-        }
-    }
-});
-</script>
-""", unsafe_allow_html=True)
-st.session_state["main_input_submit"] = False

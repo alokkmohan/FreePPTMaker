@@ -443,35 +443,101 @@ if st.session_state.ppt_ready and st.session_state.ppt_path:
         st.session_state.user_input = ""
         st.rerun()
 
-# ============ BOTTOM INPUT BAR ============
-# Spacer to prevent content hiding behind fixed input
-st.markdown('<div style="height: 70px;"></div>', unsafe_allow_html=True)
+# --- WhatsApp-style Bottom Chat Composer ---
+st.markdown("""
+<style>
+.chat-composer {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    width: 100vw;
+    background: #fff;
+    border-top: 1px solid #e0e0e0;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.07);
+    padding: 10px 8px 10px 8px;
+    z-index: 9999;
+}
+.composer-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 700px;
+    margin: 0 auto;
+}
+.composer-file {
+    flex: 0 0 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.composer-input {
+    flex: 1 1 auto;
+}
+.composer-send {
+    flex: 0 0 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.stTextArea textarea {
+    min-height: 44px !important;
+    max-height: 120px !important;
+    border-radius: 24px !important;
+    padding: 12px 16px !important;
+    font-size: 1rem !important;
+    resize: vertical !important;
+}
+.stButton > button {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 50% !important;
+    font-size: 1.3rem !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: #fff !important;
+    border: none !important;
+}
+.stFileUploader {
+    padding: 0 !important;
+}
+@media (max-width: 600px) {
+    .chat-composer {padding: 8px 2px;}
+    .composer-row {max-width: 100vw;}
+}
+</style>
+<div class="chat-composer">
+  <div class="composer-row">
+    <div class="composer-file">
+      <!-- File upload button -->
+""", unsafe_allow_html=True)
 
-# Input row with + button, text input, and send button
-st.markdown("---")
-# Mobile-first input row: plus button, text input, send button
-st.markdown('<div class="input-row">', unsafe_allow_html=True)
-col1, col2, col3 = st.columns([1, 8, 1])
+file = st.file_uploader("", type=["txt", "docx", "pdf"], key="file_upload", label_visibility="collapsed")
 
-with col1:
-    if st.button("+", key="plus_btn", help="Upload file"):
-        st.session_state.show_upload = not st.session_state.show_upload
-        st.rerun()
+st.markdown("""
+    </div>
+    <div class="composer-input">
+""", unsafe_allow_html=True)
 
-with col2:
-    user_input = st.text_input(
-        "Topic",
-        placeholder="Enter topic or paste content...",
-        label_visibility="collapsed",
-        key="main_input"
-    )
+user_input = st.text_area(
+    "",
+    placeholder="Type a message...",
+    key="main_input",
+    label_visibility="collapsed"
+)
 
-with col3:
-    send_clicked = st.button(">", key="send_btn", help="Generate")
-st.markdown('</div>', unsafe_allow_html=True)
+st.markdown("""
+    </div>
+    <div class="composer-send">
+""", unsafe_allow_html=True)
 
-# Handle input submission
-if send_clicked and user_input:
+send_clicked = st.button("➤", key="send_btn")
+
+st.markdown("""
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+# Submission logic (unchanged)
+if (send_clicked or st.session_state.get("main_input_submit", False)) and user_input:
     word_count = len(user_input.split())
     st.session_state.generating = True
 
@@ -483,3 +549,20 @@ if send_clicked and user_input:
         st.session_state.content_to_process = None
 
     st.rerun()
+
+# To allow Enter key to submit, add this at the end of your file:
+st.markdown("""
+<script>
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        var textarea = document.querySelector('textarea');
+        if (document.activeElement === textarea) {
+            e.preventDefault();
+            window.parent.postMessage({isStreamlitMessage: true, type: 'streamlit:setComponentValue', value: true, key: 'main_input_submit'}, '*');
+        }
+    }
+});
+</script>
+""", unsafe_allow_html=True)
+st.session_state["main_input_submit"] = False
+# --- End WhatsApp-style Bottom Chat Composer ---

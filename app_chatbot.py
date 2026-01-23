@@ -265,6 +265,53 @@ st.markdown('''
 </div>
 ''', unsafe_allow_html=True)
 
+# --- Hero Header ---
+st.markdown("""
+<div class="hero-header">
+  <div class="hero-title">SlideCraft AI</div>
+  <div class="hero-subtitle">Create professional presentations from topics, text, or documents</div>
+</div>
+<style>
+.hero-header {
+    width: 100%;
+    min-height: 160px;
+    max-height: 180px;
+    background: linear-gradient(90deg, #3b82f6 0%, #7c3aed 100%);
+    border-radius: 24px;
+    margin: 24px auto 32px auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 32px rgba(60, 72, 180, 0.10);
+    padding: 32px 12px 28px 12px;
+    text-align: center;
+}
+.hero-title {
+    font-size: 2.6rem;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: -1px;
+    margin-bottom: 0.5rem;
+    line-height: 1.1;
+}
+.hero-subtitle {
+    font-size: 1.25rem;
+    font-weight: 400;
+    color: #e0e7ff;
+    letter-spacing: 0.1px;
+    margin-top: 0;
+    line-height: 1.4;
+}
+@media (max-width: 600px) {
+    .hero-header {min-height: 120px; max-height: 160px; padding: 18px 4px 16px 4px;}
+    .hero-title {font-size: 1.5rem;}
+    .hero-subtitle {font-size: 1rem;}
+}
+</style>
+""", unsafe_allow_html=True)
+# --- End Hero Header ---
+
 # Initialize session state
 if 'generating' not in st.session_state:
     st.session_state.generating = False
@@ -334,7 +381,14 @@ if st.session_state.generating:
                 st.write("Processing your content...")
             else:
                 st.write("Generating with AI...")
-                content = generate_content_from_topic(topic, "", 10, 15)
+                # Custom prompt for detailed slides, correct headers, and first slide as topic
+                custom_instructions = """
+                - First slide should be the topic title and subtitle
+                - Each slide must have a relevant, clear header/title
+                - Each bullet point should be detailed (2-3 sentences)
+                - Speaker notes should be detailed
+                """
+                content = generate_content_from_topic(topic, custom_instructions, 10, 15)
 
             st.write("Creating slides...")
             st.write("Applying theme...")

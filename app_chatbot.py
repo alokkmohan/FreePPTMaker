@@ -408,51 +408,19 @@ st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
 # WhatsApp style CSS for input row
 st.markdown("""
 <style>
-    /* Bottom input bar container */
-    .input-bar-container {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        background: white;
-        border-radius: 30px;
-        border: 1px solid #ddd;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        max-width: 100%;
-    }
-
-    /* File upload button - clip icon */
-    .attach-btn {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        border: none;
-        background: transparent;
-        color: #666;
-        font-size: 1.3rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-    .attach-btn:hover {
-        background: #f0f0f0;
-    }
-
     /* Input container - flex row */
     [data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
         align-items: center !important;
-        gap: 8px !important;
+        gap: 6px !important;
         flex-wrap: nowrap !important;
     }
 
-    /* Text input styling - full width */
+    /* Text input styling */
     .stTextInput input {
         border-radius: 24px !important;
-        padding: 14px 18px !important;
+        padding: 14px 50px 14px 18px !important;
         font-size: 16px !important;
         height: 50px !important;
         border: 1px solid #ddd !important;
@@ -465,24 +433,24 @@ st.markdown("""
         background: white !important;
     }
 
-    /* First column (attach) button */
-    [data-testid="stHorizontalBlock"] > div:first-child button {
-        width: 44px !important;
-        height: 44px !important;
-        min-width: 44px !important;
-        max-width: 44px !important;
+    /* Attach button (inside input area - 2nd column) */
+    [data-testid="stHorizontalBlock"] > div:nth-child(2) button {
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        max-width: 38px !important;
         border-radius: 50% !important;
         padding: 0 !important;
-        font-size: 1.2rem !important;
-        background: #f0f0f0 !important;
+        font-size: 1.1rem !important;
+        background: transparent !important;
         border: none !important;
         color: #666 !important;
     }
-    [data-testid="stHorizontalBlock"] > div:first-child button:hover {
-        background: #e0e0e0 !important;
+    [data-testid="stHorizontalBlock"] > div:nth-child(2) button:hover {
+        background: #e8e8e8 !important;
     }
 
-    /* Last column (send) button */
+    /* Send button (last column) */
     [data-testid="stHorizontalBlock"] > div:last-child button {
         width: 50px !important;
         height: 50px !important;
@@ -505,34 +473,38 @@ st.markdown("""
         transform: scale(1.05) !important;
     }
 
-    /* Hide default file uploader, show custom */
+    /* Hide file uploader visually but keep functional */
     .stFileUploader {
         position: absolute !important;
         opacity: 0 !important;
-        width: 44px !important;
-        height: 44px !important;
+        width: 38px !important;
+        height: 38px !important;
         cursor: pointer !important;
+        z-index: 10 !important;
     }
     .stFileUploader > div {
         padding: 0 !important;
     }
+    .stFileUploader label {
+        display: none !important;
+    }
 
-    /* Mobile responsive - force horizontal layout */
+    /* Mobile responsive */
     @media (max-width: 768px) {
         [data-testid="stHorizontalBlock"] {
             flex-wrap: nowrap !important;
-            gap: 6px !important;
+            gap: 4px !important;
         }
         .stTextInput input {
             font-size: 16px !important;
             height: 46px !important;
-            padding: 10px 14px !important;
+            padding: 10px 45px 10px 14px !important;
         }
-        [data-testid="stHorizontalBlock"] > div:first-child button {
-            width: 40px !important;
-            height: 40px !important;
-            min-width: 40px !important;
-            max-width: 40px !important;
+        [data-testid="stHorizontalBlock"] > div:nth-child(2) button {
+            width: 34px !important;
+            height: 34px !important;
+            min-width: 34px !important;
+            max-width: 34px !important;
         }
         [data-testid="stHorizontalBlock"] > div:last-child button {
             width: 46px !important;
@@ -545,14 +517,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Input row: [attach] [____wide input____] [send]
-col_attach, col_input, col_btn = st.columns([1, 10, 1])
-
-with col_attach:
-    # File upload button (clip icon)
-    uploaded_file = st.file_uploader("Upload", type=["txt", "docx", "pdf"], key="file_upload", label_visibility="collapsed")
-    if not uploaded_file:
-        st.button("📎", key="attach_btn", help="Attach file")
+# Input row: [____input____] [📎] [➤]
+col_input, col_attach, col_btn = st.columns([10, 1, 1])
 
 with col_input:
     user_input = st.text_input(
@@ -561,6 +527,12 @@ with col_input:
         label_visibility="collapsed",
         key="main_input"
     )
+
+with col_attach:
+    # File upload with clip icon overlay
+    uploaded_file = st.file_uploader("Upload", type=["txt", "docx", "pdf"], key="file_upload", label_visibility="collapsed")
+    if not uploaded_file:
+        st.button("📎", key="attach_btn", help="Attach file (txt, docx, pdf)")
 
 with col_btn:
     send_clicked = st.button("➤", key="send_btn", help="Generate PPT")

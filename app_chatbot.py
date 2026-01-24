@@ -313,23 +313,32 @@ if user_input:
                 lines = [l.strip() for l in ai_output.split('\n') if l.strip()]
                 current_slide = {}
                 for line in lines:
-                    # Slide start
-                    m = re.match(r"^Slide ?(\d+): ?(.+)$", line)
+                    # Slide start - more flexible pattern
+                    # Matches: "Slide 1: Title", "Slide1: Title", "**Slide 1: Title**", "Slide 1 - Title", etc.
+                    m = re.match(r"^\*{0,2}Slide\s*(\d+)\s*[:\-]\s*(.+?)\*{0,2}$", line, re.IGNORECASE)
                     if m:
                         # Save previous slide
                         if current_slide:
                             slides.append(current_slide)
-                        current_slide = {"slide_number": int(m.group(1)), "title": m.group(2), "bullets": []}
-                    elif line.startswith('Main Title:'):
+                        current_slide = {"slide_number": int(m.group(1)), "title": m.group(2).strip(), "bullets": []}
+                    elif line.lower().startswith('main title:'):
                         current_slide["main_title"] = line.split(':',1)[1].strip()
-                    elif line.startswith('Tagline:'):
+                    elif line.lower().startswith('tagline:'):
                         current_slide["tagline"] = line.split(':',1)[1].strip()
-                    elif line.startswith('Subtitle:'):
+                    elif line.lower().startswith('subtitle:'):
                         current_slide["subtitle"] = line.split(':',1)[1].strip()
-                    elif line.startswith('Presented by:'):
+                    elif line.lower().startswith('presented by:'):
                         current_slide["presented_by"] = line.split(':',1)[1].strip()
-                    elif line.startswith('- '):
-                        current_slide.setdefault("bullets", []).append(line[2:].strip())
+                    elif line.startswith('- ') or line.startswith('• ') or line.startswith('* '):
+                        # Handle various bullet styles
+                        bullet_text = line[2:].strip()
+                        if bullet_text and current_slide:
+                            current_slide.setdefault("bullets", []).append(bullet_text)
+                    elif re.match(r'^\d+\.\s+', line):
+                        # Handle numbered lists like "1. Point"
+                        bullet_text = re.sub(r'^\d+\.\s+', '', line).strip()
+                        if bullet_text and current_slide:
+                            current_slide.setdefault("bullets", []).append(bullet_text)
                 # Add last slide
                 if current_slide:
                     slides.append(current_slide)
@@ -344,6 +353,8 @@ if user_input:
                             first["subtitle"] = (first.get("subtitle","") + f"\n{st.session_state.presenter_designation}").strip()
                         else:
                             first["subtitle"] = st.session_state.presenter_designation
+                # Debug: print parsed slides count
+                print(f"[DEBUG] Parsed {len(slides)} slides from AI output")
                 return slides
 
             ai_output = content_dict.get("output", "")
@@ -352,8 +363,10 @@ if user_input:
             slides = parse_slides(ai_output)
             # Show the AI output as chat
             add_message("assistant", ai_output)
-            # Save slides to session for PPT generation
+            # Save topic and slides to session for PPT generation
+            st.session_state.topic = user_input
             st.session_state.parsed_slides = slides
+            print(f"[DEBUG] Topic: {user_input}, Slides count: {len(slides)}")
             st.session_state.stage = 'generating'
             st.rerun()
 

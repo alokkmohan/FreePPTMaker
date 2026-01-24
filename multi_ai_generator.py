@@ -63,30 +63,27 @@ class MultiAIGenerator:
         # Debug: print the context being passed
         if custom_instructions:
             print("\n[DEBUG] Web Research Context passed to AI:\n" + custom_instructions + "\n")
-            # Build dynamic prompt
-            prompt = f"""
-        WEB RESEARCH CONTEXT (use this information to generate unique, topic-specific slide content):
-        {custom_instructions}
 
-You are an expert presentation content writer. Generate a detailed, sectioned, slide-by-slide outline for a PowerPoint presentation.
+        # Build dynamic prompt
+        web_context = f"WEB RESEARCH CONTEXT (use this information to generate unique, topic-specific slide content):\n{custom_instructions}\n\n" if custom_instructions else ""
+
+        prompt = f"""{web_context}You are an expert presentation content writer. Generate a detailed, sectioned, slide-by-slide outline for a PowerPoint presentation.
 
 Rules:
-- Number of slides: 10 (unless otherwise specified)
+- Number of slides: {min_slides} to {max_slides}
 - Each slide should have:
     - Slide number and clear title (e.g., Slide 1: Title Slide)
     - Main Title (if Slide 1)
     - Tagline (if Slide 1)
     - Subtitle (if Slide 1)
     - Presented by (if Slide 1)
-    - For other slides: a section title and 3-6 detailed, topic-specific points (not generic)
-    - Use subpoints if needed for clarity
-- Use the latest, most relevant data and government sources
-- Tone: government/training
-- Style: corporate, clear, and concise
-- Audience: general
+    - For other slides: a section title and 4-6 detailed, topic-specific bullet points (not generic)
+- Use the latest, most relevant data and sources
+- Tone: {tone}
+- Style: {style}
+- Audience: {audience}
 - No emojis, no markdown, no filler, no repetition
-- Do NOT use any static outline or pre-filled structure. Every slide must be researched and specific to the topic.
-- You MUST use the above web research context for all content. Do NOT ignore it.
+- Do NOT use any static outline or pre-filled structure. Every slide must be specific to the topic.
 
 Output format (strict):
 Slide 1: Title Slide
@@ -94,14 +91,20 @@ Main Title: ...
 Tagline: ...
 Subtitle: ...
 Presented by: ...
+
 Slide 2: [Section Title]
 - Point 1
 - Point 2
-...
+- Point 3
+- Point 4
+
 Slide 3: [Section Title]
 - Point 1
-...
-(Continue for all slides)
+- Point 2
+- Point 3
+- Point 4
+
+(Continue for all {min_slides} slides)
 
 Do not include anything outside this format.
 
@@ -120,10 +123,10 @@ TOPIC: {topic}
                 data = {
                     "model": "mistral-large-latest",
                     "messages": [
-                        {"role": "system", "content": "You are a helpful assistant."},
+                        {"role": "system", "content": "You are an expert presentation content writer. Generate complete slide-by-slide content."},
                         {"role": "user", "content": prompt}
                     ],
-                    "max_tokens": 1200,
+                    "max_tokens": 4000,
                     "temperature": 0.7
                 }
                 resp = requests.post(mistral_url, headers=headers, json=data, timeout=60)

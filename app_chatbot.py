@@ -189,38 +189,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# File upload - always visible at top
-st.markdown("**Language / भाषा चुनें:**")
-language = st.selectbox("Select language", ["English", "Hindi"], key="ppt_language", index=0)
-st.session_state.language = language
-
-with st.expander("Attach Document (Optional)", expanded=False):
-    uploaded_file = st.file_uploader("Upload txt, docx, or pdf", type=["txt", "docx", "pdf"], key="file_upload", label_visibility="collapsed")
-    if uploaded_file:
-        file_name = uploaded_file.name
-        file_content = ""
-        if file_name.endswith('.txt'):
-            file_content = uploaded_file.read().decode('utf-8')
-        elif file_name.endswith('.docx'):
-            try:
-                from docx import Document
-                import io
-                doc = Document(io.BytesIO(uploaded_file.read()))
-                file_content = '\n'.join([para.text for para in doc.paragraphs])
-            except:
-                st.error("Could not read DOCX")
-        elif file_name.endswith('.pdf'):
-            try:
-                import PyPDF2
-                import io
-                pdf_reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.read()))
-                file_content = '\n'.join([page.extract_text() for page in pdf_reader.pages])
-            except:
-                st.error("Could not read PDF")
-        if file_content:
-            st.session_state.file_content = file_content
-            st.session_state.file_name = file_name.rsplit('.', 1)[0][:50]
-            st.success(f"File loaded: {st.session_state.file_name}")
+# Language selection (compact)
+col_lang, _ = st.columns([2, 3])
+with col_lang:
+    language = st.selectbox("Language", ["English", "Hindi"], key="ppt_language", index=0, label_visibility="collapsed")
+    st.session_state.language = language
 
 # Display chat messages
 for msg in st.session_state.messages:
@@ -317,38 +290,48 @@ elif st.session_state.stage == 'ask_designation':
             add_message("assistant", welcome)
             st.rerun()
 
-# Compact file upload row above chat input
-with st.container():
-    col_attach, col_info = st.columns([1, 4])
-    with col_attach:
-        quick_file = st.file_uploader("", type=["txt", "docx", "pdf"], key="quick_file_upload", label_visibility="collapsed")
-        if quick_file:
-            file_name = quick_file.name
-            file_content = ""
-            if file_name.endswith('.txt'):
-                file_content = quick_file.read().decode('utf-8')
-            elif file_name.endswith('.docx'):
-                try:
-                    from docx import Document
-                    import io
-                    doc = Document(io.BytesIO(quick_file.read()))
-                    file_content = '\n'.join([para.text for para in doc.paragraphs])
-                except:
-                    pass
-            elif file_name.endswith('.pdf'):
-                try:
-                    import PyPDF2
-                    import io
-                    pdf_reader = PyPDF2.PdfReader(io.BytesIO(quick_file.read()))
-                    file_content = '\n'.join([page.extract_text() for page in pdf_reader.pages])
-                except:
-                    pass
-            if file_content:
-                st.session_state.file_content = file_content
-                st.session_state.file_name = file_name.rsplit('.', 1)[0][:50]
-    with col_info:
-        if st.session_state.file_content:
-            st.caption(f"Attached: {st.session_state.get('file_name', 'document')}")
+# Compact attachment toggle
+col1, col2, col3 = st.columns([1, 3, 1])
+with col1:
+    attach_doc = st.checkbox("Attach", key="attach_toggle", help="Attach a document")
+with col2:
+    if st.session_state.file_content:
+        st.caption(f"File: {st.session_state.get('file_name', 'document')}")
+with col3:
+    if st.session_state.file_content:
+        if st.button("Clear", key="clear_file"):
+            st.session_state.file_content = None
+            st.session_state.file_name = None
+            st.rerun()
+
+# Show file uploader only when checkbox is ticked
+if attach_doc:
+    quick_file = st.file_uploader("Upload document", type=["txt", "docx", "pdf"], key="quick_file_upload", label_visibility="collapsed")
+    if quick_file:
+        file_name = quick_file.name
+        file_content = ""
+        if file_name.endswith('.txt'):
+            file_content = quick_file.read().decode('utf-8')
+        elif file_name.endswith('.docx'):
+            try:
+                from docx import Document
+                import io
+                doc = Document(io.BytesIO(quick_file.read()))
+                file_content = '\n'.join([para.text for para in doc.paragraphs])
+            except:
+                st.error("Could not read DOCX")
+        elif file_name.endswith('.pdf'):
+            try:
+                import PyPDF2
+                import io
+                pdf_reader = PyPDF2.PdfReader(io.BytesIO(quick_file.read()))
+                file_content = '\n'.join([page.extract_text() for page in pdf_reader.pages])
+            except:
+                st.error("Could not read PDF")
+        if file_content:
+            st.session_state.file_content = file_content
+            st.session_state.file_name = file_name.rsplit('.', 1)[0][:50]
+            st.success(f"Attached: {st.session_state.file_name}")
 
 user_input = st.chat_input("Type topic or message...")
 

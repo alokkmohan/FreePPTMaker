@@ -280,9 +280,22 @@ def is_valid_topic(text):
     """Check if the input is a valid/meaningful topic for PPT generation"""
     text = text.strip()
 
-    # Too short
-    if len(text) < 3:
-        return False, "Topic bahut chhota hai. Please ek proper topic likhen."
+    # ISSUE 10: Minimum 10 characters for short inputs
+    if len(text) < 10:
+        return False, "Please provide more details (at least 10 characters). Example: 'AI in Healthcare' or 'Digital India'."
+
+    # ISSUE 7: Long/structured content is always valid (user pasted content)
+    # If text is substantial (> 50 chars), has multiple lines, or has bullet points - accept it
+    if len(text) > 50:
+        return True, ""
+
+    # Multi-line content is likely structured/pasted content
+    if '\n' in text and len(text.split('\n')) >= 2:
+        return True, ""
+
+    # Content with bullet markers is structured
+    if any(marker in text for marker in ['- ', '• ', '* ', '1. ', '2. ']):
+        return True, ""
 
     # Check for minimum vowels (gibberish often lacks vowels)
     vowels = set('aeiouAEIOU')
@@ -303,22 +316,40 @@ def is_valid_topic(text):
         return False, "Please topic ka naam likhen, sirf numbers nahi."
 
     # If text is long enough and has some vowels, probably valid
-    if len(text) >= 5 and vowel_count >= 2:
+    if len(text) >= 10 and vowel_count >= 2:
         return True, ""
 
-    # Single word with reasonable length
-    if len(text.split()) == 1 and len(text) >= 2 and vowel_count >= 1:
-        return True, ""
-
-    return False, "Please ek clear topic batayein. Example: 'Digital India' ya 'AI in Healthcare'."
+    return False, "Please ek clear topic batayein (minimum 10 characters). Example: 'Digital India' ya 'AI in Healthcare'."
 
 def generate_ppt(content, topic, theme):
+    """Generate PPT with topic-based filename (Issue 9)"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_folder = os.path.join("output", f"output_{timestamp}")
     os.makedirs(output_folder, exist_ok=True)
-    safe_title = re.sub(r'[^\w\s-]', '', str(topic))[:50]
-    safe_title = re.sub(r'[-\s]+', '_', safe_title) if safe_title else "presentation"
-    ppt_path = os.path.join(output_folder, f"{safe_title}.pptx")
+
+    # ISSUE 9: Generate meaningful filename from topic
+    # Extract first 3-5 meaningful words from topic
+    if topic:
+        # Remove special characters and split into words
+        words = re.sub(r'[^\w\s]', '', str(topic)).split()
+        # Take first 4 words, remove very short words
+        meaningful_words = [w for w in words[:5] if len(w) > 2][:4]
+        if meaningful_words:
+            topic_slug = '_'.join(meaningful_words)
+        else:
+            topic_slug = 'presentation'
+    else:
+        topic_slug = 'presentation'
+
+    # Sanitize and limit length
+    topic_slug = re.sub(r'[^\w]', '_', topic_slug)[:40]
+    topic_slug = re.sub(r'_+', '_', topic_slug).strip('_')
+
+    # Format: TopicSlug_Date.pptx (e.g., AI_Healthcare_20260124.pptx)
+    date_str = datetime.now().strftime("%Y%m%d")
+    ppt_filename = f"{topic_slug}_{date_str}.pptx"
+    ppt_path = os.path.join(output_folder, ppt_filename)
+
     # If content is a list of slides, pass as structured
     if isinstance(content, list) and all(isinstance(slide, dict) for slide in content):
         success = generate_beautiful_ppt(content, ppt_path, color_scheme=theme, use_ai=False, original_topic=topic, min_slides=6, max_slides=6)
@@ -326,41 +357,56 @@ def generate_ppt(content, topic, theme):
         success = generate_beautiful_ppt(content, ppt_path, color_scheme=theme, use_ai=False, original_topic=topic, min_slides=6, max_slides=6)
     return success, ppt_path
 
-# Header
+# Header - Simple responsive design without viewport hacks
 st.markdown("""
-<div style="
-    width: 100vw;
-    max-width: 100vw;
-    margin-left: calc(-50vw + 50%);
+<style>
+.ppt-header {
     background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%);
     color: #fff;
-    padding: 1.2rem 0 0.7rem 0;
-    box-shadow: 0 6px 24px 0 rgba(60,60,120,0.13);
-    border-radius: 0 0 22px 22px;
+    padding: 1rem 1rem 0.7rem 1rem;
+    margin: -1rem -1rem 1rem -1rem;
+    box-shadow: 0 4px 16px rgba(60,60,120,0.15);
+    border-radius: 0 0 16px 16px;
     text-align: center;
     position: relative;
-    overflow: hidden;
-">
-    <span style="position:absolute;left:1.2rem;top:1.2rem;font-size:2.1rem;opacity:0.18;user-select:none;">📊</span>
-    <h2 style="margin: 0; font-size: 2.1rem; font-weight: 900; letter-spacing: 1px; color: #fff; text-transform:uppercase; text-shadow: 0 2px 8px #5a67d8;">FREE PPT Generator</h2>
-    <p style="margin: 0.5rem 0 0 0; color: #e0e7ff; font-size: 1.08rem; font-weight: 500; letter-spacing: 0.2px;">Create professional presentations through chat</p>
-</div>
-<style>
+}
+.ppt-header h2 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: #fff;
+    text-transform: uppercase;
+}
+.ppt-header p {
+    margin: 0.4rem 0 0 0;
+    color: #e0e7ff;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+.ppt-header .icon {
+    position: absolute;
+    left: 0.8rem;
+    top: 0.8rem;
+    font-size: 1.5rem;
+    opacity: 0.2;
+}
 @media (max-width: 600px) {
-    div[style*='background: linear-gradient'] h2 {
-        font-size: 1.3rem !important;
+    .ppt-header {
+        padding: 0.7rem 0.5rem 0.5rem 0.5rem;
+        margin: -0.5rem -0.5rem 0.5rem -0.5rem;
+        border-radius: 0 0 12px 12px;
     }
-    div[style*='background: linear-gradient'] p {
-        font-size: 0.95rem !important;
+    .ppt-header h2 {
+        font-size: 1.2rem;
     }
-    div[style*='background: linear-gradient'] {
-        padding: 0.7rem 0 0.5rem 0 !important;
-        border-radius: 0 0 14px 14px !important;
+    .ppt-header p {
+        font-size: 0.85rem;
     }
-    div[style*='background: linear-gradient'] span {
-        font-size: 1.3rem !important;
-        left: 0.7rem !important;
-        top: 0.7rem !important;
+    .ppt-header .icon {
+        font-size: 1.1rem;
+        left: 0.5rem;
+        top: 0.5rem;
     }
 }
 .stChatMessage {
@@ -404,6 +450,11 @@ st.markdown("""
     margin-top: 1.5rem !important;
 }
 </style>
+<div class="ppt-header">
+    <span class="icon">📊</span>
+    <h2>FREE PPT Generator</h2>
+    <p>Create professional presentations through chat</p>
+</div>
 """, unsafe_allow_html=True)
 
 # Language selection (compact)
@@ -417,6 +468,22 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
+# Auto-scroll to bottom when new messages appear
+if st.session_state.messages:
+    st.markdown("""
+    <script>
+        var chatContainer = window.parent.document.querySelector('[data-testid="stChatMessageContainer"]');
+        if (chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        // Fallback: scroll main container
+        var main = window.parent.document.querySelector('.main');
+        if (main) {
+            main.scrollTop = main.scrollHeight;
+        }
+    </script>
+    """, unsafe_allow_html=True)
+
 # Show download button if PPT is ready
 if st.session_state.stage == 'done' and st.session_state.ppt_path:
     with st.chat_message("assistant"):
@@ -426,8 +493,10 @@ if st.session_state.stage == 'done' and st.session_state.ppt_path:
         # Download and New buttons
         col1, col2 = st.columns([3, 1])
         with col1:
+            # ISSUE 9: Use topic-based filename for download
+            download_filename = os.path.basename(st.session_state.ppt_path) if st.session_state.ppt_path else "presentation.pptx"
             with open(st.session_state.ppt_path, "rb") as f:
-                st.download_button("Download PPT", f.read(), file_name="presentation.pptx",
+                st.download_button("Download PPT", f.read(), file_name=download_filename,
                     mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
                     use_container_width=True, type="primary")
         with col2:
@@ -537,6 +606,12 @@ with col_plus:
 user_input = st.chat_input("Send topic, paste content (Hindi/English)...")
 send_clicked = user_input is not None
 
+# Initialize upload confirmation state
+if 'awaiting_upload_confirm' not in st.session_state:
+    st.session_state.awaiting_upload_confirm = False
+if 'uploaded_preview' not in st.session_state:
+    st.session_state.uploaded_preview = None
+
 # Show file uploader when + is clicked
 if st.session_state.show_uploader:
     st.markdown("---")
@@ -572,8 +647,39 @@ if st.session_state.show_uploader:
             st.session_state.file_content = file_content
             st.session_state.file_name = file_name.rsplit('.', 1)[0][:50]
             st.session_state.show_uploader = False
-            st.success(f"✅ File attached: {st.session_state.file_name}")
+            # ISSUE 6: Show confirmation with preview
+            st.session_state.awaiting_upload_confirm = True
+            # Extract first 200 chars as preview
+            preview = file_content[:200].strip()
+            if len(file_content) > 200:
+                preview += "..."
+            st.session_state.uploaded_preview = preview
             st.rerun()
+
+# ISSUE 6: Document upload confirmation flow
+if st.session_state.awaiting_upload_confirm and st.session_state.file_content:
+    with st.chat_message("assistant"):
+        st.markdown(f"📄 **File loaded: {st.session_state.file_name}**")
+        st.markdown("**Preview:**")
+        st.markdown(f"```\n{st.session_state.uploaded_preview}\n```")
+        st.markdown("---")
+        st.markdown("Would you like me to create a PPT from this content?")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("✅ Yes, Generate PPT", key="confirm_upload"):
+                st.session_state.awaiting_upload_confirm = False
+                # Set topic from file name
+                st.session_state.topic = st.session_state.file_name
+                st.session_state.stage = 'generating'
+                add_message("user", f"Generate PPT from uploaded file: {st.session_state.file_name}")
+                st.rerun()
+        with col2:
+            if st.button("❌ Cancel", key="cancel_upload"):
+                st.session_state.awaiting_upload_confirm = False
+                st.session_state.file_content = None
+                st.session_state.file_name = None
+                st.session_state.uploaded_preview = None
+                st.rerun()
 
 # Handle chat input (st.chat_input returns text on Enter, None otherwise)
 if user_input:
@@ -609,31 +715,49 @@ if user_input:
                 st.session_state.stage = 'idle'
                 st.rerun()
 
-            # 1. Google search
-            google_context = ""
-            trusted_domains = ["wikipedia.org", ".gov", ".nic.in", ".org"]
-            if google_api_key and google_cse_id:
-                try:
-                    results = search_google(user_input, google_api_key, google_cse_id, num_results=5)
-                    # 2. Filter to trusted sources
-                    trusted_results = []
-                    for r in results:
-                        url = r.get('link', '')
-                        if any(domain in url for domain in trusted_domains):
-                            trusted_results.append(r)
-                    # 3. Extract clean text (use snippet, title)
-                    snippets = [r.get('snippet', '') for r in trusted_results]
-                    titles = [r.get('title', '') for r in trusted_results]
-                    google_context = "\n".join(titles + snippets)
-                except Exception as e:
-                    st.warning(f"Google search failed: {e}")
-                    google_context = ""
+            # ISSUE 8: Check if user provided substantial content (pasted text or uploaded file)
+            user_provided_content = ""
+            use_user_content = False
 
-            # 4. Pass context and language to AI generator
+            # Check if file content is available
+            if st.session_state.file_content:
+                user_provided_content = st.session_state.file_content
+                use_user_content = True
+            # Check if user pasted substantial content (> 100 chars suggests they pasted content)
+            elif len(user_input) > 100:
+                user_provided_content = user_input
+                use_user_content = True
+
+            # Only do Google search if user didn't provide substantial content
+            google_context = ""
+            if not use_user_content:
+                trusted_domains = ["wikipedia.org", ".gov", ".nic.in", ".org"]
+                if google_api_key and google_cse_id:
+                    try:
+                        results = search_google(user_input, google_api_key, google_cse_id, num_results=5)
+                        # Filter to trusted sources
+                        trusted_results = []
+                        for r in results:
+                            url = r.get('link', '')
+                            if any(domain in url for domain in trusted_domains):
+                                trusted_results.append(r)
+                        # Extract clean text (use snippet, title)
+                        snippets = [r.get('snippet', '') for r in trusted_results]
+                        titles = [r.get('title', '') for r in trusted_results]
+                        google_context = "\n".join(titles + snippets)
+                    except Exception as e:
+                        st.warning(f"Google search failed: {e}")
+                        google_context = ""
+
+            # Pass context and language to AI generator
             generator = MultiAIGenerator()
             language = st.session_state.get('language', 'English')
-            # Add language and tone to prompt
-            custom_instructions = f"{google_context}\n\nLanguage: {language}\nTone: Government / Training"
+
+            # ISSUE 8: Prioritize user content over web search
+            if use_user_content:
+                custom_instructions = f"USER PROVIDED CONTENT (use this as the PRIMARY source for slide content):\n{user_provided_content}\n\nLanguage: {language}\nTone: Government / Training"
+            else:
+                custom_instructions = f"{google_context}\n\nLanguage: {language}\nTone: Government / Training"
             content_dict = generator.generate_ppt_content(
                 topic=user_input,
                 min_slides=6,

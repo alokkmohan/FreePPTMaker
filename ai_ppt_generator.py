@@ -33,6 +33,30 @@ except ImportError:
     def clean_bullet_point(text):
         return text.strip() if text else ""
 
+# ISSUE 5: Clean markdown symbols from text
+import re
+def clean_markdown(text):
+    """Remove markdown formatting symbols from text"""
+    if not text:
+        return ""
+    # Remove bold markers: **text** or __text__
+    text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
+    text = re.sub(r'__(.+?)__', r'\1', text)
+    # Remove italic markers: *text* or _text_
+    text = re.sub(r'\*(.+?)\*', r'\1', text)
+    text = re.sub(r'_(.+?)_', r'\1', text)
+    # Remove header markers: # ## ### etc.
+    text = re.sub(r'^#{1,6}\s*', '', text, flags=re.MULTILINE)
+    # Remove inline code: `text`
+    text = re.sub(r'`(.+?)`', r'\1', text)
+    # Remove links: [text](url) -> text
+    text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
+    # Remove bullet markers at start (will be added back as proper bullets)
+    text = re.sub(r'^[\-\*•]\s*', '', text.strip())
+    # Clean extra whitespace
+    text = ' '.join(text.split())
+    return text.strip()
+
 # Try to import image generator
 try:
     from image_generator import get_slide_image, download_image, search_image
@@ -384,35 +408,35 @@ class ModernPPTDesigner:
         # Detect if text contains Hindi/Devanagari characters
         has_hindi = any(ord(char) >= 0x0900 and ord(char) <= 0x097F for bullet in bullets for char in bullet)
         
-        # Dynamic font sizing - more aggressive for Hindi
+        # ISSUE 4: Dynamic font sizing with INCREASED character limits to avoid truncation
         if has_hindi:
-            # Hindi text takes more space, use smaller limits
-            if total_chars > 450 or num_bullets > 6:
-                font_size = 12
-                space_after = 6
-                max_chars = 80
-            elif total_chars > 300 or num_bullets > 5:
-                font_size = 14
-                space_after = 8
-                max_chars = 100
+            # Hindi text takes more space, but increased limits
+            if total_chars > 500 or num_bullets > 6:
+                font_size = 11
+                space_after = 5
+                max_chars = 120  # Increased from 80
+            elif total_chars > 350 or num_bullets > 5:
+                font_size = 13
+                space_after = 7
+                max_chars = 150  # Increased from 100
             else:
-                font_size = 16
-                space_after = 10
-                max_chars = 120
+                font_size = 15
+                space_after = 9
+                max_chars = 180  # Increased from 120
         else:
-            # English text - more aggressive limits
-            if total_chars > 700 or num_bullets > 6:
-                font_size = 14
-                space_after = 8
-                max_chars = 150
-            elif total_chars > 500 or num_bullets > 5:
-                font_size = 16
-                space_after = 10
-                max_chars = 180
+            # English text - increased limits to show more content
+            if total_chars > 800 or num_bullets > 6:
+                font_size = 13
+                space_after = 7
+                max_chars = 220  # Increased from 150
+            elif total_chars > 600 or num_bullets > 5:
+                font_size = 15
+                space_after = 9
+                max_chars = 250  # Increased from 180
             else:
-                font_size = 18
-                space_after = 12
-                max_chars = 200
+                font_size = 17
+                space_after = 11
+                max_chars = 280  # Increased from 200
         
         for i, bullet in enumerate(bullets):
             if i == 0:
@@ -420,10 +444,12 @@ class ModernPPTDesigner:
             else:
                 p = tf.add_paragraph()
 
-            # Clean and fix broken words first
-            bullet_text = fix_broken_words(clean_bullet_point(bullet))
+            # ISSUE 5: Clean markdown symbols first
+            bullet_text = clean_markdown(bullet)
+            # Clean and fix broken words
+            bullet_text = fix_broken_words(clean_bullet_point(bullet_text))
 
-            # Smart truncate at word boundary (not mid-word)
+            # ISSUE 4: Smart truncate with increased limits
             if len(bullet_text) > max_chars:
                 bullet_text = smart_truncate(bullet_text, max_chars)
 
@@ -432,7 +458,7 @@ class ModernPPTDesigner:
             p.font.color.rgb = self.colors["text"]
             p.font.name = 'Calibri'
             p.space_after = Pt(space_after)
-        
+
         return slide
     
     def create_content_slide_with_image(self, title, bullets, image_path=None):
@@ -481,13 +507,15 @@ class ModernPPTDesigner:
         
         for i, bullet in enumerate(bullets):
             p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-            # Clean and smart truncate
-            clean_text = fix_broken_words(clean_bullet_point(bullet))
-            p.text = "● " + (smart_truncate(clean_text, 150) if len(clean_text) > 150 else clean_text)
+            # ISSUE 5: Clean markdown first
+            clean_text = clean_markdown(bullet)
+            clean_text = fix_broken_words(clean_bullet_point(clean_text))
+            # ISSUE 4: Increased limit from 150 to 200
+            p.text = "● " + (smart_truncate(clean_text, 200) if len(clean_text) > 200 else clean_text)
             p.font.size = Pt(font_size)
             p.font.color.rgb = self.colors["text"]
             p.space_after = Pt(10)
-        
+
         return slide
     
     def create_end_slide(self):

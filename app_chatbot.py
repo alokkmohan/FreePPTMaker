@@ -425,27 +425,34 @@ st.markdown("""
 
 # Welcome bar at top (helps visibility on mobile - user suggested)
 st.markdown("""
-<div style="display: flex; justify-content: center; align-items: center; margin-top: 0.5rem; margin-bottom: 0.5rem;">
-    <button style="
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        color: #fff;
-        border: none;
-        border-radius: 22px;
-        font-size: 1.1rem;
-        font-weight: 700;
-        padding: 0.6em 2.2em;
-        box-shadow: 0 2px 12px 0 rgba(60,60,120,0.13);
-        letter-spacing: 0.5px;
-        cursor: pointer;
-        outline: none;
-        margin: 0 auto;
-        width: 100%;
-        max-width: 420px;
-        transition: background 0.2s;
-        ">
-        ✨ Welcome to FREE PPT Maker - Create Unlimited Presentations!
-    </button>
+<div style="
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%);
+    color: #fff;
+    padding: 1.2rem 0 0.7rem 0;
+    box-shadow: 0 2px 12px 0 rgba(60,60,120,0.07);
+    border-radius: 0 0 18px 18px;
+    text-align: center;
+">
+    <h2 style="margin: 0; font-size: 2.1rem; font-weight: 900; letter-spacing: 1px; color: #fff; text-transform:uppercase;">FREE PPT Generator</h2>
+    <p style="margin: 0.5rem 0 0 0; color: #e0e7ff; font-size: 1.08rem; font-weight: 500; letter-spacing: 0.2px;">Create professional presentations through chat</p>
 </div>
+<style>
+@media (max-width: 600px) {
+    div[style*='background: linear-gradient'] h2 {
+        font-size: 1.3rem !important;
+    }
+    div[style*='background: linear-gradient'] p {
+        font-size: 0.95rem !important;
+    }
+    div[style*='background: linear-gradient'] {
+        padding: 0.7rem 0 0.5rem 0 !important;
+        border-radius: 0 0 12px 12px !important;
+    }
+}
+</style>
 """, unsafe_allow_html=True)
 
 # Header using Streamlit native components

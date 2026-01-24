@@ -13,6 +13,14 @@ import os
 import json
 from typing import Dict, Optional
 
+# Global variable to track which AI was used
+_last_ai_source = "Unknown"
+
+def get_last_ai_source():
+    """Get which AI was used for last generation"""
+    global _last_ai_source
+    return _last_ai_source
+
 def get_secret(key):
     """Get secret from Streamlit Cloud or .env file"""
     # Try Streamlit secrets first (for cloud deployment)
@@ -75,10 +83,14 @@ class MultiAIGenerator:
         Generate PPT structure.
         Priority: Ollama (local) -> Groq (cloud fallback)
         """
+        global _last_ai_source
+
         # Try Ollama first (local, free, offline)
         try:
             print("[AI] Trying Ollama (local)...")
-            return self._ollama_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
+            result = self._ollama_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
+            _last_ai_source = "Ollama (Local)"
+            return result
         except Exception as ollama_error:
             print(f"[AI] Ollama failed: {ollama_error}")
 
@@ -87,7 +99,9 @@ class MultiAIGenerator:
                 raise Exception("Ollama not available and Groq API key not found. Set GROQ_API_KEY in Streamlit Secrets (cloud) or .env file (local)")
 
             print("[AI] Using Groq API (cloud fallback)...")
-            return self._groq_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
+            result = self._groq_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
+            _last_ai_source = "Groq Cloud (Llama 3.3)"
+            return result
 
     def _ollama_generate(self, topic, min_slides, max_slides, style, audience, custom_instructions):
         """Generate using Ollama API (local or remote via ngrok)"""

@@ -38,6 +38,15 @@ def get_secret(key):
     load_dotenv()
     return os.getenv(key)
 
+def get_ollama_url():
+    """Get Ollama URL - can be local or remote (ngrok/public)"""
+    # Check for custom Ollama URL (for remote access via ngrok etc.)
+    custom_url = get_secret("OLLAMA_URL")
+    if custom_url:
+        return custom_url.rstrip('/')
+    # Default to localhost
+    return "http://localhost:11434"
+
 class MultiAIGenerator:
     """Generate content using multiple AI providers"""
 
@@ -81,18 +90,22 @@ class MultiAIGenerator:
             return self._groq_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
 
     def _ollama_generate(self, topic, min_slides, max_slides, style, audience, custom_instructions):
-        """Generate using Ollama local API (qwen2.5 model)"""
+        """Generate using Ollama API (local or remote via ngrok)"""
         import requests
+
+        # Get Ollama URL (local or remote)
+        ollama_url = get_ollama_url()
+        print(f"[AI] Checking Ollama at: {ollama_url}")
 
         # Check if Ollama is running
         try:
-            health = requests.get("http://localhost:11434/", timeout=2)
+            health = requests.get(f"{ollama_url}/", timeout=5)
             if health.status_code != 200:
-                raise Exception("Ollama not running")
-        except Exception:
-            raise Exception("Ollama not running or not accessible")
+                raise Exception(f"Ollama not running at {ollama_url}")
+        except Exception as e:
+            raise Exception(f"Ollama not accessible at {ollama_url}: {str(e)}")
 
-        print("[AI] Ollama is running, generating content...")
+        print(f"[AI] Ollama is running at {ollama_url}, generating content...")
 
         # Strict prompt for consistent output
         prompt = f"""You are an expert presentation designer. Create a PowerPoint presentation.
@@ -120,7 +133,7 @@ Return ONLY valid JSON. No markdown code blocks. No explanations."""
 
         ollama_model = "qwen2.5"
         response = requests.post(
-            "http://localhost:11434/api/generate",
+            f"{ollama_url}/api/generate",
             json={
                 "model": ollama_model,
                 "prompt": prompt,

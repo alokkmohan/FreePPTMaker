@@ -111,9 +111,15 @@ class MultiAIGenerator:
         ollama_url = get_ollama_url()
         print(f"[AI] Checking Ollama at: {ollama_url}")
 
+        # Headers to bypass ngrok browser warning (for free tier)
+        headers = {
+            "ngrok-skip-browser-warning": "true",
+            "User-Agent": "SlideCraftAI/1.0"
+        }
+
         # Check if Ollama is running
         try:
-            health = requests.get(f"{ollama_url}/", timeout=5)
+            health = requests.get(f"{ollama_url}/", headers=headers, timeout=5)
             if health.status_code != 200:
                 raise Exception(f"Ollama not running at {ollama_url}")
         except Exception as e:
@@ -158,6 +164,7 @@ Return ONLY valid JSON. No code blocks. No explanations."""
         ollama_model = "qwen2.5"
         response = requests.post(
             f"{ollama_url}/api/generate",
+            headers=headers,
             json={
                 "model": ollama_model,
                 "prompt": prompt,

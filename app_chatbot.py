@@ -857,8 +857,7 @@ if not st.session_state.messages and st.session_state.stage == 'idle':
     with st.chat_message("assistant"):
         st.markdown("Welcome! Type a topic or upload a document to begin.")
 
-# ============ FOOTER WITH STATS ============
-# Load and update visitor stats
+# ============ VISITOR STATS (no footer) ============
 import json
 stats_file = "visitor_count.json"
 try:
@@ -877,25 +876,3 @@ if 'visit_counted' not in st.session_state:
             json.dump(stats, f)
     except:
         pass
-
-# Slim footer
-st.markdown(f"""
-<div style="
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%);
-    color: #fff;
-    padding: 8px 16px;
-    font-size: 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    z-index: 999;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-">
-    <span>👁️ Visits: <b>{stats.get('total_visits', 0)}</b> &nbsp;|&nbsp; 📊 PPTs Made: <b>{stats.get('ppt_generated', 0)}</b></span>
-    <span>Powered by <b>Alok Mohan</b></span>
-</div>
-""", unsafe_allow_html=True)

@@ -89,13 +89,21 @@ class MultiAIGenerator:
         """
         global _last_ai_source
 
+        # Debug: print the context being passed
+        if custom_instructions:
+            print("\n[DEBUG] Web Research Context passed to AI:\n" + custom_instructions + "\n")
+
         # Build dynamic prompt
-        prompt = f"""You are an expert presentation content writer. Generate content for a PowerPoint presentation only.
+        prompt = f"""
+WEB RESEARCH CONTEXT (use this information to generate unique, topic-specific slide titles and content):
+{custom_instructions}
+
+You are an expert presentation content writer. Generate content for a PowerPoint presentation only.
 
 Rules:
 - Number of slides: exactly {min_slides}
 - Each slide must have:
-  - A clear, specific slide title
+  - A clear, unique, topic-specific slide title (do NOT use generic headers like 'Introduction', 'Key Concepts', 'Conclusion', 'Overview', etc.)
   - Exactly {bullets_per_slide} bullet points
   - Each bullet point maximum {bullet_word_limit} words
 - Tone: {tone}
@@ -103,11 +111,12 @@ Rules:
 - Audience: {audience}
 {f'- Required phrases/keywords: {required_phrases}' if required_phrases else ''}
 {f'- Avoid: {forbidden_content}' if forbidden_content else ''}
-{f'- Extra instructions: {custom_instructions}' if custom_instructions else ''}
 - No paragraphs
 - No emojis
 - No markdown
 - No generic statements, no filler, no repetition
+- Do NOT use any static outline or pre-filled structure. Every slide title must be researched and specific to the topic.
+- You MUST use the above web research context for all slide titles and content. Do NOT ignore it.
 
 Output format (strict):
 Slide 1 Title:

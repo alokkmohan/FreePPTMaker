@@ -86,11 +86,48 @@ def add_message(role, content):
     st.session_state.messages.append({"role": role, "content": content})
 
 def is_greeting(text):
-    greetings = ['hi', 'hello', 'hey', 'hii', 'hiii', 'namaste', 'namaskar', 'good morning',
-                 'good afternoon', 'good evening', 'howdy', 'hola', 'yo', 'kya hal', 'kaise ho']
+    # Global greetings - English, Hindi, Spanish, French, German, Arabic, Chinese, Japanese, etc.
+    greetings = [
+        # English
+        'hi', 'hello', 'hey', 'hii', 'hiii', 'hiiii', 'helo', 'hllo', 'hlw', 'hw',
+        'good morning', 'good afternoon', 'good evening', 'good night', 'gm', 'gn',
+        'howdy', 'yo', 'sup', 'whats up', "what's up", 'wassup', 'wazzup',
+        'greetings', 'salutations', 'heya', 'hiya', 'hai',
+        # Hindi / Hinglish
+        'namaste', 'namaskar', 'pranam', 'pranaam', 'namashkar', 'jai shri krishna',
+        'jai hind', 'radhe radhe', 'ram ram', 'jai shri ram', 'jai mata di',
+        'kya hal', 'kaise ho', 'kaise hai', 'kaisa hai', 'kya haal hai', 'kya chal raha',
+        'aur batao', 'sab theek', 'theek hai', 'haan bhai', 'bhai', 'bro',
+        'sat sri akal', 'sasriakal', 'kem cho', 'vanakkam', 'nomoshkar',
+        # Spanish
+        'hola', 'buenos dias', 'buenas tardes', 'buenas noches', 'que tal',
+        # French
+        'bonjour', 'bonsoir', 'salut', 'coucou',
+        # German
+        'hallo', 'guten tag', 'guten morgen', 'guten abend',
+        # Italian
+        'ciao', 'buongiorno', 'buonasera',
+        # Portuguese
+        'ola', 'bom dia', 'boa tarde', 'boa noite',
+        # Arabic
+        'marhaba', 'ahlan', 'salam', 'assalamualaikum', 'as-salamu alaykum', 'salaam',
+        # Chinese
+        'ni hao', 'nihao',
+        # Japanese
+        'konnichiwa', 'ohayo', 'konbanwa',
+        # Korean
+        'annyeong', 'annyeonghaseyo',
+        # Russian
+        'privet', 'zdravstvuyte',
+        # Other
+        'aloha', 'shalom', 'sawadee', 'jambo', 'habari'
+    ]
     text_lower = text.lower().strip()
+    # Remove punctuation for matching
+    text_clean = re.sub(r'[^\w\s]', '', text_lower)
     for g in greetings:
-        if text_lower == g or text_lower.startswith(g + ' ') or text_lower.startswith(g + '!'):
+        g_clean = re.sub(r'[^\w\s]', '', g)
+        if text_clean == g_clean or text_clean.startswith(g_clean + ' '):
             return True
     return False
 
@@ -233,11 +270,25 @@ elif st.session_state.stage == 'ask_designation':
         with col2:
             if st.button("Skip", key="skip_designation"):
                 st.session_state.presenter_designation = None
-                st.session_state.stage = 'generating'
+                st.session_state.stage = 'idle'
+                # Show personalized welcome
+                name = st.session_state.presenter_name
+                if name:
+                    welcome = f"Welcome {name}! Please tell me a topic for your presentation."
+                else:
+                    welcome = "Welcome! Please tell me a topic for your presentation."
+                add_message("assistant", welcome)
                 st.rerun()
         if designation:
             st.session_state.presenter_designation = designation
-            st.session_state.stage = 'generating'
+            st.session_state.stage = 'idle'
+            # Show personalized welcome
+            name = st.session_state.presenter_name
+            if name:
+                welcome = f"Welcome {name}! Please tell me a topic for your presentation."
+            else:
+                welcome = "Welcome! Please tell me a topic for your presentation."
+            add_message("assistant", welcome)
             st.rerun()
 
 user_input = st.chat_input("Type your message...")
@@ -250,13 +301,15 @@ if user_input:
     with st.spinner("Processing your request. Please wait..."):
         # If greeting, show welcome and ask for topic
         if is_greeting(user_input):
+            name = st.session_state.presenter_name
+            name_greeting = f" {name}" if name else ""
             if st.session_state.get('language', 'English') == 'Hindi':
-                response = ("नमस्ते!\n\n" 
+                response = (f"नमस्ते{name_greeting}!\n\n"
                             "मैं आपकी मदद से पेशेवर PowerPoint प्रेजेंटेशन बना सकता हूँ।\n\n"
                             "कृपया एक विषय लिखें, या डॉक्युमेंट अपलोड करें, या टेक्स्ट पेस्ट करें।\n\n"
                             "उदाहरण: 'AI in Healthcare', 'Digital India', आदि।")
             else:
-                response = ("Hello!\n\n" 
+                response = (f"Hello{name_greeting}!\n\n"
                             "I can help you create a professional PowerPoint presentation.\n\n"
                             "Please enter a topic, upload a document, or paste your text.\n\n"
                             "Example: 'AI in Healthcare', 'Digital India', etc.")

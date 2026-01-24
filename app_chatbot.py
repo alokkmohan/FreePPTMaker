@@ -143,6 +143,42 @@ def is_no(text):
     no_words = ['no', 'nahi', 'naa', 'na', 'change', 'modify', 'edit', 'different']
     return text.lower().strip() in no_words
 
+def is_valid_topic(text):
+    """Check if the input is a valid/meaningful topic for PPT generation"""
+    text = text.strip()
+
+    # Too short
+    if len(text) < 3:
+        return False, "Topic bahut chhota hai. Please ek proper topic likhen."
+
+    # Check for minimum vowels (gibberish often lacks vowels)
+    vowels = set('aeiouAEIOU')
+    vowel_count = sum(1 for c in text if c in vowels)
+
+    # If mostly consonants with very few vowels, likely gibberish
+    if len(text) > 5 and vowel_count < len(text) * 0.15:
+        return False, "Yeh samajh nahi aaya. Please ek clear topic likhen jaise 'Artificial Intelligence' ya 'Climate Change'."
+
+    # Check for repeated characters (like "aaaaaaa" or "jjjjj")
+    if len(text) > 4:
+        for i in range(len(text) - 3):
+            if text[i] == text[i+1] == text[i+2] == text[i+3]:
+                return False, "Please ek meaningful topic enter karein, random characters nahi."
+
+    # Check if it's just numbers
+    if text.replace(' ', '').isdigit():
+        return False, "Please topic ka naam likhen, sirf numbers nahi."
+
+    # If text is long enough and has some vowels, probably valid
+    if len(text) >= 5 and vowel_count >= 2:
+        return True, ""
+
+    # Single word with reasonable length
+    if len(text.split()) == 1 and len(text) >= 2 and vowel_count >= 1:
+        return True, ""
+
+    return False, "Please ek clear topic batayein. Example: 'Digital India' ya 'AI in Healthcare'."
+
 def generate_ppt(content, topic, theme):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_folder = os.path.join("output", f"output_{timestamp}")
@@ -409,6 +445,13 @@ if user_input:
 
         # If user input is a real topic/text/file, proceed to AI slide generation
         else:
+            # Validate topic before proceeding
+            is_valid, error_msg = is_valid_topic(user_input)
+            if not is_valid:
+                add_message("assistant", f"{error_msg}\n\nPlease try again with a proper topic.")
+                st.session_state.stage = 'idle'
+                st.rerun()
+
             # 1. Google search
             google_context = ""
             trusted_domains = ["wikipedia.org", ".gov", ".nic.in", ".org"]

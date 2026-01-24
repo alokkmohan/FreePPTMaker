@@ -6,7 +6,7 @@
 
 """
 Multi-AI Content Generator
-Support for Deepseek, Gemini, Groq, Hugging Face, and Claude APIs
+Support for Ollama (local), Groq (cloud fallback), and other APIs
 """
 
 import os
@@ -43,7 +43,8 @@ class MultiAIGenerator:
 
     def __init__(self, ai_model: str = "auto", api_key: str = None):
         """
-        Initialize AI generator (Groq - FREE)
+        Initialize AI generator
+        Priority: Ollama (local) -> Groq (cloud)
         """
         from dotenv import load_dotenv
         load_dotenv()
@@ -62,207 +63,103 @@ class MultiAIGenerator:
         custom_instructions: str = ""
     ) -> Dict:
         """
-        Generate PPT structure using Groq (FREE)
+        Generate PPT structure.
+        Priority: Ollama (local) -> Groq (cloud fallback)
         """
-        if not self.groq_key:
-            raise Exception("Groq API key not found. Set GROQ_API_KEY in Streamlit Secrets (cloud) or .env file (local)")
+        # Try Ollama first (local, free, offline)
+        try:
+            print("[AI] Trying Ollama (local)...")
+            return self._ollama_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
+        except Exception as ollama_error:
+            print(f"[AI] Ollama failed: {ollama_error}")
 
-        print("[AI] Using Groq API (FREE)...")
-        return self._groq_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
+            # Fallback to Groq (cloud)
+            if not self.groq_key:
+                raise Exception("Ollama not available and Groq API key not found. Set GROQ_API_KEY in Streamlit Secrets (cloud) or .env file (local)")
+
+            print("[AI] Using Groq API (cloud fallback)...")
+            return self._groq_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
+
     def _ollama_generate(self, topic, min_slides, max_slides, style, audience, custom_instructions):
-        """Generate using Ollama local API"""
-        print(f"[AI] Using Ollama local API for content generation...")
+        """Generate using Ollama local API (qwen2.5 model)"""
+        import requests
+
+        # Check if Ollama is running
         try:
-            import requests
-            ollama_model = "mistral"
-            prompt = f"""You are an expert presentation designer. Create a professional PowerPoint presentation structure for this topic:
+            health = requests.get("http://localhost:11434/", timeout=2)
+            if health.status_code != 200:
+                raise Exception("Ollama not running")
+        except Exception:
+            raise Exception("Ollama not running or not accessible")
 
-**TOPIC:** {topic}
+        print("[AI] Ollama is running, generating content...")
 
-**REQUIREMENTS:**
-- {min_slides} to {max_slides} slides
-- Professional {style} style
-- For {audience} audience
-- Include specific data and examples
-{f'- Custom: {custom_instructions}' if custom_instructions else ''}
+        # Strict prompt for consistent output
+        prompt = f"""You are an expert presentation designer. Create a PowerPoint presentation.
 
-**OUTPUT:**
-Return valid JSON with:
-{{'title': '...', 'subtitle': '...', 'slides': [{{'title': '...', 'content': ['...', '...'], 'speaker_notes': '...'}}]}}
+TOPIC: {topic}
 
-Return ONLY JSON, no markdown."""
-            response = requests.post(
-                "http://localhost:11434/api/generate",
-                json={
-                    "model": ollama_model,
-                    "prompt": prompt,
-                    "options": {"temperature": 0.7},
-                    "stream": False
-                }
-            )
-            if response.status_code == 200:
-                result = response.json()
-                content = result.get("response", "")
-                # Clean JSON
-                if content.startswith("```json"):
-                    content = content.split("```json")[1].split("```")[0].strip()
-                elif content.startswith("```"):
-                    content = content.split("```")[1].split("```")[0].strip()
-                # Find JSON in response
-                start_idx = content.find("{")
-                end_idx = content.rfind("}") + 1
-                if start_idx != -1 and end_idx > start_idx:
-                    content = content[start_idx:end_idx]
-                return json.loads(content)
-            else:
-                raise Exception(f"Ollama API error: {response.text}")
-        except Exception as e:
-            raise Exception(f"Ollama generation failed: {str(e)}")
-    
-    def _claude_generate(self, topic, min_slides, max_slides, style, audience, custom_instructions):
-        """Generate using Claude API"""
-        from claude_ppt_generator import create_ppt_from_topic
-        
-        # Use existing Claude implementation
-        print(f"🤖 Using Claude API for content generation...")
-        # Note: create_ppt_from_topic expects topic and returns PPT structure
-        # We'll create a temporary function to get just the structure
-        try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=self.api_key)
-            
-            content_prompt = f"""You are an expert researcher and content writer. Create comprehensive, factual content on the following topic for a presentation:
+REQUIREMENTS:
+- Create exactly {min_slides} to {max_slides} slides
+- Style: Professional {style}
+- Audience: {audience}
+{f"- Additional: {custom_instructions}" if custom_instructions else ""}
 
-**TOPIC:** {topic}
+RULES:
+- Each slide must have a clear title (5-8 words max)
+- Each slide must have 4-5 bullet points
+- Each bullet point should be a complete sentence (15-30 words)
+- Never break words with spaces
+- Be specific with facts and examples
+- No emojis, no markdown formatting
 
-**REQUIREMENTS:**
-- Length: Sufficient for {min_slides} to {max_slides} presentation slides
-- Include specific facts, statistics, real data
-- Provide concrete examples and case studies
-- Use authoritative, professional tone
-{f"- Additional Requirements: {custom_instructions}" if custom_instructions else ""}
+OUTPUT FORMAT (JSON only):
+{{"title": "Main Title", "subtitle": "Subtitle", "slides": [{{"title": "Slide Title", "content": ["Bullet point 1.", "Bullet point 2.", "Bullet point 3.", "Bullet point 4."], "speaker_notes": "Notes for speaker"}}]}}
 
-**OUTPUT FORMAT:**
-Return a structured presentation outline with:
-1. Title
-2. Subtitle
-3. Array of slides, each with:
-   - title
-   - content (array of bullet points)
-   - speaker_notes
+Return ONLY valid JSON. No markdown code blocks. No explanations."""
 
-Return as JSON only."""
+        ollama_model = "qwen2.5"
+        response = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": ollama_model,
+                "prompt": prompt,
+                "options": {"temperature": 0.3},
+                "stream": False
+            },
+            timeout=120
+        )
 
-            message = client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=4000,
-                messages=[{"role": "user", "content": content_prompt}]
-            )
-            
-            response_text = message.content[0].text.strip()
-            
-            # Clean and parse JSON
-            if response_text.startswith("```json"):
-                response_text = response_text.split("```json")[1].split("```")[0].strip()
-            elif response_text.startswith("```"):
-                response_text = response_text.split("```")[1].split("```")[0].strip()
-            
-            return json.loads(response_text)
-        
-        except Exception as e:
-            raise Exception(f"Claude generation failed: {str(e)}")
-    
-    def _deepseek_generate(self, topic, min_slides, max_slides, style, audience, custom_instructions):
-        """Generate using Deepseek API"""
-        print(f"[AI] Using Deepseek API for content generation...")
-        try:
-            import requests
-            
-            prompt = f"""You are an expert presentation designer. Create a professional PowerPoint presentation structure for this topic:
+        if response.status_code == 200:
+            result = response.json()
+            content = result.get("response", "")
 
-**TOPIC:** {topic}
-
-**REQUIREMENTS:**
-- {min_slides} to {max_slides} slides
-- Professional {style} style
-- For {audience} audience
-- Include specific data and examples
-{f"- Custom: {custom_instructions}" if custom_instructions else ""}
-
-**OUTPUT:**
-Return valid JSON with:
-{{"title": "...", "subtitle": "...", "slides": [{{"title": "...", "content": ["...", "..."], "speaker_notes": "..."}}]}}
-
-Return ONLY JSON, no markdown."""
-
-            response = requests.post(
-                "https://api.deepseek.com/chat/completions",
-                headers={"Authorization": f"Bearer {self.deepseek_key}"},
-                json={
-                    "model": "deepseek-chat",
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.7,
-                    "max_tokens": 4000
-                }
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                content = result["choices"][0]["message"]["content"]
-                
-                # Clean JSON
-                if content.startswith("```json"):
-                    content = content.split("```json")[1].split("```")[0].strip()
-                elif content.startswith("```"):
-                    content = content.split("```")[1].split("```")[0].strip()
-                
-                return json.loads(content)
-            else:
-                raise Exception(f"Deepseek API error: {response.text}")
-        
-        except Exception as e:
-            raise Exception(f"Deepseek generation failed: {str(e)}")
-    
-    def _gemini_generate(self, topic, min_slides, max_slides, style, audience, custom_instructions):
-        """Generate using Google Gemini API"""
-        print(f"🤖 Using Google Gemini API for content generation...")
-        try:
-            import google.generativeai as genai
-            
-            genai.configure(api_key=self.api_key)
-            model = genai.GenerativeModel("gemini-pro")
-            
-            prompt = f"""You are an expert presentation designer. Create a professional PowerPoint presentation structure for this topic:
-
-**TOPIC:** {topic}
-
-**REQUIREMENTS:**
-- {min_slides} to {max_slides} slides
-- Professional {style} style
-- For {audience} audience
-- Include specific data and examples
-{f"- Custom: {custom_instructions}" if custom_instructions else ""}
-
-**OUTPUT:**
-Return valid JSON with:
-{{"title": "...", "subtitle": "...", "slides": [{{"title": "...", "content": ["...", "..."], "speaker_notes": "..."}}]}}
-
-Return ONLY JSON, no markdown."""
-
-            response = model.generate_content(prompt)
-            content = response.text
-            
-            # Clean JSON
+            # Clean JSON from response
             if content.startswith("```json"):
                 content = content.split("```json")[1].split("```")[0].strip()
             elif content.startswith("```"):
                 content = content.split("```")[1].split("```")[0].strip()
-            
-            return json.loads(content)
-        
-        except Exception as e:
-            raise Exception(f"Gemini generation failed: {str(e)}")
-    
+
+            # Find JSON in response
+            start_idx = content.find("{")
+            end_idx = content.rfind("}") + 1
+            if start_idx != -1 and end_idx > start_idx:
+                content = content[start_idx:end_idx]
+
+            parsed = json.loads(content)
+
+            # Post-process to fix any issues
+            try:
+                from text_processor import post_process_ai_response
+                parsed = post_process_ai_response(parsed)
+                print("[AI] Ollama: Post-processing applied successfully")
+            except ImportError:
+                print("[WARN] text_processor not available, skipping post-processing")
+
+            return parsed
+        else:
+            raise Exception(f"Ollama API error: {response.text}")
+
     def _groq_generate(self, topic, min_slides, max_slides, style, audience, custom_instructions):
         """Generate using Groq API with improved prompting"""
         print(f"[AI] Using Groq API for content generation...")
@@ -332,7 +229,7 @@ Return ONLY valid JSON. No markdown code blocks. No explanations."""
             try:
                 from text_processor import post_process_ai_response
                 parsed = post_process_ai_response(parsed)
-                print("[AI] Post-processing applied successfully")
+                print("[AI] Groq: Post-processing applied successfully")
             except ImportError:
                 print("[WARN] text_processor not available, skipping post-processing")
 
@@ -340,57 +237,9 @@ Return ONLY valid JSON. No markdown code blocks. No explanations."""
 
         except Exception as e:
             raise Exception(f"Groq generation failed: {str(e)}")
-    
-    def _huggingface_generate(self, topic, min_slides, max_slides, style, audience, custom_instructions):
-        """Generate using Hugging Face Inference API"""
-        print(f"🤖 Using Hugging Face API for content generation...")
-        try:
-            import requests
-            
-            prompt = f"""You are an expert presentation designer. Create a professional PowerPoint presentation structure for this topic:
-
-**TOPIC:** {topic}
-
-**REQUIREMENTS:**
-- {min_slides} to {max_slides} slides
-- Professional {style} style
-- For {audience} audience
-{f"- Custom: {custom_instructions}" if custom_instructions else ""}
-
-**OUTPUT (JSON ONLY):**
-{{"title": "...", "subtitle": "...", "slides": [{{"title": "...", "content": ["...", "..."], "speaker_notes": "..."}}]}}"""
-
-            response = requests.post(
-                "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1",
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                json={"inputs": prompt, "parameters": {"max_length": 4000, "temperature": 0.7}}
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                content = result[0]["generated_text"] if isinstance(result, list) else result.get("generated_text", "")
-                
-                # Clean JSON
-                if "```json" in content:
-                    content = content.split("```json")[1].split("```")[0].strip()
-                elif "```" in content:
-                    content = content.split("```")[1].split("```")[0].strip()
-                
-                # Find JSON in response
-                start_idx = content.find("{")
-                end_idx = content.rfind("}") + 1
-                if start_idx != -1 and end_idx > start_idx:
-                    content = content[start_idx:end_idx]
-                
-                return json.loads(content)
-            else:
-                raise Exception(f"Hugging Face API error: {response.text}")
-        
-        except Exception as e:
-            raise Exception(f"Hugging Face generation failed: {str(e)}")
 
 
-# Convenience function for topic-based generation with Ollama only
+# Convenience function for topic-based generation
 def generate_ppt_from_topic_with_ai(
     topic: str,
     style: str = "professional",
@@ -400,7 +249,8 @@ def generate_ppt_from_topic_with_ai(
     custom_instructions: str = ""
 ) -> Dict:
     """
-    Generate PPT structure from topic using Ollama only
+    Generate PPT structure from topic.
+    Priority: Ollama (local) -> Groq (cloud fallback)
     """
     generator = MultiAIGenerator()
     return generator.generate_ppt_content(

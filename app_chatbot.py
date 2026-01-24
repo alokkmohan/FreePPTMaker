@@ -496,23 +496,36 @@ if st.session_state.stage == 'done' and st.session_state.ppt_path:
                 st.rerun()
 
         # Regenerate options
-        st.markdown("---")
-        st.markdown("**Regenerate with different settings:**")
-
-        col_theme, col_slides, col_regen = st.columns([2, 2, 1])
-        with col_theme:
-            theme_options = ["corporate", "ocean", "forest", "sunset"]
-            current_idx = theme_options.index(st.session_state.theme) if st.session_state.theme in theme_options else 0
-            new_theme = st.selectbox("Theme", theme_options, index=current_idx, key="regen_theme")
-        with col_slides:
-            new_slide_count = st.selectbox("Slides", [6, 8, 10, 12, 15], index=0, key="regen_slides")
-        with col_regen:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("Regenerate", key="regen_btn", use_container_width=True):
-                st.session_state.theme = new_theme
-                st.session_state.num_slides = new_slide_count
-                st.session_state.stage = 'regenerating'
-                st.rerun()
+        st.markdown("""
+        <div style="
+            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+            color: #fff;
+            padding: 1rem 1rem 0.8rem 1rem;
+            margin: -1rem -1rem 1rem -1rem;
+            text-align: center;
+            border-radius: 0 0 18px 18px;
+            box-shadow: 0 4px 18px 0 rgba(102, 126, 234, 0.25), 0 0 0 4px #e0e7ff inset;
+            border: 2.5px solid #667eea;
+            border-top: none;
+        ">
+            <h2 style="margin:0;font-size:2.1rem;font-weight:900;letter-spacing:1px;text-transform:uppercase;">FREE PPT Generator</h2>
+            <p style="margin:0.5rem 0 0 0;font-size:1.08rem;font-weight:500;letter-spacing:0.2px;color:#e0e7ff;">Create professional presentations through chat</p>
+        </div>
+        <style>
+        @media (max-width: 600px) {
+            div[style*='background: linear-gradient'] h2 {
+                font-size: 1.3rem !important;
+            }
+            div[style*='background: linear-gradient'] p {
+                font-size: 0.95rem !important;
+            }
+            div[style*='background: linear-gradient'] {
+                padding: 0.7rem 0 0.5rem 0 !important;
+                border-radius: 0 0 12px 12px !important;
+            }
+        }
+        </style>
+        """, unsafe_allow_html=True)
 
 # Chat input
 

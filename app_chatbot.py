@@ -1220,3 +1220,16 @@ if 'visit_counted' not in st.session_state:
             json.dump(stats, f)
     except:
         pass
+
+# Chatbox options row (below chat input)
+st.markdown("""
+<hr style='margin: 1.5rem 0 1rem 0; border: none; border-top: 2px solid #e5e5e5;'>
+<div style='display: flex; justify-content: center; align-items: center; gap: 32px; margin-bottom: 1rem;'>
+    <form action='' method='post' style='display:inline;'>
+        <button type='submit' name='refresh' style='background: none; border: none; cursor: pointer; font-size: 2rem;' title='Refresh Chat'>🔄</button>
+    </form>
+    <label for='file-upload' style='cursor: pointer; font-size: 2rem;' title='Upload Document'>➕</label>
+    <input id='file-upload' type='file' style='display: none;'>
+    <button onclick='window.parent.postMessage({themeToggle:true}, "*")' style='background: none; border: none; cursor: pointer; font-size: 2rem;' title='Toggle Theme'>🌗</button>
+</div>
+""", unsafe_allow_html=True)

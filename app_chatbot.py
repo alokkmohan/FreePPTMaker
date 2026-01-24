@@ -28,8 +28,8 @@ google_cse_id = os.getenv("GOOGLE_CSE_ID")
 
 # Page Config
 st.set_page_config(
-    page_title="SlideCraft AI",
-    page_icon="P",
+    page_title="FREE PPT Maker - AI Presentation Generator",
+    page_icon="📊",
     layout="centered",
     initial_sidebar_state="collapsed"
 )

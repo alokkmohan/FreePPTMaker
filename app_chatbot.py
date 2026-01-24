@@ -347,6 +347,43 @@ if 'theme' not in st.session_state:
     st.session_state.theme = 'corporate'
 if 'user_input' not in st.session_state:
     st.session_state.user_input = ""
+if 'chat_messages' not in st.session_state:
+    st.session_state.chat_messages = []
+if 'awaiting_topic' not in st.session_state:
+    st.session_state.awaiting_topic = False
+
+# Helper functions for chat
+def is_greeting(text):
+    """Check if text is a greeting"""
+    greetings = ['hi', 'hello', 'hey', 'hii', 'hiii', 'namaste', 'namaskar', 'good morning',
+                 'good afternoon', 'good evening', 'good night', 'howdy', 'hola', 'yo',
+                 'kya hal', 'kaise ho', 'how are you', 'whats up', "what's up", 'sup']
+    text_lower = text.lower().strip()
+    # Check exact match or starts with greeting
+    for g in greetings:
+        if text_lower == g or text_lower.startswith(g + ' ') or text_lower.startswith(g + '!'):
+            return True
+    return False
+
+def is_valid_topic(text):
+    """Check if text is a valid topic for PPT generation"""
+    text = text.strip()
+    # Too short - likely not a topic
+    if len(text) < 5:
+        return False
+    # Only 1-2 words and not descriptive
+    words = text.split()
+    if len(words) <= 2:
+        # Check if it's a meaningful topic (has noun-like structure)
+        short_invalid = ['ok', 'yes', 'no', 'ya', 'haan', 'nahi', 'thanks', 'thank you',
+                        'bye', 'okay', 'sure', 'fine', 'good', 'nice', 'great', 'cool']
+        if text.lower() in short_invalid:
+            return False
+    return True
+
+def add_chat_message(role, content):
+    """Add message to chat history"""
+    st.session_state.chat_messages.append({"role": role, "content": content})
 
 # Function to generate PPT
 def generate_ppt_func(content, topic, theme):
@@ -507,6 +544,8 @@ if st.session_state.ppt_ready and st.session_state.ppt_path:
         st.session_state.user_input = ""
         st.session_state.pending_file_content = None
         st.session_state.pending_file_name = None
+        st.session_state.chat_messages = []  # Clear chat
+        st.session_state.awaiting_topic = False
         st.rerun()
 
 # ============ BOTTOM INPUT BAR (Claude Style) ============
@@ -586,28 +625,56 @@ if uploaded_file is not None and not st.session_state.generating:
 if st.session_state.pending_file_content and not st.session_state.generating:
     st.info(f"File ready: {st.session_state.pending_file_name} - Click send or press Enter to generate PPT")
 
+# Display chat messages
+for msg in st.session_state.chat_messages:
+    with st.chat_message(msg["role"]):
+        st.write(msg["content"])
+
 # Handle chat input submission
 if user_input:
-    st.session_state.generating = True
+    # Add user message to chat
+    add_chat_message("user", user_input)
 
-    # If file is pending, use file content with user input as additional context
+    # If file is pending, process file
     if st.session_state.pending_file_content:
+        add_chat_message("assistant", f"Processing file: {st.session_state.pending_file_name}...")
+        st.session_state.generating = True
         st.session_state.content_to_process = st.session_state.pending_file_content
         st.session_state.topic_name = st.session_state.pending_file_name
-        # Clear pending file
         st.session_state.pending_file_content = None
         st.session_state.pending_file_name = None
-    else:
-        # Normal text/topic input
+        st.rerun()
+
+    # Check if it's a greeting
+    elif is_greeting(user_input):
+        response = "Hello! Welcome to SlideCraft AI. I can create professional PowerPoint presentations for you.\n\nPlease tell me the **topic** for your presentation. For example:\n- 'Artificial Intelligence in Healthcare'\n- 'Climate Change and Its Effects'\n- 'Digital Marketing Strategies'"
+        add_chat_message("assistant", response)
+        st.session_state.awaiting_topic = True
+        st.rerun()
+
+    # Check if it's a valid topic
+    elif is_valid_topic(user_input):
         word_count = len(user_input.split())
         if word_count > 50:
+            # Long content - use as content
+            add_chat_message("assistant", f"Starting PPT generation on: **{user_input.split(chr(10))[0][:50]}**...")
             st.session_state.content_to_process = user_input
             st.session_state.topic_name = user_input.split('\n')[0][:50]
         else:
+            # Short topic
+            add_chat_message("assistant", f"Creating presentation on: **{user_input}**...")
             st.session_state.topic_name = user_input
             st.session_state.content_to_process = None
 
-    st.rerun()
+        st.session_state.generating = True
+        st.session_state.awaiting_topic = False
+        st.rerun()
+
+    else:
+        # Unclear input - ask for clarification
+        response = "I didn't quite understand that. Could you please provide a clear topic for your presentation?\n\nFor example:\n- 'Machine Learning Basics'\n- 'History of India'\n- 'Solar Energy Benefits'\n\nOr you can paste/upload content directly."
+        add_chat_message("assistant", response)
+        st.rerun()
 
 # Also handle case: file is pending and user just presses Enter with empty input
 # (st.chat_input returns None for empty, but we can add a generate button)

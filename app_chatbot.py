@@ -456,97 +456,7 @@ if not st.session_state.generating and not st.session_state.ppt_ready:
 
 # Upload panel removed - using text input only
 
-# AI Generation Status
-if st.session_state.generating:
-    topic = st.session_state.get('topic_name', 'Content')
-
-    with st.status("Generating PPT...", expanded=True) as status:
-        st.write("Analyzing content...")
-
-        try:
-            if st.session_state.get('content_to_process'):
-                content = st.session_state.content_to_process
-                st.write("Processing your content...")
-            else:
-                st.write("Generating with AI...")
-                # Custom prompt for detailed slides, correct headers, and first slide as topic
-                custom_instructions = """
-                - First slide should be the topic title and subtitle
-                - Each slide must have a relevant, clear header/title
-                - Each bullet point should be detailed (2-3 sentences)
-                - Speaker notes should be detailed
-                """
-                content = generate_content_from_topic(topic, custom_instructions, 10, 15)
-
-            st.write("Creating slides...")
-            st.write("Applying theme...")
-
-            success, ppt_path, output_folder = generate_ppt_func(content, topic, st.session_state.theme)
-
-            if success:
-                status.update(label="PPT Ready!", state="complete")
-                st.session_state.ppt_ready = True
-                st.session_state.ppt_path = ppt_path
-                st.session_state.output_folder = output_folder
-                st.session_state.generating = False
-                st.session_state.content_to_process = None
-                st.rerun()
-            else:
-                status.update(label="Failed", state="error")
-                st.session_state.generating = False
-
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
-            st.session_state.generating = False
-
-# PPT Ready - Download section
-if st.session_state.ppt_ready and st.session_state.ppt_path:
-    st.success("Your PPT is ready!")
-
-    with open(st.session_state.ppt_path, "rb") as f:
-        st.download_button(
-            "Download PPT",
-            f.read(),
-            file_name="presentation.pptx",
-            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            use_container_width=True
-        )
-
-    with st.expander("Change Theme"):
-        new_theme = st.selectbox(
-            "Select theme",
-            ['corporate', 'ocean', 'forest', 'sunset', 'eg'],
-            index=['corporate', 'ocean', 'forest', 'sunset', 'eg'].index(st.session_state.theme),
-            label_visibility="collapsed"
-        )
-        if st.button("Regenerate", use_container_width=True):
-            st.session_state.theme = new_theme
-            st.session_state.ppt_ready = False
-            st.session_state.generating = True
-            st.rerun()
-
-    if PPT_TO_IMAGES_AVAILABLE:
-        with st.expander("Preview"):
-            try:
-                ppt_to_images(st.session_state.ppt_path, output_dir=st.session_state.output_folder)
-                images = sorted([f for f in os.listdir(st.session_state.output_folder)
-                               if f.startswith("slide_") and f.endswith(".png")])
-                if images:
-                    for idx, img in enumerate(images[:4]):
-                        st.image(os.path.join(st.session_state.output_folder, img), caption=f"Slide {idx+1}")
-            except:
-                st.info("Preview not available")
-
-    if st.button("New PPT", use_container_width=True):
-        st.session_state.ppt_ready = False
-        st.session_state.ppt_path = None
-        st.session_state.generating = False
-        st.session_state.user_input = ""
-        st.session_state.pending_file_content = None
-        st.session_state.pending_file_name = None
-        st.session_state.chat_messages = []  # Clear chat
-        st.session_state.awaiting_topic = False
-        st.rerun()
+# Generation and download will be shown in chat area below
 
 # ============ BOTTOM INPUT BAR (Claude Style) ============
 
@@ -629,6 +539,96 @@ if st.session_state.pending_file_content and not st.session_state.generating:
 for msg in st.session_state.chat_messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
+
+# Show generation status in chat area
+if st.session_state.generating:
+    topic = st.session_state.get('topic_name', 'Content')
+
+    with st.chat_message("assistant"):
+        with st.status("Creating your presentation...", expanded=True) as status:
+            st.write("Thinking about the topic...")
+            st.write("Researching content...")
+
+            try:
+                if st.session_state.get('content_to_process'):
+                    content = st.session_state.content_to_process
+                    st.write("Processing your content...")
+                else:
+                    st.write("Generating slides with AI...")
+                    custom_instructions = """
+                    - First slide should be the topic title and subtitle
+                    - Each slide must have a relevant, clear header/title
+                    - Each bullet point should be detailed (2-3 sentences)
+                    - Speaker notes should be detailed
+                    """
+                    content = generate_content_from_topic(topic, custom_instructions, 10, 15)
+
+                st.write("Creating beautiful slides...")
+                st.write("Applying theme...")
+
+                success, ppt_path, output_folder = generate_ppt_func(content, topic, st.session_state.theme)
+
+                if success:
+                    status.update(label="PPT Ready!", state="complete")
+                    st.session_state.ppt_ready = True
+                    st.session_state.ppt_path = ppt_path
+                    st.session_state.output_folder = output_folder
+                    st.session_state.generating = False
+                    st.session_state.content_to_process = None
+                    add_chat_message("assistant", f"Your presentation on **{topic}** is ready! Click below to download.")
+                    st.rerun()
+                else:
+                    status.update(label="Failed to generate", state="error")
+                    st.session_state.generating = False
+                    add_chat_message("assistant", "Sorry, I couldn't generate the presentation. Please try again.")
+                    st.rerun()
+
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+                st.session_state.generating = False
+                add_chat_message("assistant", f"Error occurred: {str(e)}. Please try again.")
+                st.rerun()
+
+# Show download button in chat area when PPT is ready
+if st.session_state.ppt_ready and st.session_state.ppt_path:
+    with st.chat_message("assistant"):
+        st.success("Your presentation is ready!")
+
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            with open(st.session_state.ppt_path, "rb") as f:
+                st.download_button(
+                    "Download PPT",
+                    f.read(),
+                    file_name="presentation.pptx",
+                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                    use_container_width=True,
+                    type="primary"
+                )
+        with col2:
+            if st.button("New", use_container_width=True):
+                st.session_state.ppt_ready = False
+                st.session_state.ppt_path = None
+                st.session_state.generating = False
+                st.session_state.user_input = ""
+                st.session_state.pending_file_content = None
+                st.session_state.pending_file_name = None
+                st.session_state.chat_messages = []
+                st.session_state.awaiting_topic = False
+                st.rerun()
+
+        with st.expander("Change Theme & Regenerate"):
+            new_theme = st.selectbox(
+                "Select theme",
+                ['corporate', 'ocean', 'forest', 'sunset', 'minimal'],
+                index=['corporate', 'ocean', 'forest', 'sunset', 'minimal'].index(st.session_state.theme) if st.session_state.theme in ['corporate', 'ocean', 'forest', 'sunset', 'minimal'] else 0,
+                label_visibility="collapsed"
+            )
+            if st.button("Regenerate with new theme", use_container_width=True):
+                st.session_state.theme = new_theme
+                st.session_state.ppt_ready = False
+                st.session_state.generating = True
+                st.rerun()
 
 # Handle chat input submission
 if user_input:

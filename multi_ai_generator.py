@@ -107,29 +107,39 @@ class MultiAIGenerator:
 
         print(f"[AI] Ollama is running at {ollama_url}, generating content...")
 
-        # Strict prompt for consistent output
-        prompt = f"""You are an expert presentation designer. Create a PowerPoint presentation.
+        # Improved prompt for better content quality
+        prompt = f"""You are an expert presentation designer creating a professional PowerPoint.
 
 TOPIC: {topic}
 
-REQUIREMENTS:
+CREATE A PRESENTATION WITH THIS EXACT STRUCTURE:
+1. TITLE SLIDE: Main title and engaging subtitle
+2. INTRODUCTION: What is this topic and why it matters
+3. KEY CONCEPTS: Core ideas and definitions (3-4 slides)
+4. BENEFITS/ADVANTAGES: Why this is important
+5. CHALLENGES/CONSIDERATIONS: What to watch out for
+6. REAL EXAMPLES: Practical applications or case studies
+7. FUTURE OUTLOOK: What's next in this field
+8. CONCLUSION: Summary and key takeaways
+
+STRICT REQUIREMENTS:
 - Create exactly {min_slides} to {max_slides} slides
 - Style: Professional {style}
 - Audience: {audience}
 {f"- Additional: {custom_instructions}" if custom_instructions else ""}
 
-RULES:
-- Each slide must have a clear title (5-8 words max)
-- Each slide must have 4-5 bullet points
-- Each bullet point should be a complete sentence (15-30 words)
-- Never break words with spaces
-- Be specific with facts and examples
-- No emojis, no markdown formatting
+CRITICAL RULES:
+- EVERY slide MUST have a UNIQUE, SPECIFIC title (NOT generic like "Overview" or "Introduction")
+- Title examples: "AI Revolutionizing Healthcare Diagnosis", "Top 5 Climate Change Impacts", "How Solar Energy Works"
+- Each slide: 4-5 bullet points with complete sentences (15-25 words each)
+- Include specific facts, statistics, real examples
+- Be informative and educational, not generic
+- No emojis, no markdown
 
-OUTPUT FORMAT (JSON only):
-{{"title": "Main Title", "subtitle": "Subtitle", "slides": [{{"title": "Slide Title", "content": ["Bullet point 1.", "Bullet point 2.", "Bullet point 3.", "Bullet point 4."], "speaker_notes": "Notes for speaker"}}]}}
+OUTPUT FORMAT (valid JSON only):
+{{"title": "Compelling Main Title", "subtitle": "Engaging Subtitle That Explains Value", "slides": [{{"title": "Unique Specific Slide Title", "content": ["Detailed bullet point with specific information.", "Another informative point with facts or examples.", "Third point explaining a key concept clearly.", "Fourth point with actionable or memorable insight."], "speaker_notes": "Detailed notes for the presenter"}}]}}
 
-Return ONLY valid JSON. No markdown code blocks. No explanations."""
+Return ONLY valid JSON. No code blocks. No explanations."""
 
         ollama_model = "qwen2.5"
         response = requests.post(
@@ -182,35 +192,39 @@ Return ONLY valid JSON. No markdown code blocks. No explanations."""
             client = Groq(api_key=self.groq_key)
 
             # Improved prompt with explicit quality instructions
-            prompt = f"""You are an expert presentation designer creating a HIGH-QUALITY PowerPoint presentation.
+            prompt = f"""You are an expert presentation designer creating a HIGH-QUALITY PowerPoint.
 
 **TOPIC:** {topic}
 
+**CREATE THIS EXACT STRUCTURE:**
+1. TITLE SLIDE: Compelling main title + engaging subtitle
+2. INTRODUCTION: What is {topic} and why it matters today
+3. KEY CONCEPTS (2-3 slides): Core ideas with specific details
+4. BENEFITS/IMPORTANCE: Real-world advantages and impact
+5. CHALLENGES: Common issues and how to address them
+6. EXAMPLES/CASE STUDIES: Real applications with facts
+7. FUTURE TRENDS: What's coming next
+8. CONCLUSION: Key takeaways and call to action
+
 **STRICT REQUIREMENTS:**
-1. Create exactly {min_slides} to {max_slides} slides
-2. Style: Professional {style}
-3. Audience: {audience}
-{f"4. Additional: {custom_instructions}" if custom_instructions else ""}
+- Create exactly {min_slides} to {max_slides} slides
+- Style: Professional {style}
+- Audience: {audience}
+{f"- Additional: {custom_instructions}" if custom_instructions else ""}
 
-**QUALITY RULES - VERY IMPORTANT:**
-- NEVER break words across spaces (write "Consultant" not "Consult ant")
-- NEVER truncate sentences mid-word
-- Each bullet point MUST be a complete, grammatically correct sentence
-- Each bullet should be 15-30 words (not too short, not too long)
-- Use proper capitalization and punctuation
-- Avoid filler words and generic statements
-- Be specific with facts, numbers, and examples
-- Each slide title should be clear and descriptive (5-8 words max)
+**CRITICAL QUALITY RULES:**
+- EVERY slide title MUST be UNIQUE and SPECIFIC (NOT "Overview", "Introduction", "Details")
+- Good titles: "5 Ways AI Transforms Healthcare", "Climate Change Impact on Agriculture"
+- Bad titles: "Overview", "Key Points", "Details", "More Information"
+- Each bullet: Complete sentence with 15-25 words
+- Include specific facts, statistics, percentages, real examples
+- NEVER break words with spaces
+- Be educational and informative, not generic
 
-**SLIDE STRUCTURE:**
-- Slide 1: Title slide with compelling subtitle
-- Slides 2-{max_slides-1}: Content slides with 4-5 bullet points each
-- Last slide: Conclusion/Summary
+**OUTPUT FORMAT (JSON only):**
+{{"title": "Compelling Topic Title", "subtitle": "Value-Focused Subtitle", "slides": [{{"title": "Unique Descriptive Slide Title", "content": ["Specific informative bullet with facts.", "Another detailed point with examples.", "Third point explaining key concept.", "Fourth point with actionable insight."], "speaker_notes": "Presenter notes"}}]}}
 
-**OUTPUT FORMAT (JSON only, no markdown):**
-{{"title": "Main Title", "subtitle": "Engaging Subtitle", "slides": [{{"title": "Clear Slide Title", "content": ["Complete sentence as bullet point 1.", "Complete sentence as bullet point 2.", "Complete sentence as bullet point 3.", "Complete sentence as bullet point 4."], "speaker_notes": "Detailed notes for speaker"}}]}}
-
-Return ONLY valid JSON. No markdown code blocks. No explanations."""
+Return ONLY valid JSON. No markdown. No explanations."""
 
             message = client.chat.completions.create(
                 messages=[

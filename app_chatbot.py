@@ -39,8 +39,21 @@ st.markdown("""
 <style>
     /* Hide Streamlit defaults (NOT our custom header) */
     #MainMenu, footer, [data-testid="stHeader"] {display: none !important;}
+
+    /* Mobile-specific: Reset any problematic positioning */
+    @media (max-width: 768px) {
+        .stApp {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+        .main .block-container {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+    }
+
     .block-container {
-        padding-top: 1rem !important;
+        padding-top: 0.5rem !important;
         padding-bottom: 200px !important;
         max-width: 800px !important;
     }
@@ -364,43 +377,9 @@ def generate_ppt(content, topic, theme):
         success = generate_beautiful_ppt(content, ppt_path, color_scheme=theme, use_ai=False, original_topic=topic, min_slides=6, max_slides=6)
     return success, ppt_path
 
-# Header - Always visible, using Streamlit native components for mobile compatibility
+# Additional CSS for chat styling
 st.markdown("""
 <style>
-.main-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-    color: #fff !important;
-    padding: 20px 15px !important;
-    margin: -10px -15px 20px -15px !important;
-    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3) !important;
-    border-radius: 0 0 20px 20px !important;
-    text-align: center !important;
-}
-.main-header h1 {
-    margin: 0 !important;
-    font-size: 1.6rem !important;
-    font-weight: 800 !important;
-    color: #fff !important;
-    text-transform: uppercase !important;
-}
-.main-header p {
-    margin: 8px 0 0 0 !important;
-    color: #e0e7ff !important;
-    font-size: 0.95rem !important;
-}
-@media (max-width: 768px) {
-    .main-header {
-        padding: 15px 10px !important;
-        margin: -5px -10px 15px -10px !important;
-        border-radius: 0 0 15px 15px !important;
-    }
-    .main-header h1 {
-        font-size: 1.2rem !important;
-    }
-    .main-header p {
-        font-size: 0.85rem !important;
-    }
-}
 .stChatMessage {
     border-radius: 18px !important;
     margin-bottom: 1.1rem !important;
@@ -442,14 +421,36 @@ st.markdown("""
     margin-top: 1.5rem !important;
 }
 </style>
-<div class="main-header">
-    <h1>📊 FREE PPT Generator</h1>
-    <p>Create professional presentations through chat</p>
+""", unsafe_allow_html=True)
+
+# Welcome bar at top (helps visibility on mobile - user suggested)
+st.markdown("""
+<div style="display: flex; justify-content: center; align-items: center; margin-top: 0.5rem; margin-bottom: 0.5rem;">
+    <button style="
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        border: none;
+        border-radius: 22px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        padding: 0.6em 2.2em;
+        box-shadow: 0 2px 12px 0 rgba(60,60,120,0.13);
+        letter-spacing: 0.5px;
+        cursor: pointer;
+        outline: none;
+        margin: 0 auto;
+        width: 100%;
+        max-width: 420px;
+        transition: background 0.2s;
+        ">
+        ✨ Welcome to FREE PPT Maker - Create Unlimited Presentations!
+    </button>
 </div>
 """, unsafe_allow_html=True)
 
-# Also show header using Streamlit's native title for mobile fallback
-# st.title("📊 FREE PPT Generator")
+# Header using Streamlit native components
+st.markdown("### 📊 FREE PPT Generator")
+st.caption("Create professional presentations through chat")
 
 # Language selection and Refresh button (in same row, right aligned)
 col_lang, col_spacer, col_refresh = st.columns([2, 2, 1])

@@ -166,11 +166,14 @@ st.markdown("""
     background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%);
     color: #fff;
     padding: 1.2rem 0 0.7rem 0;
-    box-shadow: 0 2px 12px 0 rgba(60,60,120,0.07);
-    border-radius: 0 0 18px 18px;
+    box-shadow: 0 6px 24px 0 rgba(60,60,120,0.13);
+    border-radius: 0 0 22px 22px;
     text-align: center;
+    position: relative;
+    overflow: hidden;
 ">
-    <h2 style="margin: 0; font-size: 2.1rem; font-weight: 900; letter-spacing: 1px; color: #fff; text-transform:uppercase;">FREE PPT Generator</h2>
+    <span style="position:absolute;left:1.2rem;top:1.2rem;font-size:2.1rem;opacity:0.18;user-select:none;">📊</span>
+    <h2 style="margin: 0; font-size: 2.1rem; font-weight: 900; letter-spacing: 1px; color: #fff; text-transform:uppercase; text-shadow: 0 2px 8px #5a67d8;">FREE PPT Generator</h2>
     <p style="margin: 0.5rem 0 0 0; color: #e0e7ff; font-size: 1.08rem; font-weight: 500; letter-spacing: 0.2px;">Create professional presentations through chat</p>
 </div>
 <style>
@@ -183,8 +186,53 @@ st.markdown("""
     }
     div[style*='background: linear-gradient'] {
         padding: 0.7rem 0 0.5rem 0 !important;
-        border-radius: 0 0 12px 12px !important;
+        border-radius: 0 0 14px 14px !important;
     }
+    div[style*='background: linear-gradient'] span {
+        font-size: 1.3rem !important;
+        left: 0.7rem !important;
+        top: 0.7rem !important;
+    }
+}
+.stChatMessage {
+    border-radius: 18px !important;
+    margin-bottom: 1.1rem !important;
+    padding: 0.7rem 1.1rem !important;
+    background: #f7f8fd !important;
+    box-shadow: 0 2px 8px 0 rgba(90,110,200,0.07);
+    font-size: 1.04rem !important;
+}
+.stChatMessage.user {
+    background: #e0e7ff !important;
+    color: #2d3748 !important;
+    border-top-right-radius: 6px !important;
+    border-bottom-left-radius: 22px !important;
+}
+.stChatMessage.assistant {
+    background: #fff !important;
+    color: #4a5568 !important;
+    border-top-left-radius: 6px !important;
+    border-bottom-right-radius: 22px !important;
+}
+.stButton > button, .stDownloadButton > button {
+    background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%) !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 8px 0 rgba(90,110,200,0.13);
+    padding: 0.5rem 1.2rem !important;
+    margin-top: 0.3rem !important;
+    margin-bottom: 0.3rem !important;
+    border: none !important;
+    transition: background 0.2s;
+}
+.stButton > button:hover, .stDownloadButton > button:hover {
+    background: linear-gradient(90deg, #5a67d8 0%, #667eea 100%) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 16px 0 rgba(90,110,200,0.18);
+}
+.stChatInputContainer {
+    margin-top: 1.5rem !important;
 }
 </style>
 """, unsafe_allow_html=True)

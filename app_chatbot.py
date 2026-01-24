@@ -337,6 +337,10 @@ if 'generating' not in st.session_state:
     st.session_state.generating = False
 if 'ppt_ready' not in st.session_state:
     st.session_state.ppt_ready = False
+if 'pending_file_content' not in st.session_state:
+    st.session_state.pending_file_content = None
+if 'pending_file_name' not in st.session_state:
+    st.session_state.pending_file_name = None
 if 'ppt_path' not in st.session_state:
     st.session_state.ppt_path = None
 if 'theme' not in st.session_state:
@@ -501,6 +505,8 @@ if st.session_state.ppt_ready and st.session_state.ppt_path:
         st.session_state.ppt_path = None
         st.session_state.generating = False
         st.session_state.user_input = ""
+        st.session_state.pending_file_content = None
+        st.session_state.pending_file_name = None
         st.rerun()
 
 # ============ BOTTOM INPUT BAR (Claude Style) ============
@@ -547,7 +553,7 @@ uploaded_file = st.file_uploader(
 user_input = st.chat_input("Enter topic or paste content...")
 send_clicked = user_input is not None
 
-# Handle file upload
+# Handle file upload - store in pending state (don't auto-process)
 if uploaded_file is not None and not st.session_state.generating:
     file_content = ""
     file_name = uploaded_file.name
@@ -571,22 +577,45 @@ if uploaded_file is not None and not st.session_state.generating:
         except:
             st.error("Could not read PDF file")
 
+    # Store in pending state - wait for user to click send
     if file_content:
-        st.session_state.generating = True
-        st.session_state.content_to_process = file_content
-        st.session_state.topic_name = file_name.rsplit('.', 1)[0][:50]
-        st.rerun()
+        st.session_state.pending_file_content = file_content
+        st.session_state.pending_file_name = file_name.rsplit('.', 1)[0][:50]
+
+# Show file ready indicator
+if st.session_state.pending_file_content and not st.session_state.generating:
+    st.info(f"File ready: {st.session_state.pending_file_name} - Click send or press Enter to generate PPT")
 
 # Handle chat input submission
 if user_input:
-    word_count = len(user_input.split())
     st.session_state.generating = True
 
-    if word_count > 50:
-        st.session_state.content_to_process = user_input
-        st.session_state.topic_name = user_input.split('\n')[0][:50]
+    # If file is pending, use file content with user input as additional context
+    if st.session_state.pending_file_content:
+        st.session_state.content_to_process = st.session_state.pending_file_content
+        st.session_state.topic_name = st.session_state.pending_file_name
+        # Clear pending file
+        st.session_state.pending_file_content = None
+        st.session_state.pending_file_name = None
     else:
-        st.session_state.topic_name = user_input
-        st.session_state.content_to_process = None
+        # Normal text/topic input
+        word_count = len(user_input.split())
+        if word_count > 50:
+            st.session_state.content_to_process = user_input
+            st.session_state.topic_name = user_input.split('\n')[0][:50]
+        else:
+            st.session_state.topic_name = user_input
+            st.session_state.content_to_process = None
 
     st.rerun()
+
+# Also handle case: file is pending and user just presses Enter with empty input
+# (st.chat_input returns None for empty, but we can add a generate button)
+if st.session_state.pending_file_content and not st.session_state.generating:
+    if st.button("Generate PPT from file", use_container_width=True, type="primary"):
+        st.session_state.generating = True
+        st.session_state.content_to_process = st.session_state.pending_file_content
+        st.session_state.topic_name = st.session_state.pending_file_name
+        st.session_state.pending_file_content = None
+        st.session_state.pending_file_name = None
+        st.rerun()

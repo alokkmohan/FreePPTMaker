@@ -441,13 +441,13 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Language selection and Refresh button
-col_lang, col_refresh, _ = st.columns([2, 1, 2])
+# Language selection and Refresh button (in same row, right aligned)
+col_lang, col_spacer, col_refresh = st.columns([2, 2, 1])
 with col_lang:
     language = st.selectbox("Language", ["English", "Hindi"], key="ppt_language", index=0, label_visibility="collapsed")
     st.session_state.language = language
 with col_refresh:
-    if st.button("🔄 New Chat", key="refresh_chat", help="Start fresh conversation"):
+    if st.button("🔄", key="refresh_chat", help="New Chat - Start fresh"):
         st.session_state.messages = []
         st.session_state.stage = 'idle'
         st.session_state.ppt_path = None
@@ -457,6 +457,8 @@ with col_refresh:
         st.session_state.parsed_slides = None
         st.session_state.awaiting_upload_confirm = False
         st.session_state.uploaded_preview = None
+        # Add welcome message after refresh
+        st.session_state.messages.append({"role": "assistant", "content": "Chat cleared! Ready for a new topic. Type your topic or upload a document."})
         st.rerun()
 
 # Display chat messages
@@ -1018,10 +1020,10 @@ if st.session_state.stage == 'regenerating':
             st.session_state.stage = 'done'
             st.rerun()
 
-# Welcome message for new users
+# Welcome message for new users (add to messages so it persists)
 if not st.session_state.messages and st.session_state.stage == 'idle':
-    with st.chat_message("assistant"):
-        st.markdown("Welcome! Type a topic or upload a document to begin.")
+    st.session_state.messages.append({"role": "assistant", "content": "Welcome! Type a topic or upload a document to create your PPT."})
+    st.rerun()
 
 # ============ VISITOR STATS (no footer) ============
 import json

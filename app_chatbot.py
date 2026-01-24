@@ -526,32 +526,16 @@ if st.session_state.file_content:
             st.session_state.show_uploader = False
             st.rerun()
 
-# Chatbox container with [+] [textarea] [send] layout
-st.markdown('<div class="chatbox-wrapper"><div class="chatbox-container">', unsafe_allow_html=True)
-
-col_upload, col_input, col_send = st.columns([1, 8, 1])
-
-with col_upload:
-    # Plus button for file upload
-    if st.button("＋", key="upload_btn", help="Upload PDF / Word / Text document"):
+# Plus button for file upload (above chat input)
+col_plus, col_spacer = st.columns([1, 9])
+with col_plus:
+    if st.button("➕", key="upload_btn", help="Upload PDF / Word / Text document"):
         st.session_state.show_uploader = not st.session_state.show_uploader
         st.rerun()
 
-with col_input:
-    # Multi-line text input
-    user_input = st.text_area(
-        "message",
-        placeholder="Send your topic, paste content, or upload document (Hindi / English)...",
-        height=80,
-        max_chars=5000,
-        key="chat_input_area",
-        label_visibility="collapsed"
-    )
-
-with col_send:
-    send_clicked = st.button("➤", key="send_btn", help="Send message")
-
-st.markdown('</div></div>', unsafe_allow_html=True)
+# Chat input (Enter to send)
+user_input = st.chat_input("Send topic, paste content (Hindi/English)...")
+send_clicked = user_input is not None
 
 # Show file uploader when + is clicked
 if st.session_state.show_uploader:
@@ -591,12 +575,7 @@ if st.session_state.show_uploader:
             st.success(f"✅ File attached: {st.session_state.file_name}")
             st.rerun()
 
-# Handle send action
-if send_clicked and user_input and user_input.strip():
-    user_input = user_input.strip()
-elif not send_clicked:
-    user_input = None
-
+# Handle chat input (st.chat_input returns text on Enter, None otherwise)
 if user_input:
 
     add_message("user", user_input)

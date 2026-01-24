@@ -273,57 +273,11 @@ st.markdown("""
         }
     }
 
-    .header-subtitle {
-        font-size: 18px;
-        color: #ffffff;
-        margin: 12px 0 0 0;
-        font-weight: 500;
-        text-shadow: 
-            0 2px 4px rgba(0, 0, 0, 0.3),
-            0 4px 8px rgba(0, 0, 0, 0.2);
-        animation: fadeInUp 0.8s ease-out 0.2s both;
-        letter-spacing: 0.3px;
-    }
 
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
 
-    .header-features {
-        display: flex;
-        justify-content: center;
-        gap: 30px;
-        margin-top: 20px;
-        flex-wrap: wrap;
-    }
-
-    .feature-badge {
-        background: rgba(255, 255, 255, 0.25);
-        backdrop-filter: blur(10px);
-        border: 2px solid rgba(255, 255, 255, 0.4);
-        padding: 8px 16px;
-        border-radius: 20px;
-        color: #ffffff;
-        font-size: 14px;
-        font-weight: 700;
-        animation: fadeInUp 0.8s ease-out 0.4s both;
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-        transition: all 0.3s ease;
-    }
-
-    .feature-badge:hover {
-        background: rgba(255, 255, 255, 0.35);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        border-color: rgba(255, 255, 255, 0.6);
-    }
+    /* ════════════════════════════════════════════════════════════════ */
+    /* 📱 TABLET RESPONSIVE - 768px and below */
+    /* ════════════════════════════════════════════════════════════════ */
 
     /* ════════════════════════════════════════════════════════════════ */
     /* 📱 TABLET RESPONSIVE - 768px and below */
@@ -332,28 +286,13 @@ st.markdown("""
     @media (max-width: 768px) {
         .header-container {
             padding: 30px 20px;
-            min-height: 180px;
+            min-height: 120px;
             border-radius: 15px;
         }
 
         .header-title {
             font-size: 36px;
             line-height: 1.2;
-        }
-
-        .header-subtitle {
-            font-size: 16px;
-            margin-top: 8px;
-        }
-
-        .header-features {
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .feature-badge {
-            font-size: 12px;
-            padding: 6px 12px;
         }
     }
 
@@ -364,7 +303,7 @@ st.markdown("""
     @media (max-width: 480px) {
         .header-container {
             padding: 25px 15px;
-            min-height: 160px;
+            min-height: 100px;
             margin-bottom: 20px;
             border-radius: 12px;
         }
@@ -373,25 +312,6 @@ st.markdown("""
             font-size: 28px;
             line-height: 1.3;
             font-weight: 800;
-        }
-
-        .header-subtitle {
-            font-size: 14px;
-            margin-top: 6px;
-        }
-
-        .header-features {
-            gap: 10px;
-            margin-top: 12px;
-            flex-direction: row;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .feature-badge {
-            font-size: 11px;
-            padding: 5px 10px;
-            border-radius: 16px;
         }
 
         .header-container::before {
@@ -408,14 +328,7 @@ st.markdown("""
 st.markdown("""
 <div class="header-container">
     <div class="header-content">
-        <h1 class="header-title">✨ FREE PPT Generator</h1>
-        <p class="header-subtitle">🚀 Create Stunning Presentations in Minutes!</p>
-        <div class="header-features">
-            <div class="feature-badge">⚡ AI-Powered</div>
-            <div class="feature-badge">🎨 Beautiful Designs</div>
-            <div class="feature-badge">💬 Chat-Based</div>
-            <div class="feature-badge">🌍 Multi-Language</div>
-        </div>
+        <h1 class="header-title">FREE PPT Generator</h1>
     </div>
 </div>
 """, unsafe_allow_html=True)

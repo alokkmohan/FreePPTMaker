@@ -206,7 +206,129 @@ st.markdown("""
         gap: 8px;
         padding: 4px 0;
     }
+
+    /* ════════════════════════════════════════════════════════════════ */
+    /* 🌈 COLORFUL HEADER STYLING 🌈 */
+    /* ════════════════════════════════════════════════════════════════ */
+
+    .header-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+        padding: 40px 30px;
+        border-radius: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .header-container::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+        background-size: 50px 50px;
+        animation: slide 20s linear infinite;
+    }
+
+    @keyframes slide {
+        0% { transform: translate(0, 0); }
+        100% { transform: translate(50px, 50px); }
+    }
+
+    .header-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .header-title {
+        font-size: 48px;
+        font-weight: 900;
+        color: white;
+        margin: 0;
+        text-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        animation: fadeInDown 0.8s ease-out;
+    }
+
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .header-subtitle {
+        font-size: 18px;
+        color: rgba(255, 255, 255, 0.95);
+        margin: 12px 0 0 0;
+        font-weight: 500;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+        animation: fadeInUp 0.8s ease-out 0.2s both;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .header-features {
+        display: flex;
+        justify-content: center;
+        gap: 30px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+    }
+
+    .feature-badge {
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 8px 16px;
+        border-radius: 20px;
+        color: white;
+        font-size: 14px;
+        font-weight: 600;
+        animation: fadeInUp 0.8s ease-out 0.4s both;
+    }
+
+    .feature-badge:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+        transition: all 0.3s ease;
+    }
 </style>
+""", unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🌈 COLORFUL HEADER SECTION
+# ═══════════════════════════════════════════════════════════════════════════
+
+st.markdown("""
+<div class="header-container">
+    <div class="header-content">
+        <h1 class="header-title">✨ FREE PPT Generator</h1>
+        <p class="header-subtitle">🚀 Create Stunning Presentations in Minutes!</p>
+        <div class="header-features">
+            <div class="feature-badge">⚡ AI-Powered</div>
+            <div class="feature-badge">🎨 Beautiful Designs</div>
+            <div class="feature-badge">💬 Chat-Based</div>
+            <div class="feature-badge">🌍 Multi-Language</div>
+        </div>
+    </div>
+</div>
 """, unsafe_allow_html=True)
 
 
@@ -425,9 +547,7 @@ st.markdown("""
 
 # Welcome bar at top (helps visibility on mobile - user suggested)
 
-# Header using Streamlit native components
-st.markdown("### 📊 FREE PPT Generator")
-st.caption("Create professional presentations through chat")
+# Remove Streamlit native header and caption; only show custom HTML header
 
 # Language selection and Refresh button (in same row, right aligned)
 col_lang, col_spacer, col_refresh = st.columns([2, 2, 1])
@@ -496,36 +616,10 @@ if st.session_state.stage == 'done' and st.session_state.ppt_path:
                 st.rerun()
 
         # Regenerate options
-        st.markdown("""
-        <div style="
-            background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
-            color: #fff;
-            padding: 1rem 1rem 0.8rem 1rem;
-            margin: -1rem -1rem 1rem -1rem;
-            text-align: center;
-            border-radius: 0 0 18px 18px;
-            box-shadow: 0 4px 18px 0 rgba(102, 126, 234, 0.25), 0 0 0 4px #e0e7ff inset;
-            border: 2.5px solid #667eea;
-            border-top: none;
-        ">
-            <h2 style="margin:0;font-size:2.1rem;font-weight:900;letter-spacing:1px;text-transform:uppercase;">FREE PPT Generator</h2>
-            <p style="margin:0.5rem 0 0 0;font-size:1.08rem;font-weight:500;letter-spacing:0.2px;color:#e0e7ff;">Create professional presentations through chat</p>
-        </div>
-        <style>
-        @media (max-width: 600px) {
-            div[style*='background: linear-gradient'] h2 {
-                font-size: 1.3rem !important;
-            }
-            div[style*='background: linear-gradient'] p {
-                font-size: 0.95rem !important;
-            }
-            div[style*='background: linear-gradient'] {
-                padding: 0.7rem 0 0.5rem 0 !important;
-                border-radius: 0 0 12px 12px !important;
-            }
-        }
-        </style>
-        """, unsafe_allow_html=True)
+
+        # Restore Streamlit native header and caption
+        st.markdown("### 📊 FREE PPT Generator")
+        st.caption("Create professional presentations through chat")
 
 # Chat input
 
@@ -563,17 +657,38 @@ elif st.session_state.stage == 'ask_designation':
                     welcome = "Welcome! Please tell me a topic for your presentation."
                 add_message("assistant", welcome)
                 st.rerun()
-        if designation:
-            st.session_state.presenter_designation = designation
-            st.session_state.stage = 'idle'
-            # Show personalized welcome
-            name = st.session_state.presenter_name
-            if name:
-                welcome = f"Welcome {name}! Please tell me a topic for your presentation."
-            else:
-                welcome = "Welcome! Please tell me a topic for your presentation."
-            add_message("assistant", welcome)
-            st.rerun()
+    st.markdown("""
+    <div style="
+        background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+        color: #fff;
+        padding: 1.2rem 1.2rem 1rem 1.2rem;
+        margin: -1rem -1rem 1.2rem -1rem;
+        text-align: center;
+        border-radius: 0 0 22px 22px;
+        box-shadow: 0 6px 24px 0 rgba(102, 126, 234, 0.30), 0 0 0 6px #e0e7ff inset;
+        border: 6px solid #5a67d8;
+        border-top: none;
+        background-clip: padding-box;
+    ">
+        <h2 style="margin:0;font-size:2.2rem;font-weight:900;letter-spacing:1.2px;text-transform:uppercase;">FREE PPT Generator</h2>
+        <p style="margin:0.6rem 0 0 0;font-size:1.12rem;font-weight:500;letter-spacing:0.2px;color:#e0e7ff;">Create professional presentations through chat</p>
+    </div>
+    <style>
+    @media (max-width: 600px) {
+        div[style*='background: linear-gradient'] h2 {
+            font-size: 1.35rem !important;
+        }
+        div[style*='background: linear-gradient'] p {
+            font-size: 0.98rem !important;
+        }
+        div[style*='background: linear-gradient'] {
+            padding: 0.8rem 0 0.6rem 0 !important;
+            border-radius: 0 0 14px 14px !important;
+            border-width: 4px !important;
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # ============ MODERN CHATBOX UI ============
 # Initialize show_uploader state

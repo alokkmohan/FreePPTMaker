@@ -37,12 +37,18 @@ st.set_page_config(
 # Modern ChatGPT-style CSS
 st.markdown("""
 <style>
-    /* Hide Streamlit defaults */
-    #MainMenu, footer, header {display: none !important;}
+    /* Hide Streamlit defaults (NOT our custom header) */
+    #MainMenu, footer, [data-testid="stHeader"] {display: none !important;}
     .block-container {
-        padding-top: 0.5rem !important;
+        padding-top: 1rem !important;
         padding-bottom: 200px !important;
         max-width: 800px !important;
+    }
+
+    /* Ensure our header is always visible */
+    .ppt-header {
+        display: block !important;
+        visibility: visible !important;
     }
 
     /* Chat message styling */
@@ -357,41 +363,45 @@ def generate_ppt(content, topic, theme):
         success = generate_beautiful_ppt(content, ppt_path, color_scheme=theme, use_ai=False, original_topic=topic, min_slides=6, max_slides=6)
     return success, ppt_path
 
-# Header - Full width responsive design
+# Header - Always visible, full width responsive design
 st.markdown("""
 <style>
 .ppt-header {
-    background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: #fff;
-    padding: 1.2rem 1rem;
-    margin: 0 0 1rem 0;
-    box-shadow: 0 4px 16px rgba(60,60,120,0.15);
-    border-radius: 12px;
+    padding: 1.5rem 1rem;
+    margin: 0 0 1.5rem 0;
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+    border-radius: 16px;
     text-align: center;
+    position: relative;
+    z-index: 100;
 }
 .ppt-header h2 {
     margin: 0;
-    font-size: 1.6rem;
+    font-size: 1.8rem;
     font-weight: 800;
     color: #fff;
     text-transform: uppercase;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 .ppt-header p {
-    margin: 0.3rem 0 0 0;
+    margin: 0.5rem 0 0 0;
     color: #e0e7ff;
-    font-size: 0.9rem;
+    font-size: 1rem;
+    font-weight: 500;
 }
 @media (max-width: 600px) {
     .ppt-header {
-        padding: 0.8rem 0.5rem;
-        margin: 0 0 0.5rem 0;
-        border-radius: 8px;
+        padding: 1rem 0.8rem;
+        margin: 0 0 1rem 0;
+        border-radius: 12px;
     }
     .ppt-header h2 {
-        font-size: 1.1rem;
+        font-size: 1.3rem;
     }
     .ppt-header p {
-        font-size: 0.8rem;
+        font-size: 0.85rem;
     }
 }
 .stChatMessage {

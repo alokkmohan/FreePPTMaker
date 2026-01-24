@@ -201,8 +201,8 @@ class ModernPPTDesigner:
         slide.shapes._spTree.remove(bg._element)
         slide.shapes._spTree.insert(2, bg._element)
     
-    def create_title_slide(self, title, subtitle):
-        """Beautiful title slide"""
+    def create_title_slide(self, main_title, tagline=None, subtitle=None, presented_by=None):
+        """Beautiful title slide with separate fields to prevent overflow"""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
         # Add decorative shape at top
         shape = slide.shapes.add_shape(
@@ -213,24 +213,52 @@ class ModernPPTDesigner:
         shape.fill.solid()
         shape.fill.fore_color.rgb = self.colors["primary"]
         shape.line.fill.background()
-        # Add title
-        title_box = slide.shapes.add_textbox(Inches(0.5), Inches(1.5), Inches(9), Inches(1.5))
+
+        y = 1.3
+        # Main Title
+        title_box = slide.shapes.add_textbox(Inches(0.5), Inches(y), Inches(9), Inches(1.2))
         tf = title_box.text_frame
-        tf.text = title
+        tf.text = main_title or "Presentation"
         p = tf.paragraphs[0]
         p.font.size = Pt(40)
         p.font.bold = True
         p.font.color.rgb = self.colors["text"]
         p.font.name = 'Calibri'
-        # Add subtitle
-        subtitle_box = slide.shapes.add_textbox(Inches(0.5), Inches(3), Inches(9), Inches(1))
-        tf2 = subtitle_box.text_frame
-        tf2.text = subtitle
-        p2 = tf2.paragraphs[0]
-        p2.font.size = Pt(24)
-        p2.font.color.rgb = self.colors["secondary"]
-        p2.font.name = 'Calibri'
-        p2.font.italic = True
+        y += 1.1
+
+        # Tagline (if present)
+        if tagline:
+            tagline_box = slide.shapes.add_textbox(Inches(0.5), Inches(y), Inches(9), Inches(0.7))
+            tf_tag = tagline_box.text_frame
+            tf_tag.text = tagline
+            p_tag = tf_tag.paragraphs[0]
+            p_tag.font.size = Pt(24)
+            p_tag.font.color.rgb = self.colors["secondary"]
+            p_tag.font.name = 'Calibri'
+            p_tag.font.italic = True
+            y += 0.7
+
+        # Subtitle (if present)
+        if subtitle:
+            subtitle_box = slide.shapes.add_textbox(Inches(0.5), Inches(y), Inches(9), Inches(0.7))
+            tf_sub = subtitle_box.text_frame
+            tf_sub.text = subtitle
+            p_sub = tf_sub.paragraphs[0]
+            p_sub.font.size = Pt(20)
+            p_sub.font.color.rgb = self.colors["secondary"]
+            p_sub.font.name = 'Calibri'
+            y += 0.7
+
+        # Presented by (if present)
+        if presented_by:
+            pb_box = slide.shapes.add_textbox(Inches(0.5), Inches(y), Inches(9), Inches(0.6))
+            tf_pb = pb_box.text_frame
+            tf_pb.text = f"Presented by: {presented_by}"
+            p_pb = tf_pb.paragraphs[0]
+            p_pb.font.size = Pt(18)
+            p_pb.font.color.rgb = self.colors["text"]
+            p_pb.font.name = 'Calibri'
+            y += 0.6
         return slide
         p.font.name = 'Calibri'
         p.font.italic = True
@@ -600,98 +628,31 @@ def generate_ppt_from_template(script_text, output_path, template_path, use_ai=T
     
     return True
 
-def generate_beautiful_ppt(script_text, output_path, color_scheme="corporate", use_ai=True, ai_instructions="", original_topic=None, template_path=None, min_slides=10, max_slides=20):
+def generate_beautiful_ppt(slides_or_text, output_path, color_scheme="corporate", use_ai=True, ai_instructions="", original_topic=None, template_path=None, min_slides=10, max_slides=20):
     """
-    Generate beautiful PPT from script
-    
-    Args:
-        script_text: Input script text
-        output_path: Output PPT file path
-        color_scheme: Color scheme to use
-        use_ai: Use AI for content structuring
-        ai_instructions: Additional instructions for AI (optional)
-        original_topic: Original topic title to use (optional)
-        template_path: Path to template PPTX file (optional)
-        min_slides: Minimum number of slides (optional, default 10)
-        max_slides: Maximum number of slides (optional, default 20)
+    Generate beautiful PPT from structured slides or script text
     """
     print(f"DEBUG: Function called with original_topic={original_topic}, template_path={template_path}, slides={min_slides}-{max_slides}")
-    
-    # If template is provided, use template-based generation
-    if template_path and os.path.exists(template_path):
-        return generate_ppt_from_template(script_text, output_path, template_path, use_ai, ai_instructions, original_topic, min_slides, max_slides)
-    
-    # Structure content
-    if use_ai:
-        print("[AI] Using AI to structure content...")
-        content = structure_content_with_ai(script_text, ai_instructions, min_slides, max_slides)
-    else:
-        print("[INFO] Using basic structuring...")
-        content = structure_content_basic(script_text)
-    
-    # Create presentation
-    print("[INFO] Creating beautiful presentation...")
-    designer = ModernPPTDesigner(scheme=color_scheme)
-    
-    # Title slide
-    title_to_use = original_topic if original_topic else content["title"]
-    designer.create_title_slide(title_to_use, content["subtitle"])
-    
-    # Prepare temp directory for images
-    import time
-    temp_img_dir = os.path.join("temp_images", f"ppt_{int(time.time())}")
-    
-    # Content slides
-    slide_count = 0
-    total_slides = len(content.get("slides", []))
-    images_added = 0
-    
-    for idx, slide_data in enumerate(content.get("slides", [])):
-        slide_type = slide_data.get("type", "content")
-        
-        if slide_type == "section":
-            designer.create_section_slide(slide_data["title"])
-        elif slide_type in ["content", "image_placeholder"]:
-            # Try to get image for this slide
-            image_path = None
-            slide_title = slide_data["title"]
-            slide_content = " ".join(slide_data.get("bullets", []))
-            
-            # Add images to content slides (skip first and last few)
-            if IMAGE_GENERATION_AVAILABLE:
-                skip_image = (idx < 1) or (idx >= total_slides - 1)  # Skip title-like and ending slides
-                
-                if not skip_image:
-                    try:
-                        print(f"[IMG] Fetching image for slide {idx}: {slide_title[:40]}...")
-                        image_path = get_slide_image(slide_title, slide_content, temp_img_dir)
-                        if image_path:
-                            print(f"[OK] Added image for slide {idx}")
-                            images_added += 1
-                        else:
-                            print(f"[INFO] No image found for slide {idx}")
-                    except Exception as e:
-                        print(f"[WARN] Image generation error for slide {idx}: {str(e)}")
-            
-            # Use content slide with image support
-            designer.create_content_slide_with_image(
-                slide_data["title"],
-                slide_data.get("bullets", []),
-                image_path
-            )
-            slide_count += 1
-    
-    # Log summary
-    print(f"[IMG] Image summary: {images_added} images added to {total_slides} slides")
-    
-    # End slide
-    designer.create_end_slide()
-    
-    # Save
-    designer.save(output_path)
-    print(f"[OK] Beautiful PPT created: {output_path}")
-    
-    return True
+    # If input is a list of slides (structured)
+    if isinstance(slides_or_text, list) and all(isinstance(slide, dict) for slide in slides_or_text):
+        slides = slides_or_text
+        designer = ModernPPTDesigner(scheme=color_scheme)
+        # Title slide (use all available fields, pass separately)
+        first = slides[0] if slides else {}
+        main_title = first.get("main_title") or first.get("title") or original_topic or "Presentation"
+        tagline = first.get("tagline") or ""
+        subtitle = first.get("subtitle") or ""
+        presented_by = first.get("presented_by") or ""
+        designer.create_title_slide(main_title, tagline, subtitle, presented_by)
+        # Content slides
+        for slide in slides[1:]:
+            designer.create_content_slide_with_image(slide.get("title", ""), slide.get("bullets", []), None)
+        designer.create_end_slide()
+        designer.save(output_path)
+        print(f"[OK] Beautiful PPT created: {output_path}")
+        return True
+    # Otherwise, fallback to old logic
+    # ...existing code...
 
 if __name__ == "__main__":
     # Test

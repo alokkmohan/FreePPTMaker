@@ -208,11 +208,26 @@ def get_conversion_stats():
 
 # Page Configuration
 st.set_page_config(
-    page_title="TEXT to PPT Generator - AI Powered",
-    page_icon="📊",
-    layout="wide",
+    page_title="Text to PPT Maker",
+    layout="centered",
     initial_sidebar_state="collapsed"
 )
+
+# Hide Streamlit default header, menu, and footer for mobile UI
+st.markdown("""
+    <style>
+    #MainMenu, header, footer {visibility: hidden;}
+    .block-container {padding-top: 1rem;}
+    @media (max-width: 600px) {
+        .block-container {padding: 0.5rem;}
+        .stTextInput>div>div>input {font-size: 1.2rem; height: 48px;}
+        .stButton>button {font-size: 1.2rem; height: 48px; border-radius: 24px;}
+    }
+    .input-row {display: flex; gap: 0.5rem;}
+    .input-row .stTextInput, .input-row .stButton {flex: 1;}
+    .input-row .stButton {max-width: 64px;}
+    </style>
+""", unsafe_allow_html=True)
 
 # Custom CSS for beautiful, mobile-responsive UI
 st.markdown("""
@@ -709,11 +724,19 @@ if st.session_state.get('current_tab') == 'powerpoint' and st.session_state.get(
 
 elif st.session_state.get('input_method') == 'write_topic':
     st.markdown("### Enter Your Topic")
-    topic_input = st.text_input(
-        label="Topic",
-        placeholder="e.g. Artificial Intelligence in Healthcare",
-        label_visibility="collapsed"
-    )
+    # Mobile-first input row: topic + plus button
+    st.markdown('<div class="input-row">', unsafe_allow_html=True)
+    col1, col2 = st.columns([6,1])
+    with col1:
+        topic_input = st.text_input(
+            label="Topic",
+            placeholder="e.g. Artificial Intelligence in Healthcare",
+            label_visibility="collapsed",
+            key="topic_input"
+        )
+    with col2:
+        plus_clicked = st.button("+", key="plus_button")
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # Theme selection in expander (collapsed by default)
     with st.expander("Change Theme (Optional)", expanded=False):

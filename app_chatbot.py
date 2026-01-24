@@ -56,11 +56,16 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
 # Initialize session state
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 if 'stage' not in st.session_state:
-    st.session_state.stage = 'idle'  # idle, awaiting_topic, confirming, generating, done
+    st.session_state.stage = 'ask_name'  # ask_name, ask_designation, idle, awaiting_topic, confirming, generating, done
+if 'presenter_name' not in st.session_state:
+    st.session_state.presenter_name = None
+if 'presenter_designation' not in st.session_state:
+    st.session_state.presenter_designation = None
 if 'topic' not in st.session_state:
     st.session_state.topic = None
 if 'suggested_title' not in st.session_state:
@@ -104,18 +109,50 @@ def generate_ppt(content, topic, theme):
     safe_title = re.sub(r'[^\w\s-]', '', str(topic))[:50]
     safe_title = re.sub(r'[-\s]+', '_', safe_title) if safe_title else "presentation"
     ppt_path = os.path.join(output_folder, f"{safe_title}.pptx")
-    success = generate_beautiful_ppt(content, ppt_path, color_scheme=theme, use_ai=False, original_topic=topic, min_slides=10, max_slides=15)
+    # If content is a list of slides, pass as structured
+    if isinstance(content, list) and all(isinstance(slide, dict) for slide in content):
+        success = generate_beautiful_ppt(content, ppt_path, color_scheme=theme, use_ai=False, original_topic=topic, min_slides=6, max_slides=6)
+    else:
+        success = generate_beautiful_ppt(content, ppt_path, color_scheme=theme, use_ai=False, original_topic=topic, min_slides=6, max_slides=6)
     return success, ppt_path
 
 # Header
 st.markdown("""
-<div style="text-align: center; padding: 1rem 0;">
-    <h2 style="margin: 0; color: #667eea;">SlideCraft AI</h2>
-    <p style="margin: 0.3rem 0 0 0; color: #666; font-size: 0.9rem;">Create professional presentations through chat</p>
+<div style="
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%);
+    color: #fff;
+    padding: 1.2rem 0 0.7rem 0;
+    box-shadow: 0 2px 12px 0 rgba(60,60,120,0.07);
+    border-radius: 0 0 18px 18px;
+    text-align: center;
+">
+    <h2 style="margin: 0; font-size: 2.1rem; font-weight: 700; letter-spacing: 1px; color: #fff;">SlideCraft AI</h2>
+    <p style="margin: 0.5rem 0 0 0; color: #e0e7ff; font-size: 1.08rem; font-weight: 500; letter-spacing: 0.2px;">Create professional presentations through chat</p>
 </div>
+<style>
+@media (max-width: 600px) {
+    div[style*='background: linear-gradient'] h2 {
+        font-size: 1.3rem !important;
+    }
+    div[style*='background: linear-gradient'] p {
+        font-size: 0.95rem !important;
+    }
+    div[style*='background: linear-gradient'] {
+        padding: 0.7rem 0 0.5rem 0 !important;
+        border-radius: 0 0 12px 12px !important;
+    }
+}
+</style>
 """, unsafe_allow_html=True)
 
 # File upload - always visible at top
+st.markdown("**Language / भाषा चुनें:**")
+language = st.selectbox("Select language", ["English", "Hindi"], key="ppt_language", index=0)
+st.session_state.language = language
+
 with st.expander("Attach Document (Optional)", expanded=False):
     uploaded_file = st.file_uploader("Upload txt, docx, or pdf", type=["txt", "docx", "pdf"], key="file_upload", label_visibility="collapsed")
     if uploaded_file:
@@ -152,7 +189,8 @@ for msg in st.session_state.messages:
 # Show download button if PPT is ready
 if st.session_state.stage == 'done' and st.session_state.ppt_path:
     with st.chat_message("assistant"):
-        st.success("Your presentation is ready!")
+        if st.session_state.topic and st.session_state.topic.lower() != 'none':
+            st.success(f"Your presentation on {st.session_state.topic} is ready.\n\nPowered by: Alok Mohan\n\nClick the download button below.")
         col1, col2 = st.columns([3, 1])
         with col1:
             with open(st.session_state.ppt_path, "rb") as f:
@@ -169,130 +207,155 @@ if st.session_state.stage == 'done' and st.session_state.ppt_path:
                 st.rerun()
 
 # Chat input
+
+# Name and designation collection flow
+if st.session_state.stage == 'ask_name':
+    with st.chat_message("assistant"):
+        st.markdown("**Enter your name (for the presentation): (optional)**")
+        col1, col2 = st.columns([3,1])
+        with col1:
+            name = st.text_input("Your name", key="presenter_name_input")
+        with col2:
+            if st.button("Skip", key="skip_name"):
+                st.session_state.presenter_name = None
+                st.session_state.stage = 'ask_designation'
+                st.rerun()
+        if name:
+            st.session_state.presenter_name = name
+            st.session_state.stage = 'ask_designation'
+            st.rerun()
+elif st.session_state.stage == 'ask_designation':
+    with st.chat_message("assistant"):
+        st.markdown("**Enter your designation (for the presentation): (optional)**")
+        col1, col2 = st.columns([3,1])
+        with col1:
+            designation = st.text_input("Your designation", key="presenter_designation_input")
+        with col2:
+            if st.button("Skip", key="skip_designation"):
+                st.session_state.presenter_designation = None
+                st.session_state.stage = 'generating'
+                st.rerun()
+        if designation:
+            st.session_state.presenter_designation = designation
+            st.session_state.stage = 'generating'
+            st.rerun()
+
 user_input = st.chat_input("Type your message...")
 
 if user_input:
+
     add_message("user", user_input)
 
-    # State machine for conversation
-    if st.session_state.stage == 'idle':
+    # Show loading spinner immediately after user submits
+    with st.spinner("Processing your request. Please wait..."):
+        # If greeting, show welcome and ask for topic
         if is_greeting(user_input):
-            response = """Hello! Welcome to **SlideCraft AI**.
-
-I can create professional PowerPoint presentations for you.
-
-**What would you like to do?**
-- Tell me a topic (e.g., "AI in Healthcare")
-- Paste content directly
-- Upload a document using the option above
-
-What topic should I create a presentation on?"""
+            if st.session_state.get('language', 'English') == 'Hindi':
+                response = ("नमस्ते!\n\n" 
+                            "मैं आपकी मदद से पेशेवर PowerPoint प्रेजेंटेशन बना सकता हूँ।\n\n"
+                            "कृपया एक विषय लिखें, या डॉक्युमेंट अपलोड करें, या टेक्स्ट पेस्ट करें।\n\n"
+                            "उदाहरण: 'AI in Healthcare', 'Digital India', आदि।")
+            else:
+                response = ("Hello!\n\n" 
+                            "I can help you create a professional PowerPoint presentation.\n\n"
+                            "Please enter a topic, upload a document, or paste your text.\n\n"
+                            "Example: 'AI in Healthcare', 'Digital India', etc.")
             add_message("assistant", response)
-            st.session_state.stage = 'awaiting_topic'
-        elif len(user_input.split()) > 50:
-            # Long content - use directly
-            st.session_state.topic = user_input.split('\n')[0][:50]
-            st.session_state.file_content = user_input
-            response = f"""I'll create a presentation from your content.
+            st.session_state.stage = 'idle'
+            st.rerun()
 
-**Suggested Title:** {st.session_state.topic}
-**Subtitle:** A Comprehensive Overview
-
-Should I proceed with this? (Yes/No)"""
-            add_message("assistant", response)
-            st.session_state.stage = 'confirming'
-        elif len(user_input) >= 5:
-            # Topic given
-            st.session_state.topic = user_input
-            response = f"""Great topic! Here's what I'll create:
-
-**Title:** {user_input}
-**Subtitle:** A Complete Guide
-
-**Structure:**
-1. Introduction
-2. Key Concepts
-3. Benefits & Advantages
-4. Challenges
-5. Real-world Examples
-6. Future Outlook
-7. Conclusion
-
-Should I proceed? (Yes to create, or suggest changes)"""
-            add_message("assistant", response)
-            st.session_state.stage = 'confirming'
+        # If user input is a real topic/text/file, proceed to AI slide generation
         else:
-            response = "I didn't understand that. Please tell me a topic for your presentation, or say **Hi** to start."
-            add_message("assistant", response)
+            # 1. Google search
+            google_context = ""
+            trusted_domains = ["wikipedia.org", ".gov", ".nic.in", ".org"]
+            if google_api_key and google_cse_id:
+                try:
+                    results = search_google(user_input, google_api_key, google_cse_id, num_results=5)
+                    # 2. Filter to trusted sources
+                    trusted_results = []
+                    for r in results:
+                        url = r.get('link', '')
+                        if any(domain in url for domain in trusted_domains):
+                            trusted_results.append(r)
+                    # 3. Extract clean text (use snippet, title)
+                    snippets = [r.get('snippet', '') for r in trusted_results]
+                    titles = [r.get('title', '') for r in trusted_results]
+                    google_context = "\n".join(titles + snippets)
+                except Exception as e:
+                    st.warning(f"Google search failed: {e}")
+                    google_context = ""
 
-    elif st.session_state.stage == 'awaiting_topic':
-        if len(user_input) >= 3:
-            st.session_state.topic = user_input
-            response = f"""Perfect! Here's the plan:
+            # 4. Pass context and language to AI generator
+            generator = MultiAIGenerator()
+            language = st.session_state.get('language', 'English')
+            # Add language and tone to prompt
+            custom_instructions = f"{google_context}\n\nLanguage: {language}\nTone: Government / Training"
+            content_dict = generator.generate_ppt_content(
+                topic=user_input,
+                min_slides=6,
+                max_slides=6,
+                style=st.session_state.theme,
+                audience="general",
+                custom_instructions=custom_instructions,
+                bullets_per_slide=4,
+                bullet_word_limit=12,
+                tone="government/training",
+                required_phrases="",
+                forbidden_content=""
+            )
+            # Parse AI output into slides (robust parser)
 
-**Title:** {user_input}
-**Subtitle:** A Comprehensive Presentation
+            def parse_slides(ai_output):
+                slides = []
+                if not ai_output:
+                    return slides
+                lines = [l.strip() for l in ai_output.split('\n') if l.strip()]
+                current_slide = {}
+                for line in lines:
+                    # Slide start
+                    m = re.match(r"^Slide ?(\d+): ?(.+)$", line)
+                    if m:
+                        # Save previous slide
+                        if current_slide:
+                            slides.append(current_slide)
+                        current_slide = {"slide_number": int(m.group(1)), "title": m.group(2), "bullets": []}
+                    elif line.startswith('Main Title:'):
+                        current_slide["main_title"] = line.split(':',1)[1].strip()
+                    elif line.startswith('Tagline:'):
+                        current_slide["tagline"] = line.split(':',1)[1].strip()
+                    elif line.startswith('Subtitle:'):
+                        current_slide["subtitle"] = line.split(':',1)[1].strip()
+                    elif line.startswith('Presented by:'):
+                        current_slide["presented_by"] = line.split(':',1)[1].strip()
+                    elif line.startswith('- '):
+                        current_slide.setdefault("bullets", []).append(line[2:].strip())
+                # Add last slide
+                if current_slide:
+                    slides.append(current_slide)
+                # Inject presenter name/designation if not present
+                if slides:
+                    first = slides[0]
+                    if st.session_state.presenter_name:
+                        first["presented_by"] = st.session_state.presenter_name
+                    if st.session_state.presenter_designation:
+                        # Add designation to subtitle if present, else as a new field
+                        if first.get("subtitle"):
+                            first["subtitle"] = (first.get("subtitle","") + f"\n{st.session_state.presenter_designation}").strip()
+                        else:
+                            first["subtitle"] = st.session_state.presenter_designation
+                return slides
 
-**Slides I'll create:**
-1. Title Slide
-2. Introduction - What is {user_input}?
-3. Key Concepts & Definitions
-4. Benefits & Importance
-5. Challenges & Solutions
-6. Real Examples & Case Studies
-7. Future Trends
-8. Conclusion & Takeaways
-
-Ready to create? (Yes/No)"""
-            add_message("assistant", response)
-            st.session_state.stage = 'confirming'
-        else:
-            response = "Please provide a more descriptive topic (at least 3 characters)."
-            add_message("assistant", response)
-
-    elif st.session_state.stage == 'confirming':
-        if is_yes(user_input):
-            add_message("assistant", "Starting presentation creation...")
+            ai_output = content_dict.get("output", "")
+            if not ai_output:
+                ai_output = content_dict.get("error", "No AI output.")
+            slides = parse_slides(ai_output)
+            # Show the AI output as chat
+            add_message("assistant", ai_output)
+            # Save slides to session for PPT generation
+            st.session_state.parsed_slides = slides
             st.session_state.stage = 'generating'
             st.rerun()
-        elif is_no(user_input):
-            response = "No problem! What changes would you like? Or tell me a new topic."
-            add_message("assistant", response)
-            st.session_state.stage = 'awaiting_topic'
-        else:
-            # Treat as new topic
-            st.session_state.topic = user_input
-            response = f"""Updated! New plan:
-
-**Title:** {user_input}
-
-Proceed with this? (Yes/No)"""
-            add_message("assistant", response)
-
-    elif st.session_state.stage == 'done':
-        if is_greeting(user_input):
-            response = """Hello again!
-
-Would you like to:
-1. Create a **new presentation** - just tell me the topic
-2. **Modify** the current one - tell me what to change
-
-What would you like to do?"""
-            add_message("assistant", response)
-            st.session_state.stage = 'awaiting_topic'
-        else:
-            # New topic
-            st.session_state.topic = user_input
-            st.session_state.ppt_path = None
-            response = f"""New presentation!
-
-**Title:** {user_input}
-
-Should I create this? (Yes/No)"""
-            add_message("assistant", response)
-            st.session_state.stage = 'confirming'
-
-    st.rerun()
 
 # Generation process
 if st.session_state.stage == 'generating':
@@ -310,36 +373,8 @@ if st.session_state.stage == 'generating':
                 progress_placeholder.markdown("**Creating your presentation...**\n\n Processing your content...")
             else:
                 progress_placeholder.markdown("**Creating your presentation...**\n\n Researching the topic...")
-                generator = MultiAIGenerator()
-                google_context = ""
-                if google_api_key and google_cse_id:
-                    try:
-                        results = search_google(st.session_state.topic, google_api_key, google_cse_id, num_results=5)
-                        google_context = "\n".join([f"{r['title']}: {r['snippet']}" for r in results])
-                    except Exception as e:
-                        st.warning(f"Google search failed: {e}")
-                        google_context = ""
-                content_dict = generator.generate_ppt_content(
-                    topic=st.session_state.topic,
-                    min_slides=num_slides,
-                    max_slides=num_slides,
-                    style=st.session_state.theme,
-                    audience="general",
-                    custom_instructions=google_context,
-                    bullets_per_slide=bullets_per_slide,
-                    bullet_word_limit=bullet_word_limit,
-                    tone=tone,
-                    required_phrases=required_phrases,
-                    forbidden_content=forbidden_content
-                )
-                # Convert dict to formatted string for PPT
-                result = []
-                for slide in content_dict.get('slides', []):
-                    if slide.get('title'):
-                        result.append(f"\n{slide['title']}")
-                    for point in slide.get('bullets', []):
-                        result.append(f"- {point}")
-                content = "\n".join(result)
+                # Use parsed slides from session (structured)
+                content = st.session_state.get('parsed_slides', [])
                 ai_source = get_last_ai_source()
                 progress_placeholder.markdown(f"**Creating your presentation...**\n\n Content generated by: **{ai_source}**")
 
@@ -373,13 +408,4 @@ if st.session_state.stage == 'generating':
 # Welcome message for new users
 if not st.session_state.messages and st.session_state.stage == 'idle':
     with st.chat_message("assistant"):
-        st.markdown("""**Welcome to SlideCraft AI!**
-
-I can create professional PowerPoint presentations for you.
-
-**How to use:**
-- Type a topic like "Artificial Intelligence" or "Climate Change"
-- Or paste your content directly
-- Or upload a document above
-
-**Just say Hi or type your topic to begin!**""")
+        st.markdown("Welcome to SlideCraft AI! Type a topic or upload a document to begin.")

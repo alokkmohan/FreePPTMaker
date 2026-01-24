@@ -46,9 +46,10 @@ st.markdown("""
     }
 
     /* Ensure our header is always visible */
-    .ppt-header {
+    .main-header {
         display: block !important;
         visibility: visible !important;
+        min-height: 60px !important;
     }
 
     /* Chat message styling */
@@ -363,45 +364,41 @@ def generate_ppt(content, topic, theme):
         success = generate_beautiful_ppt(content, ppt_path, color_scheme=theme, use_ai=False, original_topic=topic, min_slides=6, max_slides=6)
     return success, ppt_path
 
-# Header - Always visible, full width responsive design
+# Header - Always visible, using Streamlit native components for mobile compatibility
 st.markdown("""
 <style>
-.ppt-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #fff;
-    padding: 1.5rem 1rem;
-    margin: 0 0 1.5rem 0;
-    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
-    border-radius: 16px;
-    text-align: center;
-    position: relative;
-    z-index: 100;
+.main-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: #fff !important;
+    padding: 20px 15px !important;
+    margin: -10px -15px 20px -15px !important;
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3) !important;
+    border-radius: 0 0 20px 20px !important;
+    text-align: center !important;
 }
-.ppt-header h2 {
-    margin: 0;
-    font-size: 1.8rem;
-    font-weight: 800;
-    color: #fff;
-    text-transform: uppercase;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+.main-header h1 {
+    margin: 0 !important;
+    font-size: 1.6rem !important;
+    font-weight: 800 !important;
+    color: #fff !important;
+    text-transform: uppercase !important;
 }
-.ppt-header p {
-    margin: 0.5rem 0 0 0;
-    color: #e0e7ff;
-    font-size: 1rem;
-    font-weight: 500;
+.main-header p {
+    margin: 8px 0 0 0 !important;
+    color: #e0e7ff !important;
+    font-size: 0.95rem !important;
 }
-@media (max-width: 600px) {
-    .ppt-header {
-        padding: 1rem 0.8rem;
-        margin: 0 0 1rem 0;
-        border-radius: 12px;
+@media (max-width: 768px) {
+    .main-header {
+        padding: 15px 10px !important;
+        margin: -5px -10px 15px -10px !important;
+        border-radius: 0 0 15px 15px !important;
     }
-    .ppt-header h2 {
-        font-size: 1.3rem;
+    .main-header h1 {
+        font-size: 1.2rem !important;
     }
-    .ppt-header p {
-        font-size: 0.85rem;
+    .main-header p {
+        font-size: 0.85rem !important;
     }
 }
 .stChatMessage {
@@ -445,11 +442,14 @@ st.markdown("""
     margin-top: 1.5rem !important;
 }
 </style>
-<div class="ppt-header">
-    <h2>📊 FREE PPT Generator</h2>
+<div class="main-header">
+    <h1>📊 FREE PPT Generator</h1>
     <p>Create professional presentations through chat</p>
 </div>
 """, unsafe_allow_html=True)
+
+# Also show header using Streamlit's native title for mobile fallback
+# st.title("📊 FREE PPT Generator")
 
 # Language selection and Refresh button (in same row, right aligned)
 col_lang, col_spacer, col_refresh = st.columns([2, 2, 1])

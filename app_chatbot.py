@@ -748,6 +748,16 @@ if st.session_state.stage == 'generating':
                 st.session_state.ppt_path = ppt_path
                 st.session_state.stage = 'done'
                 st.session_state.ai_source = ai_source
+                # Update PPT generated count
+                try:
+                    with open("visitor_count.json", 'r') as f:
+                        stats = json.load(f)
+                    stats["ppt_generated"] = stats.get("ppt_generated", 0) + 1
+                    stats["last_ppt"] = datetime.now().isoformat()
+                    with open("visitor_count.json", 'w') as f:
+                        json.dump(stats, f)
+                except:
+                    pass
                 progress_placeholder.empty()
                 add_message("assistant", f"**Done!** Your presentation on **{st.session_state.topic}** is ready.\n\n*Powered by: {ai_source}*\n\nClick the download button below.")
                 st.rerun()
@@ -846,3 +856,46 @@ if st.session_state.stage == 'regenerating':
 if not st.session_state.messages and st.session_state.stage == 'idle':
     with st.chat_message("assistant"):
         st.markdown("Welcome! Type a topic or upload a document to begin.")
+
+# ============ FOOTER WITH STATS ============
+# Load and update visitor stats
+import json
+stats_file = "visitor_count.json"
+try:
+    with open(stats_file, 'r') as f:
+        stats = json.load(f)
+except:
+    stats = {"total_visits": 0, "ppt_generated": 0}
+
+# Update visit count (only once per session)
+if 'visit_counted' not in st.session_state:
+    st.session_state.visit_counted = True
+    stats["total_visits"] = stats.get("total_visits", 0) + 1
+    stats["last_visit"] = datetime.now().isoformat()
+    try:
+        with open(stats_file, 'w') as f:
+            json.dump(stats, f)
+    except:
+        pass
+
+# Slim footer
+st.markdown(f"""
+<div style="
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%);
+    color: #fff;
+    padding: 8px 16px;
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 999;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+">
+    <span>👁️ Visits: <b>{stats.get('total_visits', 0)}</b> &nbsp;|&nbsp; 📊 PPTs Made: <b>{stats.get('ppt_generated', 0)}</b></span>
+    <span>Powered by <b>Alok Mohan</b></span>
+</div>
+""", unsafe_allow_html=True)

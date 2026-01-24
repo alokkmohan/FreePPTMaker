@@ -266,21 +266,23 @@ st.markdown("""
     /* ════════════════════════════════════════════════════════════════ */
 
     .header-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
         background: linear-gradient(135deg, #5B63D6 0%, #6B46C1 25%, #E879D9 50%, #2B9BD6 75%, #00B4D8 100%);
-        padding: 15px 20px;
-        border-radius: 12px;
-        margin-bottom: 15px;
-        box-shadow: 
-            0 8px 32px rgba(91, 99, 214, 0.4),
-            0 0 0 2px rgba(255, 255, 255, 0.1) inset;
+        padding: 10px 12px;
+        border-radius: 0 0 12px 12px;
+        margin-bottom: 0;
+        box-shadow: 0 4px 16px rgba(91, 99, 214, 0.25), 0 0 0 2px rgba(255,255,255,0.1) inset;
         text-align: center;
-        position: relative;
-        overflow: hidden;
-        min-height: 60px;
+        min-height: 44px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-bottom: 2px solid rgba(255,255,255,0.2);
+        width: 100%;
     }
 
     .header-container::before {
@@ -307,11 +309,11 @@ st.markdown("""
     }
 
     .header-title {
-        font-size: 32px;
+        font-size: 24px;
         font-weight: 950;
         color: #ffffff;
         margin: 0;
-        line-height: 1.2;
+        line-height: 1.1;
         text-shadow: 
             0 2px 6px rgba(0, 0, 0, 0.5),
             0 4px 12px rgba(0, 0, 0, 0.4),
@@ -345,20 +347,15 @@ st.markdown("""
 
     @media (max-width: 768px) {
         .header-container {
-            padding: 12px 15px;
-            min-height: 55px;
-            border-radius: 10px;
-            margin-bottom: 12px;
+            padding: 8px 6px;
+            min-height: 38px;
+            border-radius: 0 0 8px 8px;
         }
-
         .header-title {
-            font-size: 28px;
-            line-height: 1.1;
-            font-weight: 950;
-            text-shadow: 
-                0 2px 6px rgba(0, 0, 0, 0.5),
-                0 4px 12px rgba(0, 0, 0, 0.4),
-                0 6px 18px rgba(0, 0, 0, 0.35);
+            font-size: 18px;
+        }
+        .block-container {
+            padding-top: 48px !important;
         }
     }
 
@@ -368,24 +365,15 @@ st.markdown("""
 
     @media (max-width: 480px) {
         .header-container {
-            padding: 10px 12px;
-            min-height: 50px;
-            margin-bottom: 10px;
-            border-radius: 8px;
+            padding: 6px 2px;
+            min-height: 32px;
+            border-radius: 0 0 6px 6px;
         }
-
         .header-title {
-            font-size: 24px;
-            line-height: 1.1;
-            font-weight: 950;
-            text-shadow: 
-                0 2px 6px rgba(0, 0, 0, 0.5),
-                0 4px 12px rgba(0, 0, 0, 0.4),
-                0 6px 18px rgba(0, 0, 0, 0.35);
+            font-size: 15px;
         }
-
-        .header-container::before {
-            background-size: 30px 30px;
+        .block-container {
+            padding-top: 36px !important;
         }
     }
 </style>

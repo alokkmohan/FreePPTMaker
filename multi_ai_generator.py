@@ -1,4 +1,3 @@
-
 # NOTE: Do NOT make Streamlit UI changes in this file.
 # For mobile UI fixes, update app.py only.
 #!/usr/bin/env python3
@@ -77,132 +76,71 @@ class MultiAIGenerator:
         max_slides: int = 20,
         style: str = "professional",
         audience: str = "general",
-        custom_instructions: str = ""
+        custom_instructions: str = "",
+        bullets_per_slide: int = 4,
+        bullet_word_limit: int = 12,
+        tone: str = "formal",
+        required_phrases: str = "",
+        forbidden_content: str = ""
     ) -> Dict:
         """
-        Generate PPT structure.
-        Priority: Ollama (local) -> Groq (cloud fallback)
+        Generate PPT structure using Groq (cloud) or Hugging Face (optional fallback).
+        All content rules are dynamic and user-driven.
         """
         global _last_ai_source
 
-        # Try Ollama first (local, free, offline)
-        try:
-            print("[AI] Trying Ollama (local)...")
-            result = self._ollama_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
-            _last_ai_source = "Ollama (Local)"
-            return result
-        except Exception as ollama_error:
-            print(f"[AI] Ollama failed: {ollama_error}")
+        # Build dynamic prompt
+        prompt = f"""You are an expert presentation content writer. Generate content for a PowerPoint presentation only.
 
-            # Fallback to Groq (cloud)
-            if not self.groq_key:
-                raise Exception("Ollama not available and Groq API key not found. Set GROQ_API_KEY in Streamlit Secrets (cloud) or .env file (local)")
-
-            print("[AI] Using Groq API (cloud fallback)...")
-            result = self._groq_generate(topic, min_slides, max_slides, style, audience, custom_instructions)
-            _last_ai_source = "Groq Cloud (Llama 3.3)"
-            return result
-
-    def _ollama_generate(self, topic, min_slides, max_slides, style, audience, custom_instructions):
-        """Generate using Ollama API (local or remote via ngrok)"""
-        import requests
-
-        # Get Ollama URL (local or remote)
-        ollama_url = get_ollama_url()
-        print(f"[AI] Checking Ollama at: {ollama_url}")
-
-        # Headers to bypass ngrok browser warning (for free tier)
-        headers = {
-            "ngrok-skip-browser-warning": "true",
-            "User-Agent": "SlideCraftAI/1.0"
-        }
-
-        # Check if Ollama is running
-        try:
-            health = requests.get(f"{ollama_url}/", headers=headers, timeout=5)
-            if health.status_code != 200:
-                raise Exception(f"Ollama not running at {ollama_url}")
-        except Exception as e:
-            raise Exception(f"Ollama not accessible at {ollama_url}: {str(e)}")
-
-        print(f"[AI] Ollama is running at {ollama_url}, generating content...")
-
-        # Improved prompt for better content quality
-        prompt = f"""You are an expert presentation designer creating a professional PowerPoint.
-
-TOPIC: {topic}
-
-CREATE A PRESENTATION WITH THIS EXACT STRUCTURE:
-1. TITLE SLIDE: Main title and engaging subtitle
-2. INTRODUCTION: What is this topic and why it matters
-3. KEY CONCEPTS: Core ideas and definitions (3-4 slides)
-4. BENEFITS/ADVANTAGES: Why this is important
-5. CHALLENGES/CONSIDERATIONS: What to watch out for
-6. REAL EXAMPLES: Practical applications or case studies
-7. FUTURE OUTLOOK: What's next in this field
-8. CONCLUSION: Summary and key takeaways
-
-STRICT REQUIREMENTS:
-- Create exactly {min_slides} to {max_slides} slides
-- Style: Professional {style}
+Rules:
+- Number of slides: exactly {min_slides}
+- Each slide must have:
+  - A clear, specific slide title
+  - Exactly {bullets_per_slide} bullet points
+  - Each bullet point maximum {bullet_word_limit} words
+- Tone: {tone}
+- Style: {style}
 - Audience: {audience}
-{f"- Additional: {custom_instructions}" if custom_instructions else ""}
+{f'- Required phrases/keywords: {required_phrases}' if required_phrases else ''}
+{f'- Avoid: {forbidden_content}' if forbidden_content else ''}
+{f'- Extra instructions: {custom_instructions}' if custom_instructions else ''}
+- No paragraphs
+- No emojis
+- No markdown
+- No generic statements, no filler, no repetition
 
-CRITICAL RULES:
-- EVERY slide MUST have a UNIQUE, SPECIFIC title (NOT generic like "Overview" or "Introduction")
-- Title examples: "AI Revolutionizing Healthcare Diagnosis", "Top 5 Climate Change Impacts", "How Solar Energy Works"
-- Each slide: 4-5 bullet points with complete sentences (15-25 words each)
-- Include specific facts, statistics, real examples
-- Be informative and educational, not generic
-- No emojis, no markdown
+Output format (strict):
+Slide 1 Title:
+- Bullet point
+- Bullet point
 
-OUTPUT FORMAT (valid JSON only):
-{{"title": "Compelling Main Title", "subtitle": "Engaging Subtitle That Explains Value", "slides": [{{"title": "Unique Specific Slide Title", "content": ["Detailed bullet point with specific information.", "Another informative point with facts or examples.", "Third point explaining a key concept clearly.", "Fourth point with actionable or memorable insight."], "speaker_notes": "Detailed notes for the presenter"}}]}}
+Slide 2 Title:
+- Bullet point
+- Bullet point
 
-Return ONLY valid JSON. No code blocks. No explanations."""
+Do not include anything outside this format.
 
-        ollama_model = "qwen2.5"
-        response = requests.post(
-            f"{ollama_url}/api/generate",
-            headers=headers,
-            json={
-                "model": ollama_model,
-                "prompt": prompt,
-                "options": {"temperature": 0.3},
-                "stream": False
-            },
-            timeout=120
-        )
+TOPIC: {topic}"
 
-        if response.status_code == 200:
-            result = response.json()
-            content = result.get("response", "")
-
-            # Clean JSON from response
-            if content.startswith("```json"):
-                content = content.split("```json")[1].split("```")[0].strip()
-            elif content.startswith("```"):
-                content = content.split("```")[1].split("```")[0].strip()
-
-            # Find JSON in response
-            start_idx = content.find("{")
-            end_idx = content.rfind("}") + 1
-            if start_idx != -1 and end_idx > start_idx:
-                content = content[start_idx:end_idx]
-
-            parsed = json.loads(content)
-
-            # Post-process to fix any issues
+        # Try Groq first
+        if self.groq_key:
             try:
-                from text_processor import post_process_ai_response
-                parsed = post_process_ai_response(parsed)
-                print("[AI] Ollama: Post-processing applied successfully")
-            except ImportError:
-                print("[WARN] text_processor not available, skipping post-processing")
-
-            return parsed
-        else:
-            raise Exception(f"Ollama API error: {response.text}")
+                print("[AI] Using Groq API (cloud)...")
+                result = self._groq_generate(topic, min_slides, max_slides, style, audience, prompt)
+                _last_ai_source = "Groq Cloud (Llama 3.3)"
+                return result
+            except Exception as groq_error:
+                print(f"[AI] Groq failed: {groq_error}")
+        # Optionally, try Hugging Face as a fallback
+        if hasattr(self, '_huggingface_generate') and self.api_key:
+            try:
+                print("[AI] Using Hugging Face API (fallback)...")
+                result = self._huggingface_generate(topic, min_slides, max_slides, style, audience, prompt)
+                _last_ai_source = "Hugging Face API"
+                return result
+            except Exception as hf_error:
+                print(f"[AI] Hugging Face failed: {hf_error}")
+        raise Exception("No AI provider available or all failed. Set GROQ_API_KEY or Hugging Face API key.")
 
     def _groq_generate(self, topic, min_slides, max_slides, style, audience, custom_instructions):
         """Generate using Groq API with improved prompting"""

@@ -84,6 +84,23 @@ st.markdown("""
         margin-bottom: 0.8rem !important;
         padding: 1rem !important;
         border-radius: 16px !important;
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
+        word-wrap: break-word !important;
+        white-space: normal !important;
+    }
+
+    /* Ensure chat content is fully visible */
+    [data-testid="stChatMessage"] {
+        max-height: none !important;
+        height: auto !important;
+    }
+
+    /* Message content wrapper */
+    .stChatMessage > div {
+        max-height: none !important;
+        overflow: visible !important;
     }
 
     /* Custom chatbox container */
@@ -250,16 +267,16 @@ st.markdown("""
 
     .header-container {
         background: linear-gradient(135deg, #5B63D6 0%, #6B46C1 25%, #E879D9 50%, #2B9BD6 75%, #00B4D8 100%);
-        padding: 40px 30px;
-        border-radius: 20px;
-        margin-bottom: 30px;
+        padding: 15px 20px;
+        border-radius: 12px;
+        margin-bottom: 15px;
         box-shadow: 
-            0 10px 40px rgba(91, 99, 214, 0.5),
+            0 8px 32px rgba(91, 99, 214, 0.4),
             0 0 0 2px rgba(255, 255, 255, 0.1) inset;
         text-align: center;
         position: relative;
         overflow: hidden;
-        min-height: 150px;
+        min-height: 60px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -290,10 +307,11 @@ st.markdown("""
     }
 
     .header-title {
-        font-size: 48px;
+        font-size: 32px;
         font-weight: 950;
         color: #ffffff;
         margin: 0;
+        line-height: 1.2;
         text-shadow: 
             0 2px 6px rgba(0, 0, 0, 0.5),
             0 4px 12px rgba(0, 0, 0, 0.4),
@@ -327,14 +345,15 @@ st.markdown("""
 
     @media (max-width: 768px) {
         .header-container {
-            padding: 30px 20px;
-            min-height: 110px;
-            border-radius: 15px;
+            padding: 12px 15px;
+            min-height: 55px;
+            border-radius: 10px;
+            margin-bottom: 12px;
         }
 
         .header-title {
-            font-size: 36px;
-            line-height: 1.2;
+            font-size: 28px;
+            line-height: 1.1;
             font-weight: 950;
             text-shadow: 
                 0 2px 6px rgba(0, 0, 0, 0.5),
@@ -349,15 +368,15 @@ st.markdown("""
 
     @media (max-width: 480px) {
         .header-container {
-            padding: 25px 15px;
-            min-height: 90px;
-            margin-bottom: 20px;
-            border-radius: 12px;
+            padding: 10px 12px;
+            min-height: 50px;
+            margin-bottom: 10px;
+            border-radius: 8px;
         }
 
         .header-title {
-            font-size: 28px;
-            line-height: 1.3;
+            font-size: 24px;
+            line-height: 1.1;
             font-weight: 950;
             text-shadow: 
                 0 2px 6px rgba(0, 0, 0, 0.5),

@@ -80,6 +80,10 @@ if 'file_name' not in st.session_state:
     st.session_state.file_name = None
 if 'ai_source' not in st.session_state:
     st.session_state.ai_source = None
+if 'num_slides' not in st.session_state:
+    st.session_state.num_slides = 6
+if 'parsed_slides' not in st.session_state:
+    st.session_state.parsed_slides = None
 
 # Helper functions
 def add_message(role, content):
@@ -166,7 +170,7 @@ st.markdown("""
     border-radius: 0 0 18px 18px;
     text-align: center;
 ">
-    <h2 style="margin: 0; font-size: 2.1rem; font-weight: 700; letter-spacing: 1px; color: #fff;">SlideCraft AI</h2>
+    <h2 style="margin: 0; font-size: 2.1rem; font-weight: 900; letter-spacing: 1px; color: #fff; text-transform:uppercase;">FREE PPT Generator</h2>
     <p style="margin: 0.5rem 0 0 0; color: #e0e7ff; font-size: 1.08rem; font-weight: 500; letter-spacing: 0.2px;">Create professional presentations through chat</p>
 </div>
 <style>
@@ -227,7 +231,9 @@ for msg in st.session_state.messages:
 if st.session_state.stage == 'done' and st.session_state.ppt_path:
     with st.chat_message("assistant"):
         if st.session_state.topic and st.session_state.topic.lower() != 'none':
-            st.success(f"Your presentation on {st.session_state.topic} is ready.\n\nPowered by: Alok Mohan\n\nClick the download button below.")
+            st.success(f"Your presentation on **{st.session_state.topic}** is ready!")
+
+        # Download and New buttons
         col1, col2 = st.columns([3, 1])
         with col1:
             with open(st.session_state.ppt_path, "rb") as f:
@@ -241,6 +247,26 @@ if st.session_state.stage == 'done' and st.session_state.ppt_path:
                 st.session_state.ppt_path = None
                 st.session_state.topic = None
                 st.session_state.file_content = None
+                st.session_state.parsed_slides = None
+                st.rerun()
+
+        # Regenerate options
+        st.markdown("---")
+        st.markdown("**Regenerate with different settings:**")
+
+        col_theme, col_slides, col_regen = st.columns([2, 2, 1])
+        with col_theme:
+            theme_options = ["corporate", "ocean", "forest", "sunset"]
+            current_idx = theme_options.index(st.session_state.theme) if st.session_state.theme in theme_options else 0
+            new_theme = st.selectbox("Theme", theme_options, index=current_idx, key="regen_theme")
+        with col_slides:
+            new_slide_count = st.selectbox("Slides", [6, 8, 10, 12, 15], index=0, key="regen_slides")
+        with col_regen:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Regenerate", key="regen_btn", use_container_width=True):
+                st.session_state.theme = new_theme
+                st.session_state.num_slides = new_slide_count
+                st.session_state.stage = 'regenerating'
                 st.rerun()
 
 # Chat input
@@ -291,7 +317,40 @@ elif st.session_state.stage == 'ask_designation':
             add_message("assistant", welcome)
             st.rerun()
 
-user_input = st.chat_input("Type your message...")
+# Compact file upload row above chat input
+with st.container():
+    col_attach, col_info = st.columns([1, 4])
+    with col_attach:
+        quick_file = st.file_uploader("", type=["txt", "docx", "pdf"], key="quick_file_upload", label_visibility="collapsed")
+        if quick_file:
+            file_name = quick_file.name
+            file_content = ""
+            if file_name.endswith('.txt'):
+                file_content = quick_file.read().decode('utf-8')
+            elif file_name.endswith('.docx'):
+                try:
+                    from docx import Document
+                    import io
+                    doc = Document(io.BytesIO(quick_file.read()))
+                    file_content = '\n'.join([para.text for para in doc.paragraphs])
+                except:
+                    pass
+            elif file_name.endswith('.pdf'):
+                try:
+                    import PyPDF2
+                    import io
+                    pdf_reader = PyPDF2.PdfReader(io.BytesIO(quick_file.read()))
+                    file_content = '\n'.join([page.extract_text() for page in pdf_reader.pages])
+                except:
+                    pass
+            if file_content:
+                st.session_state.file_content = file_content
+                st.session_state.file_name = file_name.rsplit('.', 1)[0][:50]
+    with col_info:
+        if st.session_state.file_content:
+            st.caption(f"Attached: {st.session_state.get('file_name', 'document')}")
+
+user_input = st.chat_input("Type topic or message...")
 
 if user_input:
 
@@ -471,7 +530,88 @@ if st.session_state.stage == 'generating':
             add_message("assistant", f"Sorry, there was an error. Please try again with a different topic.")
             st.rerun()
 
+# Regeneration process (with new theme/slides)
+if st.session_state.stage == 'regenerating':
+    with st.chat_message("assistant"):
+        progress_placeholder = st.empty()
+        try:
+            progress_placeholder.markdown("**Regenerating presentation...**\n\nApplying new settings...")
+
+            # Use existing parsed slides or regenerate
+            content = st.session_state.get('parsed_slides', [])
+            num_slides = st.session_state.get('num_slides', 6)
+
+            # If slide count changed, regenerate content
+            if num_slides != len(content):
+                progress_placeholder.markdown(f"**Regenerating presentation...**\n\nGenerating {num_slides} slides...")
+                generator = MultiAIGenerator()
+                language = st.session_state.get('language', 'English')
+                custom_instructions = f"Language: {language}\nTone: Government / Training"
+                content_dict = generator.generate_ppt_content(
+                    topic=st.session_state.topic,
+                    min_slides=num_slides,
+                    max_slides=num_slides,
+                    style=st.session_state.theme,
+                    audience="general",
+                    custom_instructions=custom_instructions,
+                    bullets_per_slide=4,
+                    bullet_word_limit=12,
+                    tone="government/training",
+                    required_phrases="",
+                    forbidden_content=""
+                )
+                ai_output = content_dict.get("output", "")
+                # Reparse slides
+                lines = [l.strip() for l in ai_output.split('\n') if l.strip()]
+                slides = []
+                current_slide = {}
+                for line in lines:
+                    m = re.match(r"^\*{0,2}Slide\s*(\d+)\s*[:\-]\s*(.+?)\*{0,2}$", line, re.IGNORECASE)
+                    if m:
+                        if current_slide:
+                            slides.append(current_slide)
+                        current_slide = {"slide_number": int(m.group(1)), "title": m.group(2).strip(), "bullets": []}
+                    elif line.lower().startswith('main title:'):
+                        current_slide["main_title"] = line.split(':',1)[1].strip()
+                    elif line.lower().startswith('tagline:'):
+                        current_slide["tagline"] = line.split(':',1)[1].strip()
+                    elif line.lower().startswith('subtitle:'):
+                        current_slide["subtitle"] = line.split(':',1)[1].strip()
+                    elif line.lower().startswith('presented by:'):
+                        current_slide["presented_by"] = line.split(':',1)[1].strip()
+                    elif line.startswith('- ') or line.startswith('• ') or line.startswith('* '):
+                        bullet_text = line[2:].strip()
+                        if bullet_text and current_slide:
+                            current_slide.setdefault("bullets", []).append(bullet_text)
+                    elif re.match(r'^\d+\.\s+', line):
+                        bullet_text = re.sub(r'^\d+\.\s+', '', line).strip()
+                        if bullet_text and current_slide:
+                            current_slide.setdefault("bullets", []).append(bullet_text)
+                if current_slide:
+                    slides.append(current_slide)
+                content = slides
+                st.session_state.parsed_slides = slides
+
+            progress_placeholder.markdown(f"**Regenerating presentation...**\n\nApplying **{st.session_state.theme}** theme...")
+
+            # Generate PPT with new settings
+            success, ppt_path = generate_ppt(content, st.session_state.topic, st.session_state.theme)
+
+            if success:
+                st.session_state.ppt_path = ppt_path
+                st.session_state.stage = 'done'
+                progress_placeholder.empty()
+                add_message("assistant", f"**Regenerated!** New presentation with **{st.session_state.theme}** theme and **{len(content)}** slides is ready.")
+                st.rerun()
+            else:
+                progress_placeholder.error("Failed to regenerate. Please try again.")
+                st.session_state.stage = 'done'
+        except Exception as e:
+            progress_placeholder.error(f"Error: {str(e)}")
+            st.session_state.stage = 'done'
+            st.rerun()
+
 # Welcome message for new users
 if not st.session_state.messages and st.session_state.stage == 'idle':
     with st.chat_message("assistant"):
-        st.markdown("Welcome to SlideCraft AI! Type a topic or upload a document to begin.")
+        st.markdown("Welcome! Type a topic or upload a document to begin.")

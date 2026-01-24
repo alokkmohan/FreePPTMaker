@@ -34,24 +34,157 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Minimal CSS
+# Modern ChatGPT-style CSS
 st.markdown("""
 <style>
+    /* Hide Streamlit defaults */
     #MainMenu, footer, header {display: none !important;}
-    .block-container {padding-top: 1rem !important; padding-bottom: 100px !important;}
+    .block-container {
+        padding-top: 0.5rem !important;
+        padding-bottom: 200px !important;
+        max-width: 800px !important;
+    }
 
-    /* Chat styling */
-    .stChatMessage {margin-bottom: 0.5rem !important;}
+    /* Chat message styling */
+    .stChatMessage {
+        margin-bottom: 0.8rem !important;
+        padding: 1rem !important;
+        border-radius: 16px !important;
+    }
 
-    /* Fixed bottom input */
-    [data-testid="stChatInput"] {
-        position: fixed !important;
-        bottom: 60px !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        width: 90% !important;
-        max-width: 700px !important;
-        z-index: 1000 !important;
+    /* Custom chatbox container */
+    .chatbox-wrapper {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(to top, #f7f7f8 90%, transparent);
+        padding: 1rem 1rem 1.5rem 1rem;
+        z-index: 1000;
+    }
+
+    .chatbox-container {
+        max-width: 760px;
+        margin: 0 auto;
+        background: #ffffff;
+        border: 1px solid #e5e5e5;
+        border-radius: 24px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        display: flex;
+        align-items: flex-end;
+        padding: 8px 12px;
+        gap: 8px;
+    }
+
+    /* Plus button for upload */
+    .upload-btn {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        border-radius: 50%;
+        border: none;
+        background: #f0f0f0;
+        color: #666;
+        font-size: 24px;
+        font-weight: 300;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    .upload-btn:hover {
+        background: #667eea;
+        color: white;
+    }
+
+    /* Text area styling */
+    .stTextArea > div > div > textarea {
+        border: none !important;
+        background: transparent !important;
+        resize: none !important;
+        font-size: 16px !important;
+        line-height: 1.5 !important;
+        padding: 8px 4px !important;
+        min-height: 60px !important;
+        max-height: 200px !important;
+    }
+    .stTextArea > div > div > textarea:focus {
+        box-shadow: none !important;
+    }
+    .stTextArea label {display: none !important;}
+    .stTextArea > div {border: none !important; background: transparent !important;}
+
+    /* Send button */
+    .send-btn {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        border-radius: 50%;
+        border: none;
+        background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    .send-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    .send-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+
+    /* File attached indicator */
+    .file-attached {
+        background: #e8f5e9;
+        color: #2e7d32;
+        padding: 6px 12px;
+        border-radius: 12px;
+        font-size: 13px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 8px;
+    }
+    .file-attached .clear-btn {
+        background: none;
+        border: none;
+        color: #c62828;
+        cursor: pointer;
+        font-size: 16px;
+        padding: 0 4px;
+    }
+
+    /* Hide default file uploader styling */
+    [data-testid="stFileUploader"] {
+        background: transparent !important;
+        border: none !important;
+    }
+    [data-testid="stFileUploader"] > div > div {
+        padding: 0 !important;
+    }
+    [data-testid="stFileUploader"] label {display: none !important;}
+    [data-testid="stFileUploader"] section {border: none !important; padding: 0 !important;}
+
+    /* Placeholder styling */
+    .chatbox-placeholder {
+        color: #999;
+        font-size: 14px;
+        text-align: center;
+        padding: 8px 0;
+    }
+
+    /* Language selector compact */
+    .lang-selector {
+        display: inline-flex;
+        gap: 8px;
+        padding: 4px 0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -374,23 +507,62 @@ elif st.session_state.stage == 'ask_designation':
             add_message("assistant", welcome)
             st.rerun()
 
-# Compact attachment toggle
-col1, col2, col3 = st.columns([1, 3, 1])
-with col1:
-    attach_doc = st.checkbox("Attach", key="attach_toggle", help="Attach a document")
-with col2:
-    if st.session_state.file_content:
-        st.caption(f"File: {st.session_state.get('file_name', 'document')}")
-with col3:
-    if st.session_state.file_content:
-        if st.button("Clear", key="clear_file"):
+# ============ MODERN CHATBOX UI ============
+# Initialize show_uploader state
+if 'show_uploader' not in st.session_state:
+    st.session_state.show_uploader = False
+
+# File attached indicator (show above chatbox)
+if st.session_state.file_content:
+    col_file, col_clear = st.columns([5, 1])
+    with col_file:
+        st.markdown(f'''<div class="file-attached">
+            <span>📎</span> {st.session_state.get('file_name', 'document')}
+        </div>''', unsafe_allow_html=True)
+    with col_clear:
+        if st.button("✕", key="clear_file", help="Remove file"):
             st.session_state.file_content = None
             st.session_state.file_name = None
+            st.session_state.show_uploader = False
             st.rerun()
 
-# Show file uploader only when checkbox is ticked
-if attach_doc:
-    quick_file = st.file_uploader("Upload document", type=["txt", "docx", "pdf"], key="quick_file_upload", label_visibility="collapsed")
+# Chatbox container with [+] [textarea] [send] layout
+st.markdown('<div class="chatbox-wrapper"><div class="chatbox-container">', unsafe_allow_html=True)
+
+col_upload, col_input, col_send = st.columns([1, 8, 1])
+
+with col_upload:
+    # Plus button for file upload
+    if st.button("＋", key="upload_btn", help="Upload PDF / Word / Text document"):
+        st.session_state.show_uploader = not st.session_state.show_uploader
+        st.rerun()
+
+with col_input:
+    # Multi-line text input
+    user_input = st.text_area(
+        "message",
+        placeholder="Send your topic, paste content, or upload document (Hindi / English)...",
+        height=80,
+        max_chars=5000,
+        key="chat_input_area",
+        label_visibility="collapsed"
+    )
+
+with col_send:
+    send_clicked = st.button("➤", key="send_btn", help="Send message")
+
+st.markdown('</div></div>', unsafe_allow_html=True)
+
+# Show file uploader when + is clicked
+if st.session_state.show_uploader:
+    st.markdown("---")
+    st.markdown("**📁 Upload Document** (PDF, Word, Text)")
+    quick_file = st.file_uploader(
+        "Upload",
+        type=["txt", "docx", "pdf", "pptx"],
+        key="quick_file_upload",
+        label_visibility="collapsed"
+    )
     if quick_file:
         file_name = quick_file.name
         file_content = ""
@@ -403,7 +575,7 @@ if attach_doc:
                 doc = Document(io.BytesIO(quick_file.read()))
                 file_content = '\n'.join([para.text for para in doc.paragraphs])
             except:
-                st.error("Could not read DOCX")
+                st.error("Could not read DOCX file")
         elif file_name.endswith('.pdf'):
             try:
                 import PyPDF2
@@ -411,13 +583,19 @@ if attach_doc:
                 pdf_reader = PyPDF2.PdfReader(io.BytesIO(quick_file.read()))
                 file_content = '\n'.join([page.extract_text() for page in pdf_reader.pages])
             except:
-                st.error("Could not read PDF")
+                st.error("Could not read PDF file")
         if file_content:
             st.session_state.file_content = file_content
             st.session_state.file_name = file_name.rsplit('.', 1)[0][:50]
-            st.success(f"Attached: {st.session_state.file_name}")
+            st.session_state.show_uploader = False
+            st.success(f"✅ File attached: {st.session_state.file_name}")
+            st.rerun()
 
-user_input = st.chat_input("Type topic or message...")
+# Handle send action
+if send_clicked and user_input and user_input.strip():
+    user_input = user_input.strip()
+elif not send_clicked:
+    user_input = None
 
 if user_input:
 

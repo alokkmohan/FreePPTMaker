@@ -357,56 +357,41 @@ def generate_ppt(content, topic, theme):
         success = generate_beautiful_ppt(content, ppt_path, color_scheme=theme, use_ai=False, original_topic=topic, min_slides=6, max_slides=6)
     return success, ppt_path
 
-# Header - Simple responsive design without viewport hacks
+# Header - Full width responsive design
 st.markdown("""
 <style>
 .ppt-header {
     background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%);
     color: #fff;
-    padding: 1rem 1rem 0.7rem 1rem;
-    margin: -1rem -1rem 1rem -1rem;
+    padding: 1.2rem 1rem;
+    margin: 0 0 1rem 0;
     box-shadow: 0 4px 16px rgba(60,60,120,0.15);
-    border-radius: 0 0 16px 16px;
+    border-radius: 12px;
     text-align: center;
-    position: relative;
 }
 .ppt-header h2 {
     margin: 0;
-    font-size: 1.8rem;
+    font-size: 1.6rem;
     font-weight: 800;
-    letter-spacing: 0.5px;
     color: #fff;
     text-transform: uppercase;
 }
 .ppt-header p {
-    margin: 0.4rem 0 0 0;
+    margin: 0.3rem 0 0 0;
     color: #e0e7ff;
-    font-size: 0.95rem;
-    font-weight: 500;
-}
-.ppt-header .icon {
-    position: absolute;
-    left: 0.8rem;
-    top: 0.8rem;
-    font-size: 1.5rem;
-    opacity: 0.2;
+    font-size: 0.9rem;
 }
 @media (max-width: 600px) {
     .ppt-header {
-        padding: 0.7rem 0.5rem 0.5rem 0.5rem;
-        margin: -0.5rem -0.5rem 0.5rem -0.5rem;
-        border-radius: 0 0 12px 12px;
+        padding: 0.8rem 0.5rem;
+        margin: 0 0 0.5rem 0;
+        border-radius: 8px;
     }
     .ppt-header h2 {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
     }
     .ppt-header p {
-        font-size: 0.85rem;
-    }
-    .ppt-header .icon {
-        font-size: 1.1rem;
-        left: 0.5rem;
-        top: 0.5rem;
+        font-size: 0.8rem;
     }
 }
 .stChatMessage {
@@ -451,17 +436,28 @@ st.markdown("""
 }
 </style>
 <div class="ppt-header">
-    <span class="icon">📊</span>
-    <h2>FREE PPT Generator</h2>
+    <h2>📊 FREE PPT Generator</h2>
     <p>Create professional presentations through chat</p>
 </div>
 """, unsafe_allow_html=True)
 
-# Language selection (compact)
-col_lang, _ = st.columns([2, 3])
+# Language selection and Refresh button
+col_lang, col_refresh, _ = st.columns([2, 1, 2])
 with col_lang:
     language = st.selectbox("Language", ["English", "Hindi"], key="ppt_language", index=0, label_visibility="collapsed")
     st.session_state.language = language
+with col_refresh:
+    if st.button("🔄 New Chat", key="refresh_chat", help="Start fresh conversation"):
+        st.session_state.messages = []
+        st.session_state.stage = 'idle'
+        st.session_state.ppt_path = None
+        st.session_state.topic = None
+        st.session_state.file_content = None
+        st.session_state.file_name = None
+        st.session_state.parsed_slides = None
+        st.session_state.awaiting_upload_confirm = False
+        st.session_state.uploaded_preview = None
+        st.rerun()
 
 # Display chat messages
 for msg in st.session_state.messages:
@@ -670,8 +666,57 @@ if st.session_state.awaiting_upload_confirm and st.session_state.file_content:
                 st.session_state.awaiting_upload_confirm = False
                 # Set topic from file name
                 st.session_state.topic = st.session_state.file_name
+                # Generate slides from file content using AI
+                generator = MultiAIGenerator()
+                language = st.session_state.get('language', 'English')
+                custom_instructions = f"USER PROVIDED CONTENT (use this as the PRIMARY source):\n{st.session_state.file_content}\n\nLanguage: {language}\nTone: Government / Training"
+                content_dict = generator.generate_ppt_content(
+                    topic=st.session_state.file_name,
+                    min_slides=6,
+                    max_slides=6,
+                    style=st.session_state.theme,
+                    audience="general",
+                    custom_instructions=custom_instructions,
+                    bullets_per_slide=4,
+                    bullet_word_limit=12,
+                    tone="government/training",
+                    required_phrases="",
+                    forbidden_content=""
+                )
+                ai_output = content_dict.get("output", "")
+                # Parse slides
+                slides = []
+                if ai_output:
+                    lines = [l.strip() for l in ai_output.split('\n') if l.strip()]
+                    current_slide = {}
+                    for line in lines:
+                        m = re.match(r"^\*{0,2}Slide\s*(\d+)\s*[:\-]\s*(.+?)\*{0,2}$", line, re.IGNORECASE)
+                        if m:
+                            if current_slide:
+                                slides.append(current_slide)
+                            current_slide = {"slide_number": int(m.group(1)), "title": m.group(2).strip(), "bullets": []}
+                        elif line.lower().startswith('main title:'):
+                            current_slide["main_title"] = line.split(':',1)[1].strip()
+                        elif line.lower().startswith('tagline:'):
+                            current_slide["tagline"] = line.split(':',1)[1].strip()
+                        elif line.lower().startswith('subtitle:'):
+                            current_slide["subtitle"] = line.split(':',1)[1].strip()
+                        elif line.lower().startswith('presented by:'):
+                            current_slide["presented_by"] = line.split(':',1)[1].strip()
+                        elif line.startswith('- ') or line.startswith('• ') or line.startswith('* '):
+                            bullet_text = line[2:].strip()
+                            if bullet_text and current_slide:
+                                current_slide.setdefault("bullets", []).append(bullet_text)
+                        elif re.match(r'^\d+\.\s+', line):
+                            bullet_text = re.sub(r'^\d+\.\s+', '', line).strip()
+                            if bullet_text and current_slide:
+                                current_slide.setdefault("bullets", []).append(bullet_text)
+                    if current_slide:
+                        slides.append(current_slide)
+                st.session_state.parsed_slides = slides
                 st.session_state.stage = 'generating'
                 add_message("user", f"Generate PPT from uploaded file: {st.session_state.file_name}")
+                add_message("assistant", ai_output if ai_output else "Processing your document...")
                 st.rerun()
         with col2:
             if st.button("❌ Cancel", key="cancel_upload"):
@@ -846,17 +891,14 @@ if st.session_state.stage == 'generating':
             # Show progress
             progress_placeholder.markdown("**Creating your presentation...**\n\nThinking about the structure...")
 
-            # Generate content
-            if st.session_state.file_content:
-                content = st.session_state.file_content
-                ai_source = "Your Document"
-                progress_placeholder.markdown("**Creating your presentation...**\n\n Processing your content...")
+            # Use parsed slides (structured data) - this is the primary content
+            content = st.session_state.get('parsed_slides', [])
+            ai_source = get_last_ai_source()
+
+            if content:
+                progress_placeholder.markdown(f"**Creating your presentation...**\n\n Found {len(content)} slides...")
             else:
-                progress_placeholder.markdown("**Creating your presentation...**\n\n Researching the topic...")
-                # Use parsed slides from session (structured)
-                content = st.session_state.get('parsed_slides', [])
-                ai_source = get_last_ai_source()
-                progress_placeholder.markdown(f"**Creating your presentation...**\n\n Content generated by: **{ai_source}**")
+                progress_placeholder.markdown("**Creating your presentation...**\n\n Processing content...")
 
             progress_placeholder.markdown("**Creating your presentation...**\n\n Creating Slide 1: Title...")
             progress_placeholder.markdown("**Creating your presentation...**\n\n Creating Slide 2: Introduction...")

@@ -664,6 +664,12 @@ def generate_beautiful_ppt(slides_or_text, output_path, color_scheme="corporate"
     # If input is a list of slides (structured)
     if isinstance(slides_or_text, list) and all(isinstance(slide, dict) for slide in slides_or_text):
         slides = slides_or_text
+
+        # Handle empty slides list
+        if not slides:
+            print("[WARNING] Empty slides list, creating basic presentation")
+            slides = [{"title": original_topic or "Presentation", "main_title": original_topic or "Presentation"}]
+
         designer = ModernPPTDesigner(scheme=color_scheme)
         # Title slide (use all available fields, pass separately)
         first = slides[0] if slides else {}
@@ -674,7 +680,10 @@ def generate_beautiful_ppt(slides_or_text, output_path, color_scheme="corporate"
         designer.create_title_slide(main_title, tagline, subtitle, presented_by)
         # Content slides
         for slide in slides[1:]:
-            designer.create_content_slide_with_image(slide.get("title", ""), slide.get("bullets", []), None)
+            title = slide.get("title", "")
+            bullets = slide.get("bullets", [])
+            if title or bullets:  # Only create slide if has content
+                designer.create_content_slide_with_image(title, bullets, None)
         designer.create_end_slide()
         designer.save(output_path)
         print(f"[OK] Beautiful PPT created: {output_path}")

@@ -40,22 +40,21 @@ st.markdown("""
     /* Hide Streamlit defaults (NOT our custom header) */
     #MainMenu, footer, [data-testid="stHeader"] {display: none !important;}
 
-    /* Mobile-specific: Reset any problematic positioning */
-    @media (max-width: 768px) {
-        .stApp {
-            padding-top: 0 !important;
-            margin-top: 0 !important;
-        }
-        .main .block-container {
-            padding-top: 0 !important;
-            margin-top: 0 !important;
-        }
+    /* Force header visibility at top */
+    .stApp {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+
+    .main {
+        padding-top: 0 !important;
     }
 
     .block-container {
-        padding-top: 0.5rem !important;
+        padding-top: 0 !important;
         padding-bottom: 200px !important;
         max-width: 800px !important;
+        margin-top: 0 !important;
     }
 
     /* Ensure our header is always visible */
@@ -63,6 +62,21 @@ st.markdown("""
         display: block !important;
         visibility: visible !important;
         min-height: 60px !important;
+    }
+
+    /* Mobile-specific: Reset any problematic positioning */
+    @media (max-width: 768px) {
+        .stApp {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+        .main {
+            padding-top: 0 !important;
+        }
+        .main .block-container {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
     }
 
     /* Chat message styling */

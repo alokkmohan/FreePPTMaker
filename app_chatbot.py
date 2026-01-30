@@ -1,7 +1,9 @@
 import streamlit as st
+
 import os
 import re
 from datetime import datetime
+from document_upload_component import document_upload_component
 
 # Imports
 try:
@@ -15,14 +17,6 @@ from ai_ppt_generator import generate_beautiful_ppt
 from multi_ai_generator import MultiAIGenerator, get_last_ai_source
 from web_search import search_google
 
-# --- PPT Content Settings (no user input, always use Google Search) ---
-num_slides = 8
-bullets_per_slide = 4
-bullet_word_limit = 10
-tone = "formal"
-required_phrases = ""
-forbidden_content = ""
-
 google_api_key = os.getenv("GOOGLE_API_KEY")
 google_cse_id = os.getenv("GOOGLE_CSE_ID")
 
@@ -34,347 +28,372 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Modern ChatGPT-style CSS
+# Modern ChatGPT-style CSS with Light/Dark Mode Support
 st.markdown("""
 <style>
-    /* Hide Streamlit defaults (NOT our custom header) */
+    /* ═══════════════════════════════════════════════════════════════════
+       🎨 CSS VARIABLES FOR THEMING - Easy Light/Dark Mode Support
+       ═══════════════════════════════════════════════════════════════════ */
+
+    :root {
+        /* Light Mode Colors (Default) */
+        --bg-primary: #ffffff;
+        --bg-secondary: #f4f6f9;
+        --bg-tertiary: #e8ecf4;
+        --text-primary: #1a1a2e;
+        --text-secondary: #4a4a6a;
+        --text-muted: #6b7280;
+        --accent-primary: #6366f1;
+        --accent-secondary: #8b5cf6;
+        --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+        --border-color: #d1d5db;
+        --border-focus: #6366f1;
+        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+        --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+        --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.16);
+        --btn-text: #ffffff;
+        --input-bg: #ffffff;
+        --card-bg: #ffffff;
+        --success-bg: #d1fae5;
+        --success-text: #065f46;
+    }
+
+    /* Dark Mode Colors */
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --accent-primary: #818cf8;
+            --accent-secondary: #a78bfa;
+            --accent-gradient: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #22d3ee 100%);
+            --border-color: #475569;
+            --border-focus: #818cf8;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+            --btn-text: #ffffff;
+            --input-bg: #1e293b;
+            --card-bg: #1e293b;
+            --success-bg: #064e3b;
+            --success-text: #6ee7b7;
+        }
+    }
+
+    /* Hide Streamlit defaults */
     #MainMenu, footer, [data-testid="stHeader"] {display: none !important;}
 
-    /* Force header visibility at top */
-    .stApp {
-        padding-top: 0 !important;
-        margin-top: 0 !important;
-    }
+    /* ═══════════════════════════════════════════════════════════════════
+       🎯 BASE STYLES
+       ═══════════════════════════════════════════════════════════════════ */
 
-    .main {
-        padding-top: 0 !important;
+    body, .stApp, .main, .block-container {
+        background: var(--bg-secondary) !important;
+        color: var(--text-primary) !important;
     }
 
     .block-container {
         padding-top: 0 !important;
-        padding-bottom: 200px !important;
-        max-width: 800px !important;
-        margin-top: 0 !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+        padding-bottom: 180px !important;
+        max-width: 1000px !important;
+        margin: 0 auto !important;
     }
 
-    /* Ensure our header is always visible */
-    .main-header {
-        display: block !important;
-        visibility: visible !important;
-        min-height: 60px !important;
-    }
-
-    /* Mobile-specific: Reset any problematic positioning */
-    @media (max-width: 768px) {
-        .stApp {
-            padding-top: 0 !important;
-            margin-top: 0 !important;
-        }
-        .main {
-            padding-top: 0 !important;
-        }
-        .main .block-container {
-            padding-top: 0 !important;
-            margin-top: 0 !important;
-        }
-    }
-
-    /* Chat message styling */
-    .stChatMessage {
-        margin-bottom: 0.8rem !important;
-        padding: 1rem !important;
-        border-radius: 16px !important;
-        max-height: none !important;
-        height: auto !important;
-        overflow: visible !important;
-        word-wrap: break-word !important;
-        white-space: normal !important;
-    }
-
-    /* Ensure chat content is fully visible */
-    [data-testid="stChatMessage"] {
-        max-height: none !important;
-        height: auto !important;
-    }
-
-    /* Message content wrapper */
-    .stChatMessage > div {
-        max-height: none !important;
-        overflow: visible !important;
-    }
-
-    /* Custom chatbox container */
-    .chatbox-wrapper {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: linear-gradient(to top, #f7f7f8 90%, transparent);
-        padding: 1rem 1rem 1.5rem 1rem;
-        z-index: 1000;
-    }
-
-    .chatbox-container {
-        max-width: 760px;
-        margin: 0 auto;
-        background: #ffffff;
-        border: 1px solid #e5e5e5;
-        border-radius: 24px;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-        display: flex;
-        align-items: flex-end;
-        padding: 8px 12px;
-        gap: 8px;
-    }
-
-    /* Plus button for upload */
-    .upload-btn {
-        width: 40px;
-        height: 40px;
-        min-width: 40px;
-        border-radius: 50%;
-        border: none;
-        background: #f0f0f0;
-        color: #666;
-        font-size: 24px;
-        font-weight: 300;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-    }
-    .upload-btn:hover {
-        background: #667eea;
-        color: white;
-    }
-
-    /* Text area styling */
-    .stTextArea > div > div > textarea {
-        border: none !important;
-        background: transparent !important;
-        resize: none !important;
-        font-size: 16px !important;
-        line-height: 1.5 !important;
-        padding: 8px 4px !important;
-        min-height: 60px !important;
-        max-height: 200px !important;
-    }
-    .stTextArea > div > div > textarea:focus {
-        box-shadow: none !important;
-    }
-    .stTextArea label {display: none !important;}
-    .stTextArea > div {border: none !important; background: transparent !important;}
-
-    /* Send button */
-    .send-btn {
-        width: 40px;
-        height: 40px;
-        min-width: 40px;
-        border-radius: 50%;
-        border: none;
-        background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
-        color: white;
-        font-size: 18px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-    }
-    .send-btn:hover {
-        transform: scale(1.05);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    }
-    .send-btn:disabled {
-        background: #ccc;
-        cursor: not-allowed;
-    }
-
-    /* File attached indicator */
-    .file-attached {
-        background: #e8f5e9;
-        color: #2e7d32;
-        padding: 6px 12px;
-        border-radius: 12px;
-        font-size: 13px;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        margin-bottom: 8px;
-    }
-    .file-attached .clear-btn {
-        background: none;
-        border: none;
-        color: #c62828;
-        cursor: pointer;
-        font-size: 16px;
-        padding: 0 4px;
-    }
-
-    /* Hide default file uploader styling */
-    [data-testid="stFileUploader"] {
-        background: transparent !important;
-        border: none !important;
-    }
-    [data-testid="stFileUploader"] > div > div {
-        padding: 0 !important;
-    }
-    [data-testid="stFileUploader"] label {display: none !important;}
-    [data-testid="stFileUploader"] section {border: none !important; padding: 0 !important;}
-
-    /* Placeholder styling */
-    .chatbox-placeholder {
-        color: #999;
-        font-size: 14px;
-        text-align: center;
-        padding: 8px 0;
-    }
-
-    /* Language selector compact */
-    .lang-selector {
-        display: inline-flex;
-        gap: 8px;
-        padding: 4px 0;
-    }
-
-    /* ════════════════════════════════════════════════════════════════ */
-    /* 🌙 DARK MODE TEXT VISIBILITY */
-    /* ════════════════════════════════════════════════════════════════ */
-
-    /* Improve text contrast in dark mode */
-    [data-testid="stChatMessage"] {
-        color: #f0f0f0 !important;
-    }
-
-    .stChatMessage {
-        color: #f0f0f0 !important;
-    }
-
-    /* Ensure all text is readable */
-    .block-container {
-        color: #f0f0f0 !important;
-    }
-
-    /* Main content area text */
-    body, p, span, div {
-        color: inherit;
-    }
-
-    /* ════════════════════════════════════════════════════════════════ */
-    /* 🌈 COLORFUL HEADER STYLING - MOBILE FRIENDLY & DARK MODE 🌈 */
-    /* ════════════════════════════════════════════════════════════════ */
+    /* ═══════════════════════════════════════════════════════════════════
+       🌈 HEADER SECTION
+       ═══════════════════════════════════════════════════════════════════ */
 
     .header-container {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 100;
-        background: linear-gradient(135deg, #5B63D6 0%, #6B46C1 25%, #E879D9 50%, #2B9BD6 75%, #00B4D8 100%);
-        padding: 10px 12px;
-        border-radius: 0 0 12px 12px;
-        margin-bottom: 0;
-        box-shadow: 0 4px 16px rgba(91, 99, 214, 0.25), 0 0 0 2px rgba(255,255,255,0.1) inset;
+        background: var(--accent-gradient);
+        padding: 20px 36px;
+        border-radius: 0 0 20px 20px;
+        margin-bottom: 28px;
+        box-shadow: var(--shadow-lg);
         text-align: center;
-        min-height: 44px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-bottom: 2px solid rgba(255,255,255,0.2);
         width: 100%;
-    }
-
-    .header-container::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255,255,255,0.2) 1px, transparent 1px);
-        background-size: 50px 50px;
-        animation: slide 20s linear infinite;
-    }
-
-    @keyframes slide {
-        0% { transform: translate(0, 0); }
-        100% { transform: translate(50px, 50px); }
-    }
-
-    .header-content {
-        position: relative;
-        z-index: 1;
-        width: 100%;
+        position: sticky;
+        top: 0;
+        z-index: 999;
     }
 
     .header-title {
-        font-size: 24px;
-        font-weight: 950;
-        color: #ffffff;
+        font-size: 38px;
+        font-weight: 900;
+        color: #ffffff !important;
         margin: 0;
         line-height: 1.1;
-        text-shadow: 
-            0 2px 6px rgba(0, 0, 0, 0.5),
-            0 4px 12px rgba(0, 0, 0, 0.4),
-            0 6px 18px rgba(0, 0, 0, 0.35),
-            0 -1px 0 rgba(0, 0, 0, 0.2);
-        animation: fadeInDown 0.8s ease-out;
-        letter-spacing: 0px;
-        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+        letter-spacing: 1px;
     }
 
-    @keyframes fadeInDown {
-        from {
-            opacity: 0;
-            transform: translateY(-20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    /* ═══════════════════════════════════════════════════════════════════
+       💬 CHAT AREA STYLES
+       ═══════════════════════════════════════════════════════════════════ */
+
+    [data-testid="stChatMessageContainer"] {
+        margin-bottom: 2rem !important;
+        min-height: 350px;
+        max-width: 900px;
+        margin-left: auto;
+        margin-right: auto;
+        background: var(--card-bg) !important;
+        border-radius: 20px;
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--border-color);
+        padding: 24px 32px;
     }
 
-
-
-    /* ════════════════════════════════════════════════════════════════ */
-    /* 📱 TABLET RESPONSIVE - 768px and below */
-    /* ════════════════════════════════════════════════════════════════ */
-
-    /* ════════════════════════════════════════════════════════════════ */
-    /* 📱 TABLET RESPONSIVE - 768px and below */
-    /* ════════════════════════════════════════════════════════════════ */
-
-    @media (max-width: 768px) {
-        .header-container {
-            padding: 8px 6px;
-            min-height: 38px;
-            border-radius: 0 0 8px 8px;
-        }
-        .header-title {
-            font-size: 18px;
-        }
-        .block-container {
-            padding-top: 48px !important;
-        }
+    .stChatMessage {
+        margin-bottom: 1.2rem !important;
+        padding: 1.2rem !important;
+        border-radius: 16px !important;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+        font-size: 17px !important;
+        color: var(--text-primary) !important;
+        background: var(--bg-tertiary) !important;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-color);
     }
 
-    /* ════════════════════════════════════════════════════════════════ */
-    /* 📱 MOBILE RESPONSIVE - 480px and below */
-    /* ════════════════════════════════════════════════════════════════ */
+    .stChatMessage.user {
+        background: var(--accent-primary) !important;
+        color: #ffffff !important;
+        border-top-right-radius: 6px !important;
+        border-bottom-left-radius: 22px !important;
+        border: none;
+    }
 
-    @media (max-width: 480px) {
-        .header-container {
-            padding: 6px 2px;
-            min-height: 32px;
-            border-radius: 0 0 6px 6px;
-        }
-        .header-title {
-            font-size: 15px;
-        }
-        .block-container {
-            padding-top: 36px !important;
-        }
+    .stChatMessage.assistant {
+        background: var(--card-bg) !important;
+        color: var(--text-primary) !important;
+        border-top-left-radius: 6px !important;
+        border-bottom-right-radius: 22px !important;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       📝 CHAT INPUT STYLES
+       ═══════════════════════════════════════════════════════════════════ */
+
+    .stChatInput {
+        position: fixed !important;
+        bottom: 30px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: 90% !important;
+        max-width: 900px !important;
+        z-index: 100 !important;
+        background: var(--card-bg) !important;
+        border: 2px solid var(--accent-primary) !important;
+        border-radius: 18px !important;
+        padding: 16px 20px !important;
+        box-shadow: var(--shadow-lg) !important;
+    }
+
+    .stChatInput textarea,
+    [data-testid="stChatInput"] textarea {
+        min-height: 80px !important;
+        font-size: 16px !important;
+        padding: 12px !important;
+        background: var(--input-bg) !important;
+        color: var(--text-primary) !important;
+        border-radius: 12px !important;
+        border: 2px solid var(--border-color) !important;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .stChatInput textarea:focus,
+    [data-testid="stChatInput"] textarea:focus {
+        border-color: var(--accent-primary) !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
+        outline: none !important;
+    }
+
+    .stChatInput textarea::placeholder {
+        color: var(--text-muted) !important;
+        opacity: 1 !important;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       🔘 BUTTON STYLES - HIGH VISIBILITY
+       ═══════════════════════════════════════════════════════════════════ */
+
+    /* Primary Buttons (Download, Submit, etc.) */
+    .stButton > button,
+    .stDownloadButton > button,
+    button[data-testid="stBaseButton-primary"] {
+        background: var(--accent-gradient) !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        font-size: 16px !important;
+        border-radius: 12px !important;
+        box-shadow: var(--shadow-md) !important;
+        padding: 12px 24px !important;
+        border: none !important;
+        transition: all 0.25s ease !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .stButton > button:hover,
+    .stDownloadButton > button:hover,
+    button[data-testid="stBaseButton-primary"]:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: var(--shadow-lg) !important;
+        filter: brightness(1.1);
+    }
+
+    /* Secondary Buttons (Skip, Cancel, etc.) */
+    button[data-testid="stBaseButton-secondary"] {
+        background: var(--bg-tertiary) !important;
+        color: var(--text-primary) !important;
+        font-weight: 600 !important;
+        font-size: 15px !important;
+        border: 2px solid var(--accent-primary) !important;
+        border-radius: 12px !important;
+        padding: 10px 20px !important;
+        transition: all 0.25s ease !important;
+    }
+
+    button[data-testid="stBaseButton-secondary"]:hover {
+        background: var(--accent-primary) !important;
+        color: #ffffff !important;
+        transform: translateY(-2px) !important;
+    }
+
+    /* Icon Buttons ONLY - Round style for single emoji buttons */
+    .icon-btn-container button {
+        background: var(--card-bg) !important;
+        border: 2px solid var(--accent-primary) !important;
+        border-radius: 50% !important;
+        width: 48px !important;
+        height: 48px !important;
+        min-width: 48px !important;
+        max-width: 48px !important;
+        font-size: 20px !important;
+        padding: 0 !important;
+        box-shadow: var(--shadow-md) !important;
+        cursor: pointer;
+        transition: all 0.25s ease !important;
+        color: var(--accent-primary) !important;
+    }
+
+    .icon-btn-container button:hover {
+        background: var(--accent-primary) !important;
+        color: #ffffff !important;
+        transform: scale(1.1) !important;
+        box-shadow: var(--shadow-lg) !important;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       📋 INPUT FIELDS - CLEAR & VISIBLE
+       ═══════════════════════════════════════════════════════════════════ */
+
+    /* Text Inputs */
+    .stTextInput input,
+    .stTextInput input[type="text"],
+    input[data-testid="stTextInput"] {
+        background: var(--input-bg) !important;
+        color: var(--text-primary) !important;
+        border: 2px solid var(--border-color) !important;
+        border-radius: 12px !important;
+        font-size: 16px !important;
+        font-weight: 500 !important;
+        padding: 14px 16px !important;
+        transition: all 0.2s ease !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+
+    .stTextInput input:focus {
+        border-color: var(--accent-primary) !important;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25) !important;
+        outline: none !important;
+    }
+
+    .stTextInput input::placeholder {
+        color: var(--text-muted) !important;
+        opacity: 1 !important;
+        font-weight: 400 !important;
+    }
+
+    /* Labels */
+    .stTextInput label,
+    label[data-testid="stWidgetLabel"] {
+        color: var(--text-secondary) !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
+        margin-bottom: 8px !important;
+    }
+
+    /* Select Box / Dropdown */
+    .stSelectbox > div > div,
+    [data-testid="stSelectbox"] {
+        background: var(--input-bg) !important;
+        color: var(--text-primary) !important;
+        border: 2px solid var(--border-color) !important;
+        border-radius: 12px !important;
+    }
+
+    .stSelectbox [data-baseweb="select"] > div {
+        background: var(--input-bg) !important;
+        border-color: var(--border-color) !important;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       📎 FILE UPLOAD & MISC ELEMENTS
+       ═══════════════════════════════════════════════════════════════════ */
+
+    .file-attached {
+        background: var(--success-bg) !important;
+        color: var(--success-text) !important;
+        padding: 10px 16px;
+        border-radius: 10px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--success-text);
+    }
+
+    /* Success/Error Messages */
+    .stSuccess {
+        background: var(--success-bg) !important;
+        color: var(--success-text) !important;
+        border-radius: 12px !important;
+        border: 1px solid var(--success-text) !important;
+    }
+
+    /* Markdown text */
+    .stMarkdown, .stMarkdown p {
+        color: var(--text-primary) !important;
+    }
+
+    /* Spinner/Loading */
+    .stSpinner > div {
+        border-top-color: var(--accent-primary) !important;
+    }
+
+    /* Hide floating action bar */
+    .floating-actions-bar { display: none !important; }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       📱 ACTION ROW ABOVE CHAT INPUT
+       ═══════════════════════════════════════════════════════════════════ */
+
+    .chatbox-action-row {
+        display: flex;
+        flex-direction: row;
+        gap: 12px;
+        justify-content: flex-start;
+        align-items: center;
+        margin: 0 auto 12px auto;
+        max-width: 900px;
+        padding: 0 8px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -383,20 +402,17 @@ st.markdown("""
 # 🌈 COLORFUL HEADER SECTION
 # ═══════════════════════════════════════════════════════════════════════════
 
-st.markdown("""
-<div class="header-container">
-    <div class="header-content">
-        <h1 class="header-title">FREE PPT Generator</h1>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+st.markdown('<div class="main-container">', unsafe_allow_html=True)
+st.markdown('<div class="header-container"><h1 class="header-title">FREE PPT Generator</h1></div>', unsafe_allow_html=True)
+st.markdown('<div class="content-container">', unsafe_allow_html=True)
 
 
 # Initialize session state
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 if 'stage' not in st.session_state:
-    st.session_state.stage = 'ask_name'  # ask_name, ask_designation, idle, awaiting_topic, confirming, generating, done
+    st.session_state.stage = 'idle'  # idle, ask_name, ask_designation, awaiting_topic, confirming, generating, done
+    # Start with welcome message first, ask name later if needed
 if 'presenter_name' not in st.session_state:
     st.session_state.presenter_name = None
 if 'presenter_designation' not in st.session_state:
@@ -409,6 +425,8 @@ if 'ppt_path' not in st.session_state:
     st.session_state.ppt_path = None
 if 'theme' not in st.session_state:
     st.session_state.theme = 'corporate'
+if 'bullets_per_slide' not in st.session_state:
+    st.session_state.bullets_per_slide = 4  # Default: 4 bullets per slide
 if 'file_content' not in st.session_state:
     st.session_state.file_content = None
 if 'file_name' not in st.session_state:
@@ -419,6 +437,10 @@ if 'num_slides' not in st.session_state:
     st.session_state.num_slides = 6
 if 'parsed_slides' not in st.session_state:
     st.session_state.parsed_slides = None
+if 'file_names' not in st.session_state:
+    st.session_state.file_names = []
+if 'file_contents' not in st.session_state:
+    st.session_state.file_contents = []
 
 # Helper functions
 def add_message(role, content):
@@ -559,75 +581,115 @@ def generate_ppt(content, topic, theme):
         success = generate_beautiful_ppt(content, ppt_path, color_scheme=theme, use_ai=False, original_topic=topic, min_slides=6, max_slides=6)
     return success, ppt_path
 
-# Additional CSS for chat styling
-st.markdown("""
-<style>
-.stChatMessage {
-    border-radius: 18px !important;
-    margin-bottom: 1.1rem !important;
-    padding: 0.7rem 1.1rem !important;
-    background: #f7f8fd !important;
-    box-shadow: 0 2px 8px 0 rgba(90,110,200,0.07);
-    font-size: 1.04rem !important;
-}
-.stChatMessage.user {
-    background: #e0e7ff !important;
-    color: #2d3748 !important;
-    border-top-right-radius: 6px !important;
-    border-bottom-left-radius: 22px !important;
-}
-.stChatMessage.assistant {
-    background: #fff !important;
-    color: #4a5568 !important;
-    border-top-left-radius: 6px !important;
-    border-bottom-right-radius: 22px !important;
-}
-.stButton > button, .stDownloadButton > button {
-    background: linear-gradient(90deg, #667eea 0%, #5a67d8 100%) !important;
-    color: #fff !important;
-    font-weight: 700 !important;
-    border-radius: 8px !important;
-    box-shadow: 0 2px 8px 0 rgba(90,110,200,0.13);
-    padding: 0.5rem 1.2rem !important;
-    margin-top: 0.3rem !important;
-    margin-bottom: 0.3rem !important;
-    border: none !important;
-    transition: background 0.2s;
-}
-.stButton > button:hover, .stDownloadButton > button:hover {
-    background: linear-gradient(90deg, #5a67d8 0%, #667eea 100%) !important;
-    color: #fff !important;
-    box-shadow: 0 4px 16px 0 rgba(90,110,200,0.18);
-}
-.stChatInputContainer {
-    margin-top: 1.5rem !important;
-}
-</style>
-""", unsafe_allow_html=True)
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔧 SLIDE EDIT DETECTION & REGENERATION FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+def detect_slide_edit_request(user_text):
+    """
+    Detect if user wants to edit a specific slide.
+    Returns: (slide_number, edit_instruction) or (None, None)
+    """
+    user_text_lower = user_text.lower()
+
+    # Patterns to detect slide number
+    patterns = [
+        r'slide\s*(\d+)',           # "slide 3", "slide3"
+        r'स्लाइड\s*(\d+)',          # Hindi: "स्लाइड 3"
+        r'(\d+)\s*(st|nd|rd|th)\s*slide',  # "3rd slide"
+        r'#\s*(\d+)',               # "#3"
+    ]
+
+    slide_num = None
+    for pattern in patterns:
+        match = re.search(pattern, user_text_lower)
+        if match:
+            slide_num = int(match.group(1))
+            break
+
+    if slide_num:
+        return slide_num, user_text
+    return None, None
+
+def regenerate_single_slide(slide_num, instruction, all_slides, topic, language):
+    """
+    Regenerate a single slide based on user instruction.
+    """
+    if slide_num < 1 or slide_num > len(all_slides):
+        return None, "Invalid slide number"
+
+    current_slide = all_slides[slide_num - 1]
+
+    try:
+        generator = MultiAIGenerator()
+
+        prompt = f"""You need to modify Slide {slide_num} of a presentation on "{topic}".
+
+Current slide content:
+Title: {current_slide.get('title', '')}
+Bullets: {current_slide.get('bullets', [])}
+
+User's instruction: {instruction}
+
+IMPORTANT: Each bullet point MUST be a detailed, complete sentence of 20-35 words (1-2 lines).
+Do NOT write short phrases - write informative sentences that explain the concept clearly.
+
+Generate the updated slide in this exact format:
+Slide {slide_num}: [New Title]
+- A complete sentence explaining the first key point with relevant details (20-35 words)
+- A complete sentence explaining the second key point with relevant details (20-35 words)
+- A complete sentence explaining the third key point with relevant details (20-35 words)
+
+Language: {language}
+Only output the slide content, nothing else."""
+
+        content_dict = generator.generate_ppt_content(
+            topic=f"Modify slide {slide_num}",
+            min_slides=1,
+            max_slides=1,
+            custom_instructions=prompt,
+            bullets_per_slide=st.session_state.get('bullets_per_slide', 4),
+            bullet_word_limit=25
+        )
+
+        ai_output = content_dict.get("output", "")
+        if not ai_output:
+            return None, "AI returned empty response"
+
+        # Parse the single slide
+        lines = [l.strip() for l in ai_output.split('\n') if l.strip()]
+        new_slide = {"slide_number": slide_num, "bullets": []}
+
+        for line in lines:
+            m = re.match(r"^\*{0,2}Slide\s*\d+\s*[:\-–]\s*(.+?)\*{0,2}$", line, re.IGNORECASE)
+            if m:
+                new_slide["title"] = m.group(1).strip()
+            elif line.startswith('- ') or line.startswith('• ') or line.startswith('* '):
+                new_slide["bullets"].append(line[2:].strip())
+            elif re.match(r'^\d+[\.\)]\s+', line):
+                new_slide["bullets"].append(re.sub(r'^\d+[\.\)]\s+', '', line).strip())
+
+        if new_slide.get("title") or new_slide.get("bullets"):
+            # Preserve original slide properties not being changed
+            if not new_slide.get("title"):
+                new_slide["title"] = current_slide.get("title", f"Slide {slide_num}")
+            return new_slide, None
+        else:
+            return None, "Could not parse AI response"
+
+    except Exception as e:
+        return None, str(e)
+
+# Additional CSS - Using CSS variables (defined above)
 
 # Welcome bar at top (helps visibility on mobile - user suggested)
 
 # Remove Streamlit native header and caption; only show custom HTML header
 
-# Language selection and Refresh button (in same row, right aligned)
-col_lang, col_spacer, col_refresh = st.columns([2, 2, 1])
-with col_lang:
-    language = st.selectbox("Language", ["English", "Hindi"], key="ppt_language", index=0, label_visibility="collapsed")
-    st.session_state.language = language
-with col_refresh:
-    if st.button("🔄", key="refresh_chat", help="New Chat - Start fresh"):
-        st.session_state.messages = []
-        st.session_state.stage = 'idle'
-        st.session_state.ppt_path = None
-        st.session_state.topic = None
-        st.session_state.file_content = None
-        st.session_state.file_name = None
-        st.session_state.parsed_slides = None
-        st.session_state.awaiting_upload_confirm = False
-        st.session_state.uploaded_preview = None
-        # Add welcome message after refresh
-        st.session_state.messages.append({"role": "assistant", "content": "Chat cleared! Ready for a new topic. Type your topic or upload a document."})
-        st.rerun()
+# Language selection (bullets are now flexible 4-6 based on content)
+language = st.selectbox("Language", ["English", "Hindi"], key="ppt_language", index=0, label_visibility="collapsed")
+st.session_state.language = language
+# Bullets per slide is now flexible (4-6) based on content needs - AI decides automatically
+st.session_state.bullets_per_slide = 5  # Default/average for compatibility
 
 # Display chat messages
 for msg in st.session_state.messages:
@@ -650,19 +712,19 @@ if st.session_state.messages:
     </script>
     """, unsafe_allow_html=True)
 
+# Chat input (fixed at bottom by Streamlit)
+user_input = st.chat_input("Send topic, paste content (Hindi/English)...", key="main_chat_input")
+
 # Show download button if PPT is ready
 if st.session_state.stage == 'done' and st.session_state.ppt_path:
     with st.chat_message("assistant"):
         if st.session_state.topic and st.session_state.topic.lower() != 'none':
             st.success(f"Your presentation on **{st.session_state.topic}** is ready!")
-
-        # Download and New buttons
         col1, col2 = st.columns([3, 1])
         with col1:
-            # ISSUE 9: Use topic-based filename for download
             download_filename = os.path.basename(st.session_state.ppt_path) if st.session_state.ppt_path else "presentation.pptx"
             with open(st.session_state.ppt_path, "rb") as f:
-                st.download_button("Download PPT", f.read(), file_name=download_filename,
+                st.download_button("⬇️ Download PPT", f.read(), file_name=download_filename,
                     mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
                     use_container_width=True, type="primary")
         with col2:
@@ -673,13 +735,9 @@ if st.session_state.stage == 'done' and st.session_state.ppt_path:
                 st.session_state.topic = None
                 st.session_state.file_content = None
                 st.session_state.parsed_slides = None
+                st.session_state.file_names = []
+                st.session_state.file_contents = []
                 st.rerun()
-
-        # Regenerate options
-
-        # Restore Streamlit native header and caption
-        st.markdown("### 📊 FREE PPT Generator")
-        st.caption("Create professional presentations through chat")
 
 # Chat input
 
@@ -689,9 +747,10 @@ if st.session_state.stage == 'ask_name':
         st.markdown("**Enter your name (for the presentation): (optional)**")
         col1, col2 = st.columns([3,1])
         with col1:
-            name = st.text_input("Your name", key="presenter_name_input")
+            name = st.text_input("Your name", key="presenter_name_input", label_visibility="visible", placeholder="Type your name...", help="This will appear on the PPT (optional)")
         with col2:
-            if st.button("Skip", key="skip_name"):
+            skip_btn = st.button("Skip", key="skip_name", help="Skip name", use_container_width=True)
+            if skip_btn:
                 st.session_state.presenter_name = None
                 st.session_state.stage = 'ask_designation'
                 st.rerun()
@@ -704,9 +763,10 @@ elif st.session_state.stage == 'ask_designation':
         st.markdown("**Enter your designation (for the presentation): (optional)**")
         col1, col2 = st.columns([3,1])
         with col1:
-            designation = st.text_input("Your designation", key="presenter_designation_input")
+            designation = st.text_input("Your designation", key="presenter_designation_input", label_visibility="visible", placeholder="Type your designation...", help="This will appear on the PPT (optional)")
         with col2:
-            if st.button("Skip", key="skip_designation"):
+            skip_btn = st.button("Skip", key="skip_designation", help="Skip designation", use_container_width=True)
+            if skip_btn:
                 st.session_state.presenter_designation = None
                 st.session_state.stage = 'idle'
                 # Show personalized welcome
@@ -717,68 +777,84 @@ elif st.session_state.stage == 'ask_designation':
                     welcome = "Welcome! Please tell me a topic for your presentation."
                 add_message("assistant", welcome)
                 st.rerun()
-    st.markdown("""
-    <div style="
-        background: linear-gradient(135deg, #667eea 0%, #5a67d8 100%);
-        color: #fff;
-        padding: 1.2rem 1.2rem 1rem 1.2rem;
-        margin: -1rem -1rem 1.2rem -1rem;
-        text-align: center;
-        border-radius: 0 0 22px 22px;
-        box-shadow: 0 6px 24px 0 rgba(102, 126, 234, 0.30), 0 0 0 6px #e0e7ff inset;
-        border: 6px solid #5a67d8;
-        border-top: none;
-        background-clip: padding-box;
-    ">
-        <h2 style="margin:0;font-size:2.2rem;font-weight:900;letter-spacing:1.2px;text-transform:uppercase;">FREE PPT Generator</h2>
-        <p style="margin:0.6rem 0 0 0;font-size:1.12rem;font-weight:500;letter-spacing:0.2px;color:#e0e7ff;">Create professional presentations through chat</p>
-    </div>
-    <style>
-    @media (max-width: 600px) {
-        div[style*='background: linear-gradient'] h2 {
-            font-size: 1.35rem !important;
-        }
-        div[style*='background: linear-gradient'] p {
-            font-size: 0.98rem !important;
-        }
-        div[style*='background: linear-gradient'] {
-            padding: 0.8rem 0 0.6rem 0 !important;
-            border-radius: 0 0 14px 14px !important;
-            border-width: 4px !important;
-        }
-    }
-    </style>
-    """, unsafe_allow_html=True)
+        if designation:
+            st.session_state.presenter_designation = designation
+            st.session_state.stage = 'idle'
+            name = st.session_state.presenter_name
+            if name:
+                welcome = f"Welcome {name}! Please tell me a topic for your presentation."
+            else:
+                welcome = "Welcome! Please tell me a topic for your presentation."
+            add_message("assistant", welcome)
+            st.rerun()
 
 # ============ MODERN CHATBOX UI ============
 # Initialize show_uploader state
 if 'show_uploader' not in st.session_state:
     st.session_state.show_uploader = False
 
+# Store all uploaded file names and contents in session state as lists
+if 'file_names' not in st.session_state:
+    st.session_state.file_names = []
+if 'file_contents' not in st.session_state:
+    st.session_state.file_contents = []
+
 # File attached indicator (show above chatbox)
-if st.session_state.file_content:
-    col_file, col_clear = st.columns([5, 1])
-    with col_file:
-        st.markdown(f'''<div class="file-attached">
-            <span>📎</span> {st.session_state.get('file_name', 'document')}
-        </div>''', unsafe_allow_html=True)
-    with col_clear:
-        if st.button("✕", key="clear_file", help="Remove file"):
-            st.session_state.file_content = None
-            st.session_state.file_name = None
-            st.session_state.show_uploader = False
-            st.rerun()
+if st.session_state.get('file_names'):
+    chips = []
+    for idx, name in enumerate(st.session_state['file_names']):
+        chip_col, btn_col = st.columns([8,1], gap="small")
+        with chip_col:
+            st.markdown(f'<div class="file-attached" style="display: flex; align-items: center; background: #e0f7fa; color: #00796b; border-radius: 16px; padding: 2px 10px 2px 6px; font-size: 14px; font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border: 1px solid #b2dfdb; max-width: 220px; overflow: hidden; white-space: nowrap; margin-bottom: 0;">'
+                        f'<span style="font-size:16px; margin-right:4px;">📎</span>'
+                        f'<span style="overflow: hidden; text-overflow: ellipsis; max-width: 120px; display: inline-block;">{name}</span></div>', unsafe_allow_html=True)
+        with btn_col:
+            if st.button("✕", key=f"clear_file_{idx}", help=f"Remove {name}", use_container_width=True):
+                del st.session_state.file_names[idx]
+                del st.session_state.file_contents[idx]
+                if not st.session_state.file_names:
+                    st.session_state.file_content = None
+                    st.session_state.file_name = None
+                    st.session_state.uploaded_preview = None
+                st.rerun()
+# Floating left action buttons (Upload, Refresh) - Top left above chat
 
-# Plus button for file upload (above chat input)
-col_plus, col_spacer = st.columns([1, 9])
-with col_plus:
-    if st.button("➕", key="upload_btn", help="Upload PDF / Word / Text document"):
-        st.session_state.show_uploader = not st.session_state.show_uploader
-        st.rerun()
+# Floating left action buttons (Upload, Refresh) - Fixed top left above chat
 
-# Chat input (Enter to send)
-user_input = st.chat_input("Send topic, paste content (Hindi/English)...")
-send_clicked = user_input is not None
+# --- Insert action icons inside chat input (left of arrow) ---
+
+# --- True inline action icons inside chat input (left of textarea, inside box) ---
+ # --- Desktop-friendly chat input with action icons row above input ---
+# (CSS already defined in main style block above)
+
+# Icon buttons row (Upload +, Refresh 🔄)
+st.markdown('<div class="icon-btn-container" style="display: flex; gap: 12px; margin-bottom: 16px;">', unsafe_allow_html=True)
+icon_col1, icon_col2, icon_spacer = st.columns([1, 1, 10])
+with icon_col1:
+    upload_clicked = st.button("➕", key="upload_btn_row", help="Upload Document")
+with icon_col2:
+    refresh_clicked = st.button("🔄", key="refresh_btn_row", help="New Chat")
+st.markdown('</div>', unsafe_allow_html=True)
+
+if upload_clicked:
+    st.session_state.show_uploader = True
+    st.rerun()
+if refresh_clicked:
+    st.session_state.messages = []
+    st.session_state.stage = 'idle'
+    st.session_state.ppt_path = None
+    st.session_state.topic = None
+    st.session_state.file_content = None
+    st.session_state.file_name = None
+    st.session_state.parsed_slides = None
+    st.session_state.awaiting_upload_confirm = False
+    st.session_state.uploaded_preview = None
+    st.session_state.refresh_btn_clicked = False
+    st.session_state.messages.append({"role": "assistant", "content": "Chat cleared! Ready for a new topic. Type your topic or upload a document."})
+    st.rerun()
+
+# Chat input (fixed at bottom by Streamlit)
+# ...existing code...
 
 # Initialize upload confirmation state
 if 'awaiting_upload_confirm' not in st.session_state:
@@ -786,131 +862,484 @@ if 'awaiting_upload_confirm' not in st.session_state:
 if 'uploaded_preview' not in st.session_state:
     st.session_state.uploaded_preview = None
 
-# Show file uploader when + is clicked
+# File upload section
 if st.session_state.show_uploader:
     st.markdown("---")
-    st.markdown("**📁 Upload Document** (PDF, Word, Text)")
-    quick_file = st.file_uploader(
-        "Upload",
-        type=["txt", "docx", "pdf", "pptx"],
-        key="quick_file_upload",
-        label_visibility="collapsed"
-    )
-    if quick_file:
-        file_name = quick_file.name
-        file_content = ""
-        if file_name.endswith('.txt'):
-            file_content = quick_file.read().decode('utf-8')
-        elif file_name.endswith('.docx'):
-            try:
-                from docx import Document
-                import io
-                doc = Document(io.BytesIO(quick_file.read()))
-                file_content = '\n'.join([para.text for para in doc.paragraphs])
-            except:
-                st.error("Could not read DOCX file")
-        elif file_name.endswith('.pdf'):
-            try:
-                import PyPDF2
-                import io
-                pdf_reader = PyPDF2.PdfReader(io.BytesIO(quick_file.read()))
-                file_content = '\n'.join([page.extract_text() for page in pdf_reader.pages])
-            except:
-                st.error("Could not read PDF file")
-        if file_content:
-            st.session_state.file_content = file_content
-            st.session_state.file_name = file_name.rsplit('.', 1)[0][:50]
+    st.markdown("**📁 Upload Document (PDF, Word, Text, PPT)**")
+    uploaded_files = document_upload_component()
+    if uploaded_files:
+        progress = st.progress(0, text="Processing files...")
+        total = len(uploaded_files)
+        for idx, (file_name, file_content) in enumerate(uploaded_files):
+            if file_name in st.session_state.file_names:
+                continue
+            content = ""
+            ext = file_name.lower().split('.')[-1]
+            if ext == 'txt':
+                content = file_content.decode('utf-8')
+            elif ext == 'docx':
+                try:
+                    from docx import Document
+                    import io
+                    doc = Document(io.BytesIO(file_content))
+                    content = '\n'.join([para.text for para in doc.paragraphs])
+                except:
+                    st.error(f"Could not read DOCX file: {file_name}")
+            elif ext == 'pdf':
+                try:
+                    import PyPDF2
+                    import io
+                    pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
+                    extracted_pages = []
+                    for page_num, page in enumerate(pdf_reader.pages):
+                        try:
+                            page_text = page.extract_text()
+                            if page_text and page_text.strip():
+                                extracted_pages.append(f"--- Page {page_num + 1} ---\n{page_text}")
+                        except Exception as page_err:
+                            print(f"[DEBUG] Could not extract page {page_num + 1}: {page_err}")
+                    content = '\n\n'.join(extracted_pages)
+                    print(f"[DEBUG] PDF extracted {len(extracted_pages)} pages, {len(content)} chars")
+                    if not content.strip():
+                        # Try alternative method with pdfplumber if PyPDF2 fails
+                        try:
+                            import pdfplumber
+                            with pdfplumber.open(io.BytesIO(file_content)) as pdf:
+                                content = '\n\n'.join([page.extract_text() or '' for page in pdf.pages])
+                            print(f"[DEBUG] pdfplumber extracted {len(content)} chars")
+                        except:
+                            st.warning(f"⚠️ PDF text extraction limited for: {file_name}")
+                except Exception as e:
+                    print(f"[DEBUG] PDF extraction error: {e}")
+                    st.error(f"Could not read PDF file: {file_name}")
+            elif ext in ['ppt', 'pptx']:
+                try:
+                    from pptx import Presentation
+                    import io
+                    prs = Presentation(io.BytesIO(file_content))
+                    slide_texts = []
+                    for slide_num, slide in enumerate(prs.slides, 1):
+                        slide_content = []
+                        for shape in slide.shapes:
+                            if hasattr(shape, "text") and shape.text.strip():
+                                slide_content.append(shape.text.strip())
+                        if slide_content:
+                            slide_texts.append(f"--- Slide {slide_num} ---\n" + '\n'.join(slide_content))
+                    content = '\n\n'.join(slide_texts)
+                    print(f"[DEBUG] PPTX extracted {len(slide_texts)} slides, {len(content)} chars")
+                except Exception as e:
+                    print(f"[DEBUG] PPTX extraction error: {e}")
+                    st.error(f"Could not read PPTX file: {file_name}")
+            else:
+                content = f"[File {file_name} uploaded]"
+            st.session_state.file_names.append(file_name)
+            st.session_state.file_contents.append(content)
+            progress.progress((idx+1)/total, text=f"Processed {idx+1}/{total} files")
+        progress.empty()
+        if st.session_state.file_names:
             st.session_state.show_uploader = False
-            # ISSUE 6: Show confirmation with preview
             st.session_state.awaiting_upload_confirm = True
-            # Extract first 200 chars as preview
-            preview = file_content[:200].strip()
-            if len(file_content) > 200:
-                preview += "..."
-            st.session_state.uploaded_preview = preview
             st.rerun()
 
-# ISSUE 6: Document upload confirmation flow
-if st.session_state.awaiting_upload_confirm and st.session_state.file_content:
-    with st.chat_message("assistant"):
-        st.markdown(f"📄 **File loaded: {st.session_state.file_name}**")
-        st.markdown("**Preview:**")
-        st.markdown(f"```\n{st.session_state.uploaded_preview}\n```")
-        st.markdown("---")
-        st.markdown("Would you like me to create a PPT from this content?")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("✅ Yes, Generate PPT", key="confirm_upload"):
-                st.session_state.awaiting_upload_confirm = False
-                # Set topic from file name
-                st.session_state.topic = st.session_state.file_name
-                # Generate slides from file content using AI
-                generator = MultiAIGenerator()
-                language = st.session_state.get('language', 'English')
-                custom_instructions = f"USER PROVIDED CONTENT (use this as the PRIMARY source):\n{st.session_state.file_content}\n\nLanguage: {language}\nTone: Government / Training"
-                content_dict = generator.generate_ppt_content(
-                    topic=st.session_state.file_name,
-                    min_slides=6,
-                    max_slides=6,
-                    style=st.session_state.theme,
-                    audience="general",
-                    custom_instructions=custom_instructions,
-                    bullets_per_slide=4,
-                    bullet_word_limit=12,
-                    tone="government/training",
-                    required_phrases="",
-                    forbidden_content=""
-                )
-                ai_output = content_dict.get("output", "")
-                # Parse slides
-                slides = []
-                if ai_output:
-                    lines = [l.strip() for l in ai_output.split('\n') if l.strip()]
-                    current_slide = {}
-                    for line in lines:
-                        m = re.match(r"^\*{0,2}Slide\s*(\d+)\s*[:\-]\s*(.+?)\*{0,2}$", line, re.IGNORECASE)
-                        if m:
+# Show success message and action buttons AFTER file upload (outside show_uploader block)
+if st.session_state.awaiting_upload_confirm and st.session_state.get('file_names'):
+    st.success(f"✅ {len(st.session_state.file_names)} file(s) attached successfully!")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📎 Attach more", key="attach_more_btn", use_container_width=True):
+            st.session_state.show_uploader = True
+            st.session_state.awaiting_upload_confirm = False
+            st.rerun()
+    with col2:
+        if st.button("🚀 Generate PPT", key="generate_ppt_btn_main", use_container_width=True, type="primary"):
+            # Combine all file contents for AI analysis
+            combined_content = "\n\n---\n\n".join(st.session_state['file_contents'])
+            file_names_str = ", ".join(st.session_state['file_names'])
+
+            # Debug: Check if content was extracted
+            print(f"[DEBUG] File contents length: {len(combined_content)}")
+            print(f"[DEBUG] File names: {file_names_str}")
+
+            # Set stage to show we're processing
+            st.session_state.awaiting_upload_confirm = False
+
+            # Check if we have actual content
+            if not combined_content.strip() or len(combined_content.strip()) < 50:
+                st.error("❌ No content could be extracted from uploaded files. Please check if files have readable text.")
+                st.session_state.awaiting_upload_confirm = True
+            else:
+                with st.spinner("🤖 AI is analyzing your documents and creating slides..."):
+                    try:
+                        # Use AI to analyze and create proper slide content
+                        generator = MultiAIGenerator()
+                        language = st.session_state.get('language', 'English')
+
+                        # Limit content size to avoid token limits (first 8000 chars)
+                        content_for_ai = combined_content[:8000] if len(combined_content) > 8000 else combined_content
+
+                        # ─────────────────────────────────────────────────────────────
+                        # 🎯 AI-POWERED SMART TITLE GENERATION
+                        # ─────────────────────────────────────────────────────────────
+                        st.info("🎨 AI is creating an attractive title for your presentation...")
+                        smart_titles = generator.generate_smart_title(
+                            content=content_for_ai,
+                            language=language,
+                            style=st.session_state.get('theme', 'corporate')
+                        )
+
+                        if smart_titles.get('success'):
+                            print(f"[DEBUG] AI-generated titles:")
+                            print(f"  Main Title: {smart_titles['main_title']}")
+                            print(f"  Tagline: {smart_titles['tagline']}")
+                            print(f"  Subtitle: {smart_titles['subtitle']}")
+                        else:
+                            print(f"[DEBUG] Title generation fallback: {smart_titles.get('error', 'Unknown error')}")
+
+                        # ─────────────────────────────────────────────────────────────
+                        # 🔍 WEB SEARCH ENRICHMENT - Get related content from Wikipedia/Web
+                        # ─────────────────────────────────────────────────────────────
+                        web_context = ""
+                        try:
+                            # Extract topic/keywords from file content for search
+                            first_lines = combined_content[:500].split('\n')
+                            search_topic = ""
+                            for line in first_lines[:5]:
+                                clean = line.strip()
+                                if clean and 10 < len(clean) < 100:
+                                    search_topic = clean
+                                    break
+                            if not search_topic:
+                                # Use filename as search topic
+                                search_topic = re.sub(r'\.(docx|pdf|pptx|txt)$', '', file_names_str.split(',')[0], flags=re.IGNORECASE)
+                                search_topic = search_topic.replace('_', ' ').replace('-', ' ')
+
+                            print(f"[DEBUG] Web search topic: {search_topic}")
+
+                            if google_api_key and google_cse_id and search_topic:
+                                from web_search import search_google
+                                results = search_google(search_topic, google_api_key, google_cse_id, num_results=3)
+                                if results:
+                                    web_snippets = []
+                                    for r in results:
+                                        snippet = r.get('snippet', '')
+                                        title = r.get('title', '')
+                                        if snippet:
+                                            web_snippets.append(f"• {title}: {snippet}")
+                                    if web_snippets:
+                                        web_context = "\n\nWEB RESEARCH CONTEXT (Additional information from web search):\n" + '\n'.join(web_snippets)
+                                        print(f"[DEBUG] Added web context: {len(web_context)} chars")
+                        except Exception as web_err:
+                            print(f"[DEBUG] Web search error (non-critical): {web_err}")
+
+                        # Pass combined file content as user-provided content for AI to analyze
+                        custom_instructions = f"""USER PROVIDED DOCUMENT CONTENT (Analyze this content and create a well-structured presentation):
+
+{content_for_ai}
+{web_context}
+
+INSTRUCTIONS:
+- Extract key points, themes, and important information from the above content
+- Use web research context to enrich and validate the information
+- Organize the information logically into slides - CREATE AS MANY SLIDES AS NEEDED to cover all important topics
+- IMPORTANT: Create detailed bullet points (1-2 complete sentences each, 20-35 words) that fully explain each point
+- If Language is Hindi: Write complete Hindi sentences, not short phrases. Use proper Hindi grammar and vocabulary.
+- Generate appropriate slide titles based on the content sections
+- Language: {language}
+- Tone: Professional / Informative
+- For large documents: Extract ALL key topics and create comprehensive slides (minimum 10, no maximum limit)"""
+
+                        # Calculate dynamic slide count based on content size
+                        content_length = len(combined_content)
+                        if content_length > 50000:  # Very large document (200+ pages)
+                            min_slides_dynamic = 15
+                            max_slides_dynamic = 25
+                        elif content_length > 20000:  # Large document (50-200 pages)
+                            min_slides_dynamic = 12
+                            max_slides_dynamic = 20
+                        elif content_length > 10000:  # Medium document
+                            min_slides_dynamic = 10
+                            max_slides_dynamic = 15
+                        else:  # Small document
+                            min_slides_dynamic = 8
+                            max_slides_dynamic = 12
+
+                        print(f"[DEBUG] Content length: {content_length}, slides: {min_slides_dynamic}-{max_slides_dynamic}")
+
+                        content_dict = generator.generate_ppt_content(
+                            topic=f"Presentation from: {file_names_str}",
+                            min_slides=min_slides_dynamic,
+                            max_slides=max_slides_dynamic,
+                            style=st.session_state.get('theme', 'corporate'),
+                            audience="general",
+                            custom_instructions=custom_instructions,
+                            bullets_per_slide=st.session_state.get('bullets_per_slide', 4),
+                            bullet_word_limit=30,
+                            tone="professional",
+                            required_phrases="",
+                            forbidden_content=""
+                        )
+
+                        # Debug: Check AI response
+                        print(f"[DEBUG] AI Response keys: {content_dict.keys() if isinstance(content_dict, dict) else 'Not a dict'}")
+
+                        # Parse AI output into slides (same parser used for topic-based generation)
+                        def parse_file_slides(ai_output):
+                            slides = []
+                            if not ai_output:
+                                return slides
+                            lines = [l.strip() for l in ai_output.split('\n') if l.strip()]
+                            current_slide = {}
+                            for line in lines:
+                                # More flexible pattern to match various slide formats
+                                m = re.match(r"^\*{0,2}Slide\s*(\d+)\s*[:\-–]\s*(.+?)\*{0,2}$", line, re.IGNORECASE)
+                                if m:
+                                    if current_slide:
+                                        slides.append(current_slide)
+                                    current_slide = {"slide_number": int(m.group(1)), "title": m.group(2).strip(), "bullets": []}
+                                elif line.lower().startswith('main title:'):
+                                    if current_slide:
+                                        current_slide["main_title"] = line.split(':',1)[1].strip()
+                                elif line.lower().startswith('tagline:'):
+                                    if current_slide:
+                                        current_slide["tagline"] = line.split(':',1)[1].strip()
+                                elif line.lower().startswith('subtitle:'):
+                                    if current_slide:
+                                        current_slide["subtitle"] = line.split(':',1)[1].strip()
+                                elif line.lower().startswith('presented by:'):
+                                    if current_slide:
+                                        current_slide["presented_by"] = line.split(':',1)[1].strip()
+                                elif line.startswith('- ') or line.startswith('• ') or line.startswith('* ') or line.startswith('– '):
+                                    bullet_text = line[2:].strip()
+                                    if bullet_text and current_slide:
+                                        current_slide.setdefault("bullets", []).append(bullet_text)
+                                elif re.match(r'^\d+[\.\)]\s+', line):
+                                    bullet_text = re.sub(r'^\d+[\.\)]\s+', '', line).strip()
+                                    if bullet_text and current_slide:
+                                        current_slide.setdefault("bullets", []).append(bullet_text)
                             if current_slide:
                                 slides.append(current_slide)
-                            current_slide = {"slide_number": int(m.group(1)), "title": m.group(2).strip(), "bullets": []}
-                        elif line.lower().startswith('main title:'):
-                            current_slide["main_title"] = line.split(':',1)[1].strip()
-                        elif line.lower().startswith('tagline:'):
-                            current_slide["tagline"] = line.split(':',1)[1].strip()
-                        elif line.lower().startswith('subtitle:'):
-                            current_slide["subtitle"] = line.split(':',1)[1].strip()
-                        elif line.lower().startswith('presented by:'):
-                            current_slide["presented_by"] = line.split(':',1)[1].strip()
-                        elif line.startswith('- ') or line.startswith('• ') or line.startswith('* '):
-                            bullet_text = line[2:].strip()
-                            if bullet_text and current_slide:
-                                current_slide.setdefault("bullets", []).append(bullet_text)
-                        elif re.match(r'^\d+\.\s+', line):
-                            bullet_text = re.sub(r'^\d+\.\s+', '', line).strip()
-                            if bullet_text and current_slide:
-                                current_slide.setdefault("bullets", []).append(bullet_text)
-                    if current_slide:
-                        slides.append(current_slide)
-                st.session_state.parsed_slides = slides
-                st.session_state.stage = 'generating'
-                add_message("user", f"Generate PPT from uploaded file: {st.session_state.file_name}")
-                add_message("assistant", ai_output if ai_output else "Processing your document...")
-                st.rerun()
-        with col2:
-            if st.button("❌ Cancel", key="cancel_upload"):
-                st.session_state.awaiting_upload_confirm = False
-                st.session_state.file_content = None
-                st.session_state.file_name = None
-                st.session_state.uploaded_preview = None
-                st.rerun()
+                            # Inject presenter info
+                            if slides:
+                                first = slides[0]
+                                if st.session_state.presenter_name:
+                                    first["presented_by"] = st.session_state.presenter_name
+                                if st.session_state.presenter_designation:
+                                    if first.get("subtitle"):
+                                        first["subtitle"] = (first.get("subtitle","") + f"\n{st.session_state.presenter_designation}").strip()
+                                    else:
+                                        first["subtitle"] = st.session_state.presenter_designation
+                            return slides
+
+                        ai_output = content_dict.get("output", "")
+                        if not ai_output:
+                            ai_output = content_dict.get("error", "")
+
+                        print(f"[DEBUG] AI output length: {len(ai_output) if ai_output else 0}")
+                        slides = parse_file_slides(ai_output)
+                        print(f"[DEBUG] Parsed slides count: {len(slides)}")
+
+                        # ─────────────────────────────────────────────────────────────
+                        # 🎨 INJECT AI-GENERATED SMART TITLES INTO FIRST SLIDE
+                        # ─────────────────────────────────────────────────────────────
+                        if slides and smart_titles.get('success'):
+                            first_slide = slides[0]
+                            # Override with AI-generated titles
+                            first_slide["main_title"] = smart_titles['main_title']
+                            first_slide["tagline"] = smart_titles['tagline']
+                            first_slide["subtitle"] = smart_titles['subtitle']
+                            print(f"[DEBUG] Smart titles injected into first slide")
+
+                        # Fallback if AI parsing returned empty slides - create content from documents
+                        if not slides:
+                            st.warning("⚠️ AI parsing incomplete, extracting content directly from documents...")
+
+                            # Smart extraction from document content
+                            all_lines = [l.strip() for l in combined_content.split('\n') if l.strip() and len(l.strip()) > 10]
+
+                            # Try to find a good title from the first few lines
+                            doc_title = None
+                            for line in all_lines[:10]:
+                                # Skip very long lines (likely paragraphs)
+                                if len(line) < 100 and len(line) > 5:
+                                    # Clean the line
+                                    clean_line = re.sub(r'^[\d\.\-\*\#]+\s*', '', line).strip()
+                                    if clean_line and len(clean_line) > 5:
+                                        doc_title = clean_line[:80]  # Limit title length
+                                        break
+
+                            # Fallback to filename-based title
+                            if not doc_title:
+                                first_file = file_names_str.split(',')[0]
+                                doc_title = re.sub(r'\.(docx|pdf|pptx|txt)$', '', first_file, flags=re.IGNORECASE).strip()
+                                doc_title = doc_title.replace('_', ' ').replace('-', ' ').title()
+
+                            # Use AI-generated smart titles if available, otherwise use fallback
+                            if smart_titles.get('success'):
+                                final_main_title = smart_titles['main_title']
+                                final_tagline = smart_titles['tagline']
+                                final_subtitle = smart_titles['subtitle']
+                            else:
+                                final_main_title = doc_title
+                                final_tagline = "Professional Presentation"
+                                final_subtitle = f"Based on {len(st.session_state['file_names'])} uploaded document(s)"
+
+                            # Create title slide with AI-generated or extracted title
+                            slides = [{
+                                "slide_number": 1,
+                                "title": "Title Slide",
+                                "main_title": final_main_title,
+                                "tagline": final_tagline,
+                                "subtitle": final_subtitle,
+                                "presented_by": st.session_state.get('presenter_name', ''),
+                                "bullets": []
+                            }]
+
+                            # Extract meaningful paragraphs for content slides
+                            paragraphs = [p.strip() for p in combined_content.split('\n\n') if p.strip() and len(p.strip()) > 30]
+
+                            # Try to extract section titles from headings
+                            section_titles = []
+                            for line in all_lines:
+                                # Look for potential headings (short lines, possibly numbered)
+                                if 10 < len(line) < 80:
+                                    clean = re.sub(r'^[\d\.\-\*\#]+\s*', '', line).strip()
+                                    if clean and not clean.endswith(','):
+                                        section_titles.append(clean)
+
+                            # Create content slides (5-6 slides)
+                            for i in range(min(5, max(1, len(paragraphs)))):
+                                para = paragraphs[i] if i < len(paragraphs) else ""
+                                if para:
+                                    # Split paragraph into bullet points
+                                    sentences = [s.strip() + '.' for s in re.split(r'[।\.\n]', para) if s.strip() and len(s.strip()) > 20][:3]
+                                    if sentences:
+                                        # Use extracted section title if available, else generic
+                                        slide_title = section_titles[i] if i < len(section_titles) else f"Key Points - Section {i + 1}"
+                                        # Limit title length
+                                        if len(slide_title) > 60:
+                                            slide_title = slide_title[:57] + "..."
+                                        slides.append({
+                                            "slide_number": i + 2,
+                                            "title": slide_title,
+                                            "bullets": sentences
+                                        })
+
+                            # Add conclusion slide
+                            slides.append({
+                                "slide_number": len(slides) + 1,
+                                "title": "Summary & Conclusion",
+                                "bullets": [
+                                    f"Key insights from {len(st.session_state['file_names'])} document(s)",
+                                    "Important points organized for presentation",
+                                    "Review and customize as needed",
+                                    "Thank you!"
+                                ]
+                            })
+
+                        # Add brief AI summary to chat (full content in collapsible preview)
+                        if ai_output and len(ai_output) > 50:
+                            msg = f"📄 Analyzed {len(st.session_state['file_names'])} file(s) and created {len(slides)} slides. View full content in the preview below."
+                            st.session_state.full_ai_output = ai_output  # Store for collapsible display
+                        else:
+                            msg = f"📄 Extracted content from {len(st.session_state['file_names'])} file(s) and created {len(slides)} slides."
+                            st.session_state.full_ai_output = None
+                        add_message("assistant", msg)
+
+                        st.session_state.parsed_slides = slides
+                        st.session_state.stage = 'generating'
+                        st.session_state.topic = file_names_str
+                        st.session_state.ppt_path = None
+                        st.rerun()
+
+                    except Exception as e:
+                        print(f"[DEBUG] Exception: {str(e)}")
+                        st.error(f"Error generating content: {str(e)}")
+                        # Fallback to basic extraction with better content
+                        st.info("Using direct content extraction as fallback...")
+
+                        all_lines = [l.strip() for l in combined_content.split('\n') if l.strip() and len(l.strip()) > 10]
+                        paragraphs = [p.strip() for p in combined_content.split('\n\n') if p.strip() and len(p.strip()) > 30]
+
+                        # Extract title from content
+                        doc_title = None
+                        for line in all_lines[:10]:
+                            if len(line) < 100 and len(line) > 5:
+                                clean_line = re.sub(r'^[\d\.\-\*\#]+\s*', '', line).strip()
+                                if clean_line and len(clean_line) > 5:
+                                    doc_title = clean_line[:80]
+                                    break
+                        if not doc_title:
+                            first_file = file_names_str.split(',')[0]
+                            doc_title = re.sub(r'\.(docx|pdf|pptx|txt)$', '', first_file, flags=re.IGNORECASE).strip()
+                            doc_title = doc_title.replace('_', ' ').replace('-', ' ').title()
+
+                        slides = [{
+                            "slide_number": 1,
+                            "title": "Title Slide",
+                            "main_title": doc_title,
+                            "tagline": "Professional Presentation",
+                            "subtitle": f"Based on {len(st.session_state['file_names'])} uploaded document(s)",
+                            "presented_by": st.session_state.get('presenter_name', ''),
+                            "bullets": []
+                        }]
+
+                        for i, para in enumerate(paragraphs[:5]):
+                            if para:
+                                sentences = [s.strip() + '.' for s in re.split(r'[।\.\n]', para) if s.strip() and len(s.strip()) > 20][:3]
+                                if sentences:
+                                    slides.append({
+                                        "slide_number": i + 2,
+                                        "title": f"Key Points - Section {i + 1}",
+                                        "bullets": sentences
+                                    })
+
+                        st.session_state.parsed_slides = slides
+                        st.session_state.stage = 'generating'
+                        st.session_state.topic = file_names_str
+                        st.session_state.ppt_path = None
+                        st.rerun()
 
 # Handle chat input (st.chat_input returns text on Enter, None otherwise)
 if user_input:
 
     add_message("user", user_input)
 
-    # Show loading spinner immediately after user submits
-    with st.spinner("Processing your request. Please wait..."):
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 🔧 CHECK IF USER WANTS TO EDIT A SLIDE (when in preview mode)
+    # ═══════════════════════════════════════════════════════════════════════════
+    if st.session_state.get('in_preview_mode') and st.session_state.get('parsed_slides'):
+        slide_num, instruction = detect_slide_edit_request(user_input)
+
+        if slide_num:
+            with st.spinner(f"✏️ Updating Slide {slide_num}..."):
+                slides = st.session_state.parsed_slides
+                language = st.session_state.get('language', 'English')
+                topic = st.session_state.get('topic', 'Presentation')
+
+                new_slide, error = regenerate_single_slide(slide_num, instruction, slides, topic, language)
+
+                if new_slide and not error:
+                    # Update the slide in the list
+                    slides[slide_num - 1] = new_slide
+                    st.session_state.parsed_slides = slides
+
+                    # Regenerate PPT with updated slides
+                    success, ppt_path = generate_ppt(slides, topic, st.session_state.theme)
+                    if success:
+                        st.session_state.ppt_path = ppt_path
+
+                    add_message("assistant", f"✅ Slide {slide_num} has been updated!\n\n**New Title:** {new_slide.get('title', 'N/A')}\n**Points:** {len(new_slide.get('bullets', []))} bullet points\n\nCheck the preview above. You can make more changes or download the PPT.")
+                else:
+                    add_message("assistant", f"❌ Could not update Slide {slide_num}: {error}\n\nPlease try again with a clearer instruction.")
+
+                st.rerun()
+
+    # Show loading spinner with context-aware message
+    # Different message for preview mode vs initial generation
+    spinner_message = "✨ Processing your changes..." if st.session_state.get('in_preview_mode') else "🤖 AI is creating your presentation..."
+
+    with st.spinner(spinner_message):
         # If greeting, show welcome and ask for topic
         if is_greeting(user_input):
             name = st.session_state.presenter_name
@@ -976,20 +1405,36 @@ if user_input:
             generator = MultiAIGenerator()
             language = st.session_state.get('language', 'English')
 
+            # ─────────────────────────────────────────────────────────────
+            # 🎯 AI-POWERED SMART TITLE GENERATION
+            # ─────────────────────────────────────────────────────────────
+            content_for_title = user_provided_content if use_user_content else user_input
+            smart_titles = generator.generate_smart_title(
+                content=content_for_title,
+                language=language,
+                style=st.session_state.get('theme', 'corporate')
+            )
+
+            if smart_titles.get('success'):
+                print(f"[DEBUG] AI-generated titles for topic:")
+                print(f"  Main Title: {smart_titles['main_title']}")
+                print(f"  Tagline: {smart_titles['tagline']}")
+                print(f"  Subtitle: {smart_titles['subtitle']}")
+
             # ISSUE 8: Prioritize user content over web search
             if use_user_content:
-                custom_instructions = f"USER PROVIDED CONTENT (use this as the PRIMARY source for slide content):\n{user_provided_content}\n\nLanguage: {language}\nTone: Government / Training"
+                custom_instructions = f"USER PROVIDED CONTENT (use this as the PRIMARY source for slide content):\n{user_provided_content}\n\nLanguage: {language}\nTone: Government / Training\nIMPORTANT: Write detailed bullet points (20-35 words each). If Hindi, write complete Hindi sentences."
             else:
-                custom_instructions = f"{google_context}\n\nLanguage: {language}\nTone: Government / Training"
+                custom_instructions = f"{google_context}\n\nLanguage: {language}\nTone: Government / Training\nIMPORTANT: Write detailed bullet points (20-35 words each). If Hindi, write complete Hindi sentences."
             content_dict = generator.generate_ppt_content(
                 topic=user_input,
-                min_slides=6,
-                max_slides=6,
+                min_slides=10,
+                max_slides=15,
                 style=st.session_state.theme,
                 audience="general",
                 custom_instructions=custom_instructions,
-                bullets_per_slide=4,
-                bullet_word_limit=12,
+                bullets_per_slide=st.session_state.get('bullets_per_slide', 4),
+                bullet_word_limit=30,
                 tone="government/training",
                 required_phrases="",
                 forbidden_content=""
@@ -1051,8 +1496,22 @@ if user_input:
             if not ai_output:
                 ai_output = content_dict.get("error", "No AI output.")
             slides = parse_slides(ai_output)
-            # Show the AI output as chat
-            add_message("assistant", ai_output)
+
+            # ─────────────────────────────────────────────────────────────
+            # 🎨 INJECT AI-GENERATED SMART TITLES INTO FIRST SLIDE
+            # ─────────────────────────────────────────────────────────────
+            if slides and smart_titles.get('success'):
+                first_slide = slides[0]
+                # Override with AI-generated titles
+                first_slide["main_title"] = smart_titles['main_title']
+                first_slide["tagline"] = smart_titles['tagline']
+                first_slide["subtitle"] = smart_titles['subtitle']
+                print(f"[DEBUG] Smart titles injected into first slide for topic generation")
+
+            # Store AI output for collapsible display, show brief message in chat
+            st.session_state.full_ai_output = ai_output if len(ai_output) > 50 else None
+            brief_msg = f"✨ Generated {len(slides)} slides for **{user_input}**. View full content in the preview below."
+            add_message("assistant", brief_msg)
             # Save topic and slides to session for PPT generation
             st.session_state.topic = user_input
             st.session_state.parsed_slides = slides
@@ -1073,11 +1532,6 @@ if st.session_state.stage == 'generating':
             content = st.session_state.get('parsed_slides', [])
             ai_source = get_last_ai_source()
 
-            if content:
-                progress_placeholder.markdown(f"**Creating your presentation...**\n\n Found {len(content)} slides...")
-            else:
-                progress_placeholder.markdown("**Creating your presentation...**\n\n Processing content...")
-
             progress_placeholder.markdown("**Creating your presentation...**\n\n Creating Slide 1: Title...")
             progress_placeholder.markdown("**Creating your presentation...**\n\n Creating Slide 2: Introduction...")
             progress_placeholder.markdown("**Creating your presentation...**\n\n Creating Slide 3-5: Key Concepts...")
@@ -1090,7 +1544,7 @@ if st.session_state.stage == 'generating':
 
             if success:
                 st.session_state.ppt_path = ppt_path
-                st.session_state.stage = 'done'
+                st.session_state.stage = 'preview'  # Go to preview stage instead of done
                 st.session_state.ai_source = ai_source
                 # Update PPT generated count
                 try:
@@ -1103,7 +1557,6 @@ if st.session_state.stage == 'generating':
                 except:
                     pass
                 progress_placeholder.empty()
-                add_message("assistant", f"**Done!** Your presentation on **{st.session_state.topic}** is ready.\n\n*Powered by: {ai_source}*\n\nClick the download button below.")
                 st.rerun()
             else:
                 progress_placeholder.error("Failed to create presentation. Please try again.")
@@ -1114,6 +1567,119 @@ if st.session_state.stage == 'generating':
             st.session_state.stage = 'awaiting_topic'
             add_message("assistant", f"Sorry, there was an error. Please try again with a different topic.")
             st.rerun()
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📋 PREVIEW STAGE - Show slide preview with guided chat instructions
+# ═══════════════════════════════════════════════════════════════════════════════
+if st.session_state.stage == 'preview':
+    slides = st.session_state.get('parsed_slides', [])
+    ppt_path = st.session_state.get('ppt_path')
+
+    # Show success message
+    st.success(f"✅ Your presentation on **{st.session_state.topic}** is ready!")
+
+    # ─────────────────────────────────────────────────────────────────────────────
+    # 📄 COLLAPSIBLE AI OUTPUT SECTION
+    # ─────────────────────────────────────────────────────────────────────────────
+    full_ai_output = st.session_state.get('full_ai_output')
+    if full_ai_output:
+        with st.expander("📝 View Full AI Generated Content", expanded=False):
+            st.text_area("AI Output", full_ai_output, height=300, disabled=True, label_visibility="collapsed")
+
+    # ─────────────────────────────────────────────────────────────────────────────
+    # 📊 SLIDE PREVIEW SECTION - Visual Thumbnails (3 per row)
+    # ─────────────────────────────────────────────────────────────────────────────
+    st.markdown("### 📊 Slide Preview")
+
+    if slides:
+        # Display slides in a 3-column grid
+        cols_per_row = 3
+        for row_start in range(0, len(slides), cols_per_row):
+            cols = st.columns(cols_per_row)
+            for col_idx, slide_idx in enumerate(range(row_start, min(row_start + cols_per_row, len(slides)))):
+                slide = slides[slide_idx]
+                slide_num = slide.get('slide_number', slide_idx + 1)
+                title = slide.get('title', slide.get('main_title', f'Slide {slide_num}'))
+                bullets = slide.get('bullets', [])
+
+                with cols[col_idx]:
+                    # Create visual slide thumbnail card
+                    if slide_num == 1:
+                        # Title slide thumbnail - use main_title, or topic as fallback
+                        main_title = slide.get('main_title') or st.session_state.get('topic', 'Presentation')
+                        tagline = slide.get('tagline', '')
+                        subtitle = slide.get('subtitle', '')
+                        st.markdown(f"""
+                        <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 16px; border-radius: 12px; margin-bottom: 12px; min-height: 180px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
+                            <div style="font-size: 10px; opacity: 0.8; margin-bottom: 8px;">SLIDE {slide_num}</div>
+                            <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px; line-height: 1.3;">{main_title[:50]}{'...' if len(main_title) > 50 else ''}</div>
+                            {f'<div style="font-size: 11px; opacity: 0.9; margin-bottom: 4px;">{tagline[:40]}{"..." if len(tagline) > 40 else ""}</div>' if tagline else ''}
+                            {f'<div style="font-size: 10px; opacity: 0.7;">{subtitle[:35]}{"..." if len(subtitle) > 35 else ""}</div>' if subtitle else ''}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        # Content slide thumbnail
+                        bullet_preview = ''.join([f'<div style="font-size: 10px; color: #555; margin: 2px 0; line-height: 1.2;">• {b[:45]}{"..." if len(b) > 45 else ""}</div>' for b in bullets[:3]])
+                        st.markdown(f"""
+                        <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); padding: 16px; border-radius: 12px; margin-bottom: 12px; min-height: 180px; border: 2px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                            <div style="font-size: 10px; color: #6366f1; font-weight: bold; margin-bottom: 6px;">SLIDE {slide_num}</div>
+                            <div style="font-size: 12px; font-weight: bold; color: #1e293b; margin-bottom: 10px; line-height: 1.3;">{title[:40]}{'...' if len(title) > 40 else ''}</div>
+                            {bullet_preview if bullets else '<div style="font-size: 10px; color: #888;">No content</div>'}
+                        </div>
+                        """, unsafe_allow_html=True)
+    else:
+        st.warning("No slides found in preview.")
+
+    # ─────────────────────────────────────────────────────────────────────────────
+    # ⬇️ DOWNLOAD BUTTON
+    # ─────────────────────────────────────────────────────────────────────────────
+    st.markdown("---")
+    col_dl, col_new = st.columns([3, 1])
+    with col_dl:
+        if ppt_path and os.path.exists(ppt_path):
+            download_filename = os.path.basename(ppt_path)
+            with open(ppt_path, "rb") as f:
+                st.download_button(
+                    "⬇️ Download PPT",
+                    f.read(),
+                    file_name=download_filename,
+                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                    use_container_width=True,
+                    type="primary"
+                )
+    with col_new:
+        if st.button("🆕 New", use_container_width=True):
+            st.session_state.messages = []
+            st.session_state.stage = 'idle'
+            st.session_state.ppt_path = None
+            st.session_state.topic = None
+            st.session_state.parsed_slides = None
+            st.session_state.file_names = []
+            st.session_state.file_contents = []
+            st.rerun()
+
+    # ─────────────────────────────────────────────────────────────────────────────
+    # 💬 GUIDED CHAT INSTRUCTION (Very Important for UX)
+    # ─────────────────────────────────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); padding: 16px; border-radius: 12px; border: 1px solid #f59e0b;">
+        <h4 style="margin: 0 0 10px 0; color: #92400e;">💡 Want to make changes?</h4>
+        <p style="margin: 0 0 12px 0; color: #78350f; font-size: 14px;">
+            Type your request in the chat below and press Enter. Examples:
+        </p>
+        <ul style="margin: 0; padding-left: 20px; color: #78350f; font-size: 13px;">
+            <li>"Slide 3 mein bullets kam karo" (Reduce bullets in Slide 3)</li>
+            <li>"Slide 2 ko simple Hindi mein likho" (Rewrite Slide 2 in simple Hindi)</li>
+            <li>"Slide 5 ka title change karo" (Change title of Slide 5)</li>
+            <li>"Add more points in Slide 4"</li>
+            <li>"Make Slide 1 title shorter"</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Store that we're in preview mode for chat handling
+    st.session_state.in_preview_mode = True
 
 # Regeneration process (with new theme/slides)
 if st.session_state.stage == 'regenerating':
@@ -1139,8 +1705,8 @@ if st.session_state.stage == 'regenerating':
                     style=st.session_state.theme,
                     audience="general",
                     custom_instructions=custom_instructions,
-                    bullets_per_slide=4,
-                    bullet_word_limit=12,
+                    bullets_per_slide=st.session_state.get('bullets_per_slide', 4),
+                    bullet_word_limit=25,
                     tone="government/training",
                     required_phrases="",
                     forbidden_content=""
@@ -1196,9 +1762,22 @@ if st.session_state.stage == 'regenerating':
             st.session_state.stage = 'done'
             st.rerun()
 
-# Welcome message for new users (add to messages so it persists)
+# Simple welcome message (clean chatbot style - no buttons)
 if not st.session_state.messages and st.session_state.stage == 'idle':
-    st.session_state.messages.append({"role": "assistant", "content": "Welcome! Type a topic or upload a document to create your PPT."})
+    welcome_msg = """**Welcome to AI PPT Generator!** 🎉
+
+I can help you create professional PowerPoint presentations in minutes.
+
+**Here's how to get started:**
+
+📤 **Upload a document** - Click the ➕ button above and upload PDF, Word, or PowerPoint files
+
+📋 **Paste your content** - Copy and paste any text, article, or notes directly in the chat
+
+✍️ **Enter a topic** - Just type a topic like "AI in Healthcare" or "Digital India" and I'll create a full presentation
+
+**What would you like to do?** Just type below or use the buttons above! 👇"""
+    st.session_state.messages.append({"role": "assistant", "content": welcome_msg})
     st.rerun()
 
 # ============ VISITOR STATS (no footer) ============
@@ -1222,14 +1801,6 @@ if 'visit_counted' not in st.session_state:
         pass
 
 # Chatbox options row (below chat input)
-st.markdown("""
-<hr style='margin: 1.5rem 0 1rem 0; border: none; border-top: 2px solid #e5e5e5;'>
-<div style='display: flex; justify-content: center; align-items: center; gap: 32px; margin-bottom: 1rem;'>
-    <form action='' method='post' style='display:inline;'>
-        <button type='submit' name='refresh' style='background: none; border: none; cursor: pointer; font-size: 2rem;' title='Refresh Chat'>🔄</button>
-    </form>
-    <label for='file-upload' style='cursor: pointer; font-size: 2rem;' title='Upload Document'>➕</label>
-    <input id='file-upload' type='file' style='display: none;'>
-    <button onclick='window.parent.postMessage({themeToggle:true}, "*")' style='background: none; border: none; cursor: pointer; font-size: 2rem;' title='Toggle Theme'>🌗</button>
-</div>
-""", unsafe_allow_html=True)
+
+
+st.markdown('</div></div>', unsafe_allow_html=True)

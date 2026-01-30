@@ -656,11 +656,16 @@ def generate_ppt_from_template(script_text, output_path, template_path, use_ai=T
     
     return True
 
-def generate_beautiful_ppt(slides_or_text, output_path, color_scheme="corporate", use_ai=True, ai_instructions="", original_topic=None, template_path=None, min_slides=10, max_slides=20):
+def generate_beautiful_ppt(slides_or_text, output_path, color_scheme="corporate", use_ai=True, ai_instructions="", original_topic=None, template_path=None, min_slides=10, max_slides=20, generate_ai_images=False):
     """
     Generate beautiful PPT from structured slides or script text
+
+    Args:
+        generate_ai_images: If True, generates AI images for slides using Hugging Face
     """
     print(f"DEBUG: Function called with original_topic={original_topic}, template_path={template_path}, slides={min_slides}-{max_slides}")
+    print(f"DEBUG: AI Image Generation: {'ENABLED' if generate_ai_images else 'DISABLED'}")
+
     # If input is a list of slides (structured)
     if isinstance(slides_or_text, list) and all(isinstance(slide, dict) for slide in slides_or_text):
         slides = slides_or_text
@@ -670,7 +675,36 @@ def generate_beautiful_ppt(slides_or_text, output_path, color_scheme="corporate"
             print("[WARNING] Empty slides list, creating basic presentation")
             slides = [{"title": original_topic or "Presentation", "main_title": original_topic or "Presentation"}]
 
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # 🎨 AI IMAGE GENERATION (if enabled)
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        slide_images = {}
+        if generate_ai_images:
+            try:
+                print("\n" + "="*60)
+                print("🎨 AI IMAGE GENERATION STARTED")
+                print("="*60)
+
+                from ai_image_generator import generate_images_for_all_slides
+
+                slide_images = generate_images_for_all_slides(slides, output_dir="temp_images")
+
+                if slide_images:
+                    print(f"\n✅ Generated {len(slide_images)} AI images successfully!")
+                else:
+                    print("\n⚠️  No AI images generated (check API keys)")
+
+            except ImportError as e:
+                print(f"\n⚠️  AI Image Generator not available: {e}")
+            except Exception as e:
+                print(f"\n⚠️  Error generating AI images: {e}")
+
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # 📊 CREATE PPT WITH IMAGES
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
         designer = ModernPPTDesigner(scheme=color_scheme)
+
         # Title slide (use all available fields, pass separately)
         first = slides[0] if slides else {}
         main_title = first.get("main_title") or first.get("title") or original_topic or "Presentation"
@@ -678,12 +712,22 @@ def generate_beautiful_ppt(slides_or_text, output_path, color_scheme="corporate"
         subtitle = first.get("subtitle") or ""
         presented_by = first.get("presented_by") or ""
         designer.create_title_slide(main_title, tagline, subtitle, presented_by)
-        # Content slides
-        for slide in slides[1:]:
+
+        # Content slides with AI images (if available)
+        for idx, slide in enumerate(slides[1:], start=1):
             title = slide.get("title", "")
             bullets = slide.get("bullets", [])
+
             if title or bullets:  # Only create slide if has content
-                designer.create_content_slide_with_image(title, bullets, None)
+                # Check if we have an AI-generated image for this slide
+                image_path = slide_images.get(idx, None)
+
+                if image_path:
+                    print(f"📸 Adding AI image to slide {idx}: {title}")
+                    designer.create_content_slide_with_image(title, bullets, image_path)
+                else:
+                    designer.create_content_slide_with_image(title, bullets, None)
+
         designer.create_end_slide()
         designer.save(output_path)
         print(f"[OK] Beautiful PPT created: {output_path}")

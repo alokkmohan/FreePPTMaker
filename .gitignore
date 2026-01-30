@@ -43,3 +43,7 @@ QR-Code.jpeg
 
 # Cache
 .cache/
+
+# Old integration files with API examples
+INTEGRATION_GUIDE.py
+claude_content_analyzer.py

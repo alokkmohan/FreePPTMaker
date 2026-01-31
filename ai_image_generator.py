@@ -18,7 +18,7 @@ load_dotenv()
 
 # Hugging Face Configuration
 HF_API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
-HF_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN", "")
+HF_API_TOKEN = os.getenv("HUGGINGFACE_API_KEY", "")
 
 # Mistral Configuration for prompt generation
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")

@@ -7,9 +7,11 @@ Transform your ideas into beautiful presentations instantly! This Streamlit-base
 - 📝 **Multiple Input Methods**: Upload files (TXT, DOCX, MD) or paste text directly
 - 🤖 **AI Content Generation**: Just provide a topic - AI generates the full content
 - 🎨 **Beautiful Themes**: Choose from 4 professional color schemes (Ocean, Forest, Sunset, Corporate)
+- 🖼️ **AI Image Generation**: Automatically generates relevant images for slides using Hugging Face AI (see [AI_IMAGE_GENERATION_SETUP.md](AI_IMAGE_GENERATION_SETUP.md))
+- 🎯 **Theme Switcher**: Change design/theme after PPT generation with one click
 - 📊 **Smart Structuring**: AI intelligently organizes content into well-structured slides
 - 🎬 **YouTube Script Generation**: Automatically converts content to engaging YouTube scripts
-- 🖼️ **Slide Images**: Converts PPT slides to PNG images
+- 📸 **Slide Images**: Converts PPT slides to PNG images
 - 📱 **Mobile Responsive**: Beautiful UI that works on all devices
 
 ## 🚀 Quick Start

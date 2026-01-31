@@ -576,9 +576,9 @@ def generate_ppt(content, topic, theme):
 
     # If content is a list of slides, pass as structured
     if isinstance(content, list) and all(isinstance(slide, dict) for slide in content):
-        success = generate_beautiful_ppt(content, ppt_path, color_scheme=theme, use_ai=False, original_topic=topic, min_slides=6, max_slides=6)
+        success = generate_beautiful_ppt(content, ppt_path, color_scheme=theme, use_ai=False, original_topic=topic, min_slides=6, max_slides=6, generate_ai_images=True)
     else:
-        success = generate_beautiful_ppt(content, ppt_path, color_scheme=theme, use_ai=False, original_topic=topic, min_slides=6, max_slides=6)
+        success = generate_beautiful_ppt(content, ppt_path, color_scheme=theme, use_ai=False, original_topic=topic, min_slides=6, max_slides=6, generate_ai_images=True)
     return success, ppt_path
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1656,6 +1656,46 @@ if st.session_state.stage == 'preview':
             st.session_state.parsed_slides = None
             st.session_state.file_names = []
             st.session_state.file_contents = []
+            st.rerun()
+
+    # ─────────────────────────────────────────────────────────────────────────────
+    # 🎨 DESIGN CHANGE SECTION
+    # ─────────────────────────────────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### 🎨 Change Design / Theme")
+
+    col_theme1, col_theme2, col_theme3 = st.columns(3)
+
+    current_theme = st.session_state.get('theme', 'corporate')
+
+    with col_theme1:
+        if st.button(
+            "🏢 Corporate" + (" ✓" if current_theme == 'corporate' else ""),
+            use_container_width=True,
+            type="primary" if current_theme == 'corporate' else "secondary"
+        ):
+            st.session_state.theme = 'corporate'
+            st.session_state.stage = 'regenerating'
+            st.rerun()
+
+    with col_theme2:
+        if st.button(
+            "🎨 Modern" + (" ✓" if current_theme == 'modern' else ""),
+            use_container_width=True,
+            type="primary" if current_theme == 'modern' else "secondary"
+        ):
+            st.session_state.theme = 'modern'
+            st.session_state.stage = 'regenerating'
+            st.rerun()
+
+    with col_theme3:
+        if st.button(
+            "✨ Creative" + (" ✓" if current_theme == 'creative' else ""),
+            use_container_width=True,
+            type="primary" if current_theme == 'creative' else "secondary"
+        ):
+            st.session_state.theme = 'creative'
+            st.session_state.stage = 'regenerating'
             st.rerun()
 
     # ─────────────────────────────────────────────────────────────────────────────

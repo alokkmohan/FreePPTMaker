@@ -1544,6 +1544,10 @@ if user_input:
 
                 st.rerun()
 
+    # Show the user's message immediately in chat
+    with st.chat_message("user"):
+        st.markdown(user_input)
+
     # Show loading spinner with context-aware message
     # Different message for preview mode vs initial generation
     spinner_message = "✨ Processing your changes..." if st.session_state.get('in_preview_mode') else "🤖 AI is creating your presentation..."

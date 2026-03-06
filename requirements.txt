@@ -9,3 +9,5 @@ anthropic
 python-dotenv
 PyPDF2
 groq
+pandas
+openpyxl

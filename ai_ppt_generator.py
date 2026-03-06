@@ -7,11 +7,117 @@ import os
 import json
 import shutil
 import requests
+import urllib.parse
+import tempfile
 from pptx import Presentation
-from pptx.util import Inches, Pt
+from pptx.util import Inches, Pt, Emu
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🖼️ POLLINATIONS.AI FREE IMAGE GENERATION (No API Key Needed)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def generate_pollinations_image(prompt, width=800, height=600, output_path=None):
+    """
+    Generate an image using Pollinations.ai (free, no API key).
+    Returns the path to the downloaded image, or None on failure.
+    """
+    try:
+        encoded_prompt = urllib.parse.quote(prompt)
+        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&nologo=true"
+
+        response = requests.get(url, timeout=30, stream=True)
+        if response.status_code == 200 and len(response.content) > 1000:
+            if not output_path:
+                output_path = os.path.join(tempfile.gettempdir(), f"pollinations_{hash(prompt) & 0xFFFFFFFF}.jpg")
+            with open(output_path, 'wb') as f:
+                f.write(response.content)
+            print(f"[IMG] Pollinations image saved: {output_path}")
+            return output_path
+        else:
+            print(f"[IMG] Pollinations failed: status={response.status_code}")
+            return None
+    except Exception as e:
+        print(f"[IMG] Pollinations error: {e}")
+        return None
+
+
+def generate_slide_image_prompt(title, bullets=None):
+    """Create a good image prompt from slide title and bullets."""
+    prompt = f"Professional presentation illustration about {title}"
+    if bullets:
+        keywords = ' '.join(bullets[:2])[:100]
+        prompt += f", related to {keywords}"
+    prompt += ", clean modern style, no text, corporate colors, high quality"
+    return prompt
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📊 CHART GENERATION FROM DATA (Excel/CSV)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def create_chart_image(df, chart_type="bar", title="Chart", output_path=None):
+    """
+    Create a chart image from a pandas DataFrame.
+    Returns the path to the saved chart image, or None on failure.
+    """
+    try:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots(figsize=(8, 5))
+
+        # Use first column as labels, rest as data
+        if len(df.columns) >= 2:
+            label_col = df.columns[0]
+            data_cols = df.columns[1:]
+
+            # Limit rows for readability
+            plot_df = df.head(15)
+
+            if chart_type == "pie":
+                # Pie chart uses first data column only
+                values = plot_df[data_cols[0]].astype(float)
+                labels = plot_df[label_col].astype(str)
+                ax.pie(values, labels=labels, autopct='%1.1f%%', startangle=90,
+                       colors=plt.cm.Set3.colors[:len(values)])
+                ax.set_title(title, fontsize=14, fontweight='bold', pad=20)
+            elif chart_type == "line":
+                for col in data_cols:
+                    ax.plot(plot_df[label_col].astype(str), plot_df[col].astype(float),
+                            marker='o', linewidth=2, label=col)
+                ax.set_xlabel(label_col, fontsize=11)
+                ax.set_title(title, fontsize=14, fontweight='bold')
+                ax.legend()
+                plt.xticks(rotation=45, ha='right')
+            else:  # bar chart (default)
+                x_pos = range(len(plot_df))
+                bar_width = 0.8 / len(data_cols)
+                for i, col in enumerate(data_cols):
+                    offset = (i - len(data_cols)/2 + 0.5) * bar_width
+                    ax.bar([p + offset for p in x_pos], plot_df[col].astype(float),
+                           width=bar_width, label=col)
+                ax.set_xticks(x_pos)
+                ax.set_xticklabels(plot_df[label_col].astype(str), rotation=45, ha='right')
+                ax.set_title(title, fontsize=14, fontweight='bold')
+                ax.legend()
+
+        ax.grid(axis='y', alpha=0.3)
+        plt.tight_layout()
+
+        if not output_path:
+            output_path = os.path.join(tempfile.gettempdir(), f"chart_{hash(title) & 0xFFFFFFFF}.png")
+        fig.savefig(output_path, dpi=150, bbox_inches='tight', facecolor='white')
+        plt.close(fig)
+        print(f"[CHART] Chart saved: {output_path}")
+        return output_path
+    except Exception as e:
+        print(f"[CHART] Error creating chart: {e}")
+        return None
 
 # Try to import text processor for smart truncation
 try:
@@ -518,6 +624,40 @@ class ModernPPTDesigner:
 
         return slide
     
+    def create_chart_slide(self, title, chart_image_path):
+        """Create a slide with an embedded chart image"""
+        slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
+
+        # Header bar
+        header = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(10), Inches(1))
+        header.fill.solid()
+        header.fill.fore_color.rgb = self.colors["primary"]
+        header.line.fill.background()
+
+        # Title
+        title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.15), Inches(9), Inches(0.7))
+        tf = title_box.text_frame
+        tf.text = title[:70] if len(title) > 70 else title
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        p.font.size = Pt(32)
+        p.font.bold = True
+        p.font.color.rgb = RGBColor(255, 255, 255)
+        p.font.name = 'Calibri'
+
+        # Chart image centered
+        if chart_image_path and os.path.exists(chart_image_path):
+            try:
+                slide.shapes.add_picture(
+                    chart_image_path,
+                    Inches(1), Inches(1.2),
+                    width=Inches(8), height=Inches(4.2)
+                )
+            except Exception as e:
+                print(f"[CHART] Error adding chart to slide: {e}")
+
+        return slide
+
     def create_end_slide(self):
         """Beautiful thank you slide"""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
@@ -676,28 +816,27 @@ def generate_beautiful_ppt(slides_or_text, output_path, color_scheme="corporate"
             slides = [{"title": original_topic or "Presentation", "main_title": original_topic or "Presentation"}]
 
         # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        # 🎨 AI IMAGE GENERATION (if enabled)
+        # 🎨 AI IMAGE GENERATION via Pollinations.ai (FREE, No API Key)
         # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         slide_images = {}
         if generate_ai_images:
-            try:
-                print("\n" + "="*60)
-                print("🎨 AI IMAGE GENERATION STARTED")
-                print("="*60)
+            print("\n" + "="*60)
+            print("🎨 POLLINATIONS.AI IMAGE GENERATION STARTED")
+            print("="*60)
 
-                from ai_image_generator import generate_images_for_all_slides
+            for idx, slide in enumerate(slides[1:], start=1):
+                title = slide.get("title", "")
+                bullets = slide.get("bullets", [])
+                if title:
+                    prompt = generate_slide_image_prompt(title, bullets)
+                    img_path = generate_pollinations_image(prompt, width=800, height=500)
+                    if img_path:
+                        slide_images[idx] = img_path
 
-                slide_images = generate_images_for_all_slides(slides, output_dir="temp_images")
-
-                if slide_images:
-                    print(f"\n✅ Generated {len(slide_images)} AI images successfully!")
-                else:
-                    print("\n⚠️  No AI images generated (check API keys)")
-
-            except ImportError as e:
-                print(f"\n⚠️  AI Image Generator not available: {e}")
-            except Exception as e:
-                print(f"\n⚠️  Error generating AI images: {e}")
+            if slide_images:
+                print(f"\n✅ Generated {len(slide_images)} images via Pollinations.ai!")
+            else:
+                print("\n⚠️  No images generated")
 
         # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         # 📊 CREATE PPT WITH IMAGES
@@ -717,8 +856,13 @@ def generate_beautiful_ppt(slides_or_text, output_path, color_scheme="corporate"
         for idx, slide in enumerate(slides[1:], start=1):
             title = slide.get("title", "")
             bullets = slide.get("bullets", [])
+            chart_image = slide.get("chart_image_path")
 
-            if title or bullets:  # Only create slide if has content
+            if chart_image and os.path.exists(chart_image):
+                # Chart slide
+                print(f"📊 Adding chart slide {idx}: {title}")
+                designer.create_chart_slide(title, chart_image)
+            elif title or bullets:
                 # Check if we have an AI-generated image for this slide
                 image_path = slide_images.get(idx, None)
 

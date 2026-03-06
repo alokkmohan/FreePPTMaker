@@ -13,9 +13,15 @@ except:
     PPT_TO_IMAGES_AVAILABLE = False
 
 from content_generator import generate_content_from_topic
-from ai_ppt_generator import generate_beautiful_ppt
+from ai_ppt_generator import generate_beautiful_ppt, create_chart_image
 from multi_ai_generator import MultiAIGenerator, get_last_ai_source
 from web_search import search_google
+
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
 
 google_api_key = os.getenv("GOOGLE_API_KEY")
 google_cse_id = os.getenv("GOOGLE_CSE_ID")
@@ -96,12 +102,131 @@ st.markdown("""
     }
 
     .block-container {
-        padding-top: 0 !important;
+        padding-top: 90px !important;
         padding-left: 2rem !important;
         padding-right: 2rem !important;
-        padding-bottom: 180px !important;
+        padding-bottom: 220px !important;
         max-width: 1000px !important;
         margin: 0 auto !important;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       📱 MOBILE RESPONSIVE STYLES
+       ═══════════════════════════════════════════════════════════════════ */
+
+    @media (max-width: 768px) {
+        .block-container {
+            padding-top: 80px !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+            padding-bottom: 200px !important;
+        }
+
+        .header-container {
+            padding: 12px 16px;
+            border-radius: 0 0 14px 14px;
+        }
+
+        .header-title {
+            font-size: 22px !important;
+            letter-spacing: 0.5px;
+        }
+
+        .header-subtitle {
+            font-size: 10px;
+        }
+
+        [data-testid="stChatMessageContainer"] {
+            padding: 12px 10px !important;
+            border-radius: 12px;
+        }
+
+        .stChatMessage {
+            padding: 0.8rem !important;
+            font-size: 15px !important;
+            border-radius: 12px !important;
+        }
+
+        .stChatInput {
+            width: 95% !important;
+            bottom: 70px !important;
+            padding: 10px 12px !important;
+            border-radius: 14px !important;
+        }
+
+        .stChatInput textarea,
+        [data-testid="stChatInput"] textarea {
+            min-height: 50px !important;
+            font-size: 14px !important;
+        }
+
+        .stButton > button,
+        .stDownloadButton > button {
+            font-size: 14px !important;
+            padding: 10px 16px !important;
+        }
+
+        .footer-container {
+            padding: 10px 12px !important;
+            font-size: 11px !important;
+            bottom: 0 !important;
+        }
+
+        .icon-btn-container button {
+            width: 40px !important;
+            height: 40px !important;
+            min-width: 40px !important;
+            max-width: 40px !important;
+            font-size: 16px !important;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .header-title {
+            font-size: 18px !important;
+        }
+
+        .block-container {
+            padding-top: 70px !important;
+        }
+
+        .stChatInput {
+            bottom: 60px !important;
+        }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       🦶 FOOTER STYLES
+       ═══════════════════════════════════════════════════════════════════ */
+
+    .footer-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--accent-gradient);
+        color: #ffffff;
+        text-align: center;
+        padding: 8px 16px;
+        font-size: 13px;
+        z-index: 9998;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .footer-container span {
+        opacity: 0.9;
+    }
+
+    .footer-stat {
+        background: rgba(255,255,255,0.2);
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 12px;
     }
 
     /* ═══════════════════════════════════════════════════════════════════
@@ -110,25 +235,34 @@ st.markdown("""
 
     .header-container {
         background: var(--accent-gradient);
-        padding: 20px 36px;
+        padding: 16px 24px;
         border-radius: 0 0 20px 20px;
         margin-bottom: 28px;
         box-shadow: var(--shadow-lg);
         text-align: center;
         width: 100%;
-        position: sticky;
+        position: fixed;
         top: 0;
-        z-index: 999;
+        left: 0;
+        right: 0;
+        z-index: 9999;
     }
 
     .header-title {
-        font-size: 38px;
+        font-size: 32px;
         font-weight: 900;
         color: #ffffff !important;
         margin: 0;
         line-height: 1.1;
         text-shadow: 0 2px 12px rgba(0,0,0,0.4);
         letter-spacing: 1px;
+    }
+
+    .header-subtitle {
+        font-size: 12px;
+        color: rgba(255,255,255,0.85);
+        margin-top: 4px;
+        font-weight: 400;
     }
 
     /* ═══════════════════════════════════════════════════════════════════
@@ -403,7 +537,7 @@ st.markdown("""
 # ═══════════════════════════════════════════════════════════════════════════
 
 st.markdown('<div class="main-container">', unsafe_allow_html=True)
-st.markdown('<div class="header-container"><h1 class="header-title">FREE PPT Generator</h1></div>', unsafe_allow_html=True)
+st.markdown('<div class="header-container"><h1 class="header-title">FREE PPT Generator</h1><div class="header-subtitle">AI-Powered Presentation Maker | No Login Required</div></div>', unsafe_allow_html=True)
 st.markdown('<div class="content-container">', unsafe_allow_html=True)
 
 
@@ -441,6 +575,10 @@ if 'file_names' not in st.session_state:
     st.session_state.file_names = []
 if 'file_contents' not in st.session_state:
     st.session_state.file_contents = []
+if 'chart_data' not in st.session_state:
+    st.session_state.chart_data = None  # Stores {'df': DataFrame, 'filename': str}
+if 'chart_settings' not in st.session_state:
+    st.session_state.chart_settings = None  # Stores {'chart_type': str, 'columns': list}
 
 # Helper functions
 def add_message(role, content):
@@ -573,6 +711,29 @@ def generate_ppt(content, topic, theme):
     date_str = datetime.now().strftime("%Y%m%d")
     ppt_filename = f"{topic_slug}_{date_str}.pptx"
     ppt_path = os.path.join(output_folder, ppt_filename)
+
+    # ── INJECT CHART SLIDE if Excel/CSV data is available ──
+    if isinstance(content, list) and st.session_state.get('chart_data') and PANDAS_AVAILABLE:
+        chart_data = st.session_state.chart_data
+        chart_settings = st.session_state.get('chart_settings', {})
+        chart_type = chart_settings.get('chart_type', 'bar')
+        chart_title = chart_settings.get('chart_title', f"Data from {chart_data['filename']}")
+
+        chart_img = create_chart_image(
+            chart_data['df'],
+            chart_type=chart_type,
+            title=chart_title
+        )
+        if chart_img:
+            # Insert chart slide after the first (title) slide
+            chart_slide = {
+                "slide_number": 2,
+                "title": chart_title,
+                "bullets": [],
+                "chart_image_path": chart_img
+            }
+            content.insert(1, chart_slide)
+            print(f"[CHART] Injected chart slide: {chart_title}")
 
     # If content is a list of slides, pass as structured
     if isinstance(content, list) and all(isinstance(slide, dict) for slide in content):
@@ -865,7 +1026,7 @@ if 'uploaded_preview' not in st.session_state:
 # File upload section
 if st.session_state.show_uploader:
     st.markdown("---")
-    st.markdown("**📁 Upload Document (PDF, Word, Text, PPT)**")
+    st.markdown("**📁 Upload Document (PDF, Word, Text, PPT, Excel, CSV)**")
     uploaded_files = document_upload_component()
     if uploaded_files:
         progress = st.progress(0, text="Processing files...")
@@ -930,6 +1091,26 @@ if st.session_state.show_uploader:
                 except Exception as e:
                     print(f"[DEBUG] PPTX extraction error: {e}")
                     st.error(f"Could not read PPTX file: {file_name}")
+            elif ext in ['xlsx', 'xls', 'csv']:
+                # Excel/CSV handling - store DataFrame for chart generation
+                if PANDAS_AVAILABLE:
+                    try:
+                        import io
+                        if ext == 'csv':
+                            df = pd.read_csv(io.BytesIO(file_content))
+                        else:
+                            df = pd.read_excel(io.BytesIO(file_content))
+                        # Store chart data for later use
+                        st.session_state.chart_data = {'df': df, 'filename': file_name}
+                        content = f"[Excel/CSV Data: {file_name} - {len(df)} rows, {len(df.columns)} columns: {', '.join(df.columns.tolist())}]"
+                        print(f"[DEBUG] Excel/CSV loaded: {len(df)} rows, columns: {df.columns.tolist()}")
+                    except Exception as e:
+                        print(f"[DEBUG] Excel/CSV read error: {e}")
+                        st.error(f"Could not read {ext.upper()} file: {file_name}")
+                        content = f"[Could not read {file_name}]"
+                else:
+                    st.error("pandas not installed. Run: pip install pandas openpyxl")
+                    content = f"[File {file_name} - pandas required]"
             else:
                 content = f"[File {file_name} uploaded]"
             st.session_state.file_names.append(file_name)
@@ -951,6 +1132,34 @@ if st.session_state.awaiting_upload_confirm and st.session_state.get('file_names
             st.session_state.show_uploader = True
             st.session_state.awaiting_upload_confirm = False
             st.rerun()
+    # ─── CHART CONFIGURATION (if Excel/CSV was uploaded) ───
+    chart_data = st.session_state.get('chart_data')
+    if chart_data and PANDAS_AVAILABLE:
+        df = chart_data['df']
+        st.markdown("---")
+        st.markdown(f"**📊 Chart Options for {chart_data['filename']}**")
+        st.dataframe(df.head(5), use_container_width=True)
+
+        numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+        all_cols = df.columns.tolist()
+
+        if numeric_cols and len(all_cols) >= 2:
+            chart_col1, chart_col2 = st.columns(2)
+            with chart_col1:
+                chart_type = st.selectbox("Chart Type", ["bar", "pie", "line"],
+                                          key="chart_type_select",
+                                          format_func=lambda x: {"bar": "Bar Chart", "pie": "Pie Chart", "line": "Line Chart"}[x])
+            with chart_col2:
+                chart_title = st.text_input("Chart Title", value=f"Data from {chart_data['filename']}",
+                                            key="chart_title_input")
+
+            st.session_state.chart_settings = {
+                'chart_type': chart_type,
+                'chart_title': chart_title
+            }
+        else:
+            st.warning("Need at least 1 label column and 1 numeric column for charts.")
+
     with col2:
         if st.button("🚀 Generate PPT", key="generate_ppt_btn_main", use_container_width=True, type="primary"):
             # Combine all file contents for AI analysis
@@ -1820,9 +2029,9 @@ I can help you create professional PowerPoint presentations in minutes.
     st.session_state.messages.append({"role": "assistant", "content": welcome_msg})
     st.rerun()
 
-# ============ VISITOR STATS (no footer) ============
+# ============ VISITOR STATS + FOOTER ============
 import json
-stats_file = "visitor_count.json"
+stats_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "visitor_count.json")
 try:
     with open(stats_file, 'r') as f:
         stats = json.load(f)
@@ -1840,7 +2049,17 @@ if 'visit_counted' not in st.session_state:
     except:
         pass
 
-# Chatbox options row (below chat input)
+total_users = stats.get("total_visits", 0)
+total_ppts = stats.get("ppt_generated", 0)
 
+# Footer with user counter
+st.markdown(f'''
+<div class="footer-container">
+    <span>Made with AI</span>
+    <span class="footer-stat">Users: {total_users}</span>
+    <span class="footer-stat">PPTs Created: {total_ppts}</span>
+    <span>FREE PPT Generator</span>
+</div>
+''', unsafe_allow_html=True)
 
 st.markdown('</div></div>', unsafe_allow_html=True)

@@ -1,6 +1,6 @@
 import streamlit as st
 
-def document_upload_component(label="Upload Document", key="quick_file_upload", types=["txt", "docx", "pdf", "pptx"]):
+def document_upload_component(label="Upload Document", key="quick_file_upload", types=["txt", "docx", "pdf", "pptx", "xlsx", "xls", "csv"]):
     """
     A reusable document upload component for Streamlit.
     Returns (file_name, file_content) or (None, None) if nothing uploaded.

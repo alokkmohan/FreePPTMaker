@@ -1788,93 +1788,11 @@ if st.session_state.stage == 'preview':
     st.success(f"✅ Your presentation on **{st.session_state.topic}** is ready!")
 
     # ─────────────────────────────────────────────────────────────────────────────
-    # 📄 COLLAPSIBLE AI OUTPUT SECTION
+    # 🎨 CHANGE THEME SECTION (TOP - easy to access)
     # ─────────────────────────────────────────────────────────────────────────────
-    full_ai_output = st.session_state.get('full_ai_output')
-    if full_ai_output:
-        with st.expander("📝 View Full AI Generated Content", expanded=False):
-            st.text_area("AI Output", full_ai_output, height=300, disabled=True, label_visibility="collapsed")
-
-    # ─────────────────────────────────────────────────────────────────────────────
-    # 📊 SLIDE PREVIEW SECTION - Visual Thumbnails (3 per row)
-    # ─────────────────────────────────────────────────────────────────────────────
-    st.markdown("### 📊 Slide Preview")
-
-    if slides:
-        # Display slides in a 3-column grid
-        cols_per_row = 3
-        for row_start in range(0, len(slides), cols_per_row):
-            cols = st.columns(cols_per_row)
-            for col_idx, slide_idx in enumerate(range(row_start, min(row_start + cols_per_row, len(slides)))):
-                slide = slides[slide_idx]
-                slide_num = slide.get('slide_number', slide_idx + 1)
-                title = slide.get('title', slide.get('main_title', f'Slide {slide_num}'))
-                bullets = slide.get('bullets', [])
-
-                with cols[col_idx]:
-                    # Create visual slide thumbnail card
-                    if slide_num == 1:
-                        # Title slide thumbnail - use main_title, or topic as fallback
-                        main_title = slide.get('main_title') or st.session_state.get('topic', 'Presentation')
-                        tagline = slide.get('tagline', '')
-                        subtitle = slide.get('subtitle', '')
-                        st.markdown(f"""
-                        <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 16px; border-radius: 12px; margin-bottom: 12px; min-height: 180px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
-                            <div style="font-size: 10px; opacity: 0.8; margin-bottom: 8px;">SLIDE {slide_num}</div>
-                            <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px; line-height: 1.3;">{main_title[:50]}{'...' if len(main_title) > 50 else ''}</div>
-                            {f'<div style="font-size: 11px; opacity: 0.9; margin-bottom: 4px;">{tagline[:40]}{"..." if len(tagline) > 40 else ""}</div>' if tagline else ''}
-                            {f'<div style="font-size: 10px; opacity: 0.7;">{subtitle[:35]}{"..." if len(subtitle) > 35 else ""}</div>' if subtitle else ''}
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        # Content slide thumbnail
-                        bullet_preview = ''.join([f'<div style="font-size: 10px; color: #555; margin: 2px 0; line-height: 1.2;">• {b[:45]}{"..." if len(b) > 45 else ""}</div>' for b in bullets[:3]])
-                        st.markdown(f"""
-                        <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); padding: 16px; border-radius: 12px; margin-bottom: 12px; min-height: 180px; border: 2px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                            <div style="font-size: 10px; color: #6366f1; font-weight: bold; margin-bottom: 6px;">SLIDE {slide_num}</div>
-                            <div style="font-size: 12px; font-weight: bold; color: #1e293b; margin-bottom: 10px; line-height: 1.3;">{title[:40]}{'...' if len(title) > 40 else ''}</div>
-                            {bullet_preview if bullets else '<div style="font-size: 10px; color: #888;">No content</div>'}
-                        </div>
-                        """, unsafe_allow_html=True)
-    else:
-        st.warning("No slides found in preview.")
-
-    # ─────────────────────────────────────────────────────────────────────────────
-    # ⬇️ DOWNLOAD BUTTON
-    # ─────────────────────────────────────────────────────────────────────────────
-    st.markdown("---")
-    col_dl, col_new = st.columns([3, 1])
-    with col_dl:
-        if ppt_path and os.path.exists(ppt_path):
-            download_filename = os.path.basename(ppt_path)
-            with open(ppt_path, "rb") as f:
-                st.download_button(
-                    "⬇️ Download PPT",
-                    f.read(),
-                    file_name=download_filename,
-                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                    use_container_width=True,
-                    type="primary"
-                )
-    with col_new:
-        if st.button("🆕 New", use_container_width=True):
-            st.session_state.messages = []
-            st.session_state.stage = 'idle'
-            st.session_state.ppt_path = None
-            st.session_state.topic = None
-            st.session_state.parsed_slides = None
-            st.session_state.file_names = []
-            st.session_state.file_contents = []
-            st.rerun()
-
-    # ─────────────────────────────────────────────────────────────────────────────
-    # 🎨 DESIGN CHANGE SECTION
-    # ─────────────────────────────────────────────────────────────────────────────
-    st.markdown("---")
     st.markdown("### 🎨 Change Design / Theme")
 
     col_theme1, col_theme2, col_theme3 = st.columns(3)
-
     current_theme = st.session_state.get('theme', 'corporate')
 
     with col_theme1:
@@ -1908,24 +1826,100 @@ if st.session_state.stage == 'preview':
             st.rerun()
 
     # ─────────────────────────────────────────────────────────────────────────────
-    # 💬 GUIDED CHAT INSTRUCTION (Very Important for UX)
+    # 📄 COLLAPSIBLE AI OUTPUT SECTION
+    # ─────────────────────────────────────────────────────────────────────────────
+    full_ai_output = st.session_state.get('full_ai_output')
+    if full_ai_output:
+        with st.expander("📝 View Full AI Generated Content", expanded=False):
+            st.text_area("AI Output", full_ai_output, height=300, disabled=True, label_visibility="collapsed")
+
+    # ─────────────────────────────────────────────────────────────────────────────
+    # 📊 SLIDE PREVIEW SECTION - Visual Thumbnails (3 per row)
+    # ─────────────────────────────────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### 📊 Slide Preview")
+
+    if slides:
+        # Display slides in a 3-column grid
+        cols_per_row = 3
+        for row_start in range(0, len(slides), cols_per_row):
+            cols = st.columns(cols_per_row)
+            for col_idx, slide_idx in enumerate(range(row_start, min(row_start + cols_per_row, len(slides)))):
+                slide = slides[slide_idx]
+                slide_num = slide.get('slide_number', slide_idx + 1)
+                title = slide.get('title', slide.get('main_title', f'Slide {slide_num}'))
+                bullets = slide.get('bullets', [])
+
+                with cols[col_idx]:
+                    if slide_num == 1:
+                        main_title = slide.get('main_title') or st.session_state.get('topic', 'Presentation')
+                        tagline = slide.get('tagline', '')
+                        subtitle = slide.get('subtitle', '')
+                        st.markdown(f"""
+                        <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 16px; border-radius: 12px; margin-bottom: 12px; min-height: 180px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
+                            <div style="font-size: 10px; opacity: 0.8; margin-bottom: 8px;">SLIDE {slide_num}</div>
+                            <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px; line-height: 1.3;">{main_title[:50]}{'...' if len(main_title) > 50 else ''}</div>
+                            {f'<div style="font-size: 11px; opacity: 0.9; margin-bottom: 4px;">{tagline[:40]}{"..." if len(tagline) > 40 else ""}</div>' if tagline else ''}
+                            {f'<div style="font-size: 10px; opacity: 0.7;">{subtitle[:35]}{"..." if len(subtitle) > 35 else ""}</div>' if subtitle else ''}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        bullet_preview = ''.join([f'<div style="font-size: 10px; color: #555; margin: 2px 0; line-height: 1.2;">• {b[:45]}{"..." if len(b) > 45 else ""}</div>' for b in bullets[:3]])
+                        st.markdown(f"""
+                        <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); padding: 16px; border-radius: 12px; margin-bottom: 12px; min-height: 180px; border: 2px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                            <div style="font-size: 10px; color: #6366f1; font-weight: bold; margin-bottom: 6px;">SLIDE {slide_num}</div>
+                            <div style="font-size: 12px; font-weight: bold; color: #1e293b; margin-bottom: 10px; line-height: 1.3;">{title[:40]}{'...' if len(title) > 40 else ''}</div>
+                            {bullet_preview if bullets else '<div style="font-size: 10px; color: #888;">No content</div>'}
+                        </div>
+                        """, unsafe_allow_html=True)
+    else:
+        st.warning("No slides found in preview.")
+
+    # ─────────────────────────────────────────────────────────────────────────────
+    # 💬 GUIDED CHAT INSTRUCTION
     # ─────────────────────────────────────────────────────────────────────────────
     st.markdown("---")
     st.markdown("""
     <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); padding: 16px; border-radius: 12px; border: 1px solid #f59e0b;">
         <h4 style="margin: 0 0 10px 0; color: #92400e;">💡 Want to make changes?</h4>
         <p style="margin: 0 0 12px 0; color: #78350f; font-size: 14px;">
-            Type your request in the chat below and press Enter. Examples:
+            Type in the chat below. Examples:
         </p>
         <ul style="margin: 0; padding-left: 20px; color: #78350f; font-size: 13px;">
-            <li>"Slide 3 mein bullets kam karo" (Reduce bullets in Slide 3)</li>
-            <li>"Slide 2 ko simple Hindi mein likho" (Rewrite Slide 2 in simple Hindi)</li>
-            <li>"Slide 5 ka title change karo" (Change title of Slide 5)</li>
+            <li>"Slide 3 mein bullets kam karo"</li>
+            <li>"Slide 2 ko simple Hindi mein likho"</li>
             <li>"Add more points in Slide 4"</li>
-            <li>"Make Slide 1 title shorter"</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
+
+    # ─────────────────────────────────────────────────────────────────────────────
+    # ⬇️ DOWNLOAD BUTTON (BOTTOM - always visible, big & prominent)
+    # ─────────────────────────────────────────────────────────────────────────────
+    st.markdown("---")
+    col_dl, col_new = st.columns([3, 1])
+    with col_dl:
+        if ppt_path and os.path.exists(ppt_path):
+            download_filename = os.path.basename(ppt_path)
+            with open(ppt_path, "rb") as f:
+                st.download_button(
+                    "⬇️ Download PPT",
+                    f.read(),
+                    file_name=download_filename,
+                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                    use_container_width=True,
+                    type="primary"
+                )
+    with col_new:
+        if st.button("🆕 New", use_container_width=True):
+            st.session_state.messages = []
+            st.session_state.stage = 'idle'
+            st.session_state.ppt_path = None
+            st.session_state.topic = None
+            st.session_state.parsed_slides = None
+            st.session_state.file_names = []
+            st.session_state.file_contents = []
+            st.rerun()
 
     # Store that we're in preview mode for chat handling
     st.session_state.in_preview_mode = True

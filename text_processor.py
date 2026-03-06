@@ -15,11 +15,8 @@ def fix_broken_words(text):
     # Pattern: lowercase + space + lowercase (in middle of word)
     # e.g., "Consult ant" -> "Consultant", "Specialis t" -> "Specialist"
 
-    # Fix pattern: word ending with space + 1-3 letters
-    text = re.sub(r'(\w+)\s+([a-z]{1,3})(?=\s|$|[.,;:!?])', r'\1\2', text)
-
-    # Fix pattern: capital letter + space + lowercase continuation
-    text = re.sub(r'([A-Z][a-z]+)\s+([a-z]{1,4})(?=\s|$|[.,;:!?])', r'\1\2', text)
+    # NOTE: Removed aggressive regex patterns that merged normal words like "is a" -> "isa"
+    # Only fix explicitly known broken words (see dictionary below)
 
     # Fix common broken words explicitly
     broken_words = {

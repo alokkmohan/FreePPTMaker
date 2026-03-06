@@ -20,39 +20,64 @@ from pptx.enum.shapes import MSO_SHAPE
 # 🖼️ POLLINATIONS.AI FREE IMAGE GENERATION (No API Key Needed)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def generate_pollinations_image(prompt, width=800, height=600, output_path=None):
+def generate_slide_image(title, bullets=None, width=800, height=500, output_path=None):
     """
-    Generate an image using Pollinations.ai (free, no API key).
+    Generate a relevant image for a slide using free APIs (no API key needed).
+    Tries multiple sources: Pollinations.ai -> LoremFlickr -> Picsum.
     Returns the path to the downloaded image, or None on failure.
     """
-    try:
-        encoded_prompt = urllib.parse.quote(prompt)
-        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&nologo=true"
+    if not output_path:
+        output_path = os.path.join(tempfile.gettempdir(), f"slide_img_{hash(title) & 0xFFFFFFFF}.jpg")
 
-        response = requests.get(url, timeout=30, stream=True)
-        if response.status_code == 200 and len(response.content) > 1000:
-            if not output_path:
-                output_path = os.path.join(tempfile.gettempdir(), f"pollinations_{hash(prompt) & 0xFFFFFFFF}.jpg")
+    # Extract 2-3 keywords from title for image search
+    stop_words = {'the', 'a', 'an', 'in', 'on', 'of', 'and', 'for', 'to', 'is', 'are', 'was',
+                  'with', 'by', 'at', 'from', 'its', 'this', 'that', 'how', 'what', 'why',
+                  'ka', 'ki', 'ke', 'se', 'ko', 'hai', 'aur', 'mein', 'par', 'ya'}
+    words = re.sub(r'[^\w\s]', '', title.lower()).split()
+    keywords = [w for w in words if w not in stop_words and len(w) > 2][:3]
+    keyword_str = ','.join(keywords) if keywords else 'business,presentation'
+
+    # Method 1: Pollinations.ai (AI-generated)
+    try:
+        prompt = urllib.parse.quote(f"professional illustration {title[:60]}, modern clean style, no text")
+        url = f"https://image.pollinations.ai/prompt/{prompt}?width={width}&height={height}&nologo=true"
+        response = requests.get(url, timeout=20)
+        if response.status_code == 200 and len(response.content) > 5000:
+            content_type = response.headers.get('content-type', '')
+            if 'image' in content_type or len(response.content) > 10000:
+                with open(output_path, 'wb') as f:
+                    f.write(response.content)
+                print(f"[IMG] Pollinations OK: {output_path}")
+                return output_path
+    except Exception as e:
+        print(f"[IMG] Pollinations skip: {e}")
+
+    # Method 2: LoremFlickr (keyword-based real photos)
+    try:
+        url = f"https://loremflickr.com/{width}/{height}/{keyword_str}"
+        response = requests.get(url, timeout=15, allow_redirects=True)
+        if response.status_code == 200 and len(response.content) > 5000:
             with open(output_path, 'wb') as f:
                 f.write(response.content)
-            print(f"[IMG] Pollinations image saved: {output_path}")
+            print(f"[IMG] LoremFlickr OK ({keyword_str}): {output_path}")
             return output_path
-        else:
-            print(f"[IMG] Pollinations failed: status={response.status_code}")
-            return None
     except Exception as e:
-        print(f"[IMG] Pollinations error: {e}")
-        return None
+        print(f"[IMG] LoremFlickr skip: {e}")
 
+    # Method 3: Picsum (random high-quality photos as fallback)
+    try:
+        url = f"https://picsum.photos/{width}/{height}"
+        response = requests.get(url, timeout=15, allow_redirects=True)
+        if response.status_code == 200 and len(response.content) > 5000:
+            with open(output_path, 'wb') as f:
+                f.write(response.content)
+            print(f"[IMG] Picsum OK: {output_path}")
+            return output_path
+    except Exception as e:
+        print(f"[IMG] Picsum skip: {e}")
 
-def generate_slide_image_prompt(title, bullets=None):
-    """Create a good image prompt from slide title and bullets."""
-    prompt = f"Professional presentation illustration about {title}"
-    if bullets:
-        keywords = ' '.join(bullets[:2])[:100]
-        prompt += f", related to {keywords}"
-    prompt += ", clean modern style, no text, corporate colors, high quality"
-    return prompt
+    print(f"[IMG] All sources failed for: {title[:40]}")
+    return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -142,7 +167,7 @@ except ImportError:
 # ISSUE 5: Clean markdown symbols from text
 import re
 def clean_markdown(text):
-    """Remove markdown formatting symbols from text"""
+    """Remove markdown formatting symbols from text and fix spacing"""
     if not text:
         return ""
     # Remove bold markers: **text** or __text__
@@ -159,8 +184,26 @@ def clean_markdown(text):
     text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
     # Remove bullet markers at start (will be added back as proper bullets)
     text = re.sub(r'^[\-\*•]\s*', '', text.strip())
-    # Clean extra whitespace
-    text = ' '.join(text.split())
+
+    # ── FIX SPACING ISSUES ──
+    # Add space after period/comma if missing (e.g., "word.Next" -> "word. Next")
+    text = re.sub(r'([a-zA-Z\u0900-\u097F])\.([A-Z\u0900-\u097F])', r'\1. \2', text)
+    text = re.sub(r'([a-zA-Z\u0900-\u097F]),([a-zA-Z\u0900-\u097F])', r'\1, \2', text)
+    # Add space after colon/semicolon if missing
+    text = re.sub(r'([a-zA-Z\u0900-\u097F]):([a-zA-Z\u0900-\u097F])', r'\1: \2', text)
+    text = re.sub(r'([a-zA-Z\u0900-\u097F]);([a-zA-Z\u0900-\u097F])', r'\1; \2', text)
+    # Fix missing space between lowercase and uppercase (camelCase splits)
+    # e.g., "healthcareArtificial" -> "healthcare Artificial"
+    text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+    # Add space after closing paren if missing before a letter
+    text = re.sub(r'\)([a-zA-Z\u0900-\u097F])', r') \1', text)
+    # Add space before opening paren if missing after a letter
+    text = re.sub(r'([a-zA-Z\u0900-\u097F])\(', r'\1 (', text)
+    # Fix multiple spaces
+    text = re.sub(r'\s+', ' ', text)
+    # Fix space before punctuation
+    text = text.replace(' ,', ',').replace(' .', '.').replace(' :', ':').replace(' ;', ';')
+
     return text.strip()
 
 # Try to import image generator
@@ -332,7 +375,7 @@ class ModernPPTDesigner:
         slide.shapes._spTree.insert(2, bg._element)
     
     def create_title_slide(self, main_title, tagline=None, subtitle=None, presented_by=None):
-        """Beautiful title slide with separate fields to prevent overflow"""
+        """Beautiful title slide with dynamic sizing to prevent overflow"""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
         # Add decorative shape at top
         shape = slide.shapes.add_shape(
@@ -344,55 +387,89 @@ class ModernPPTDesigner:
         shape.fill.fore_color.rgb = self.colors["primary"]
         shape.line.fill.background()
 
-        y = 1.3
+        # Calculate how many sections we have to fit
+        sections = 1  # main title always present
+        if tagline: sections += 1
+        if subtitle: sections += 1
+        if presented_by: sections += 1
+
+        # Available space: slide height (5.625) - top bar (1.2) - bottom margin (0.3) = 4.125 inches
+        available_height = 4.125
+        main_title = main_title or "Presentation"
+
+        # Dynamic title font size based on text length
+        if len(main_title) > 80:
+            title_font = 24
+            title_height = 1.0
+        elif len(main_title) > 50:
+            title_font = 30
+            title_height = 1.0
+        elif len(main_title) > 30:
+            title_font = 36
+            title_height = 1.1
+        else:
+            title_font = 40
+            title_height = 1.2
+
+        # Shrink further if many sections need to fit
+        if sections >= 4:
+            title_font = min(title_font, 32)
+            title_height = min(title_height, 0.9)
+
+        y = 1.4
         # Main Title
-        title_box = slide.shapes.add_textbox(Inches(0.5), Inches(y), Inches(9), Inches(1.2))
+        title_box = slide.shapes.add_textbox(Inches(0.5), Inches(y), Inches(9), Inches(title_height))
         tf = title_box.text_frame
-        tf.text = main_title or "Presentation"
+        tf.word_wrap = True
+        tf.text = main_title
         p = tf.paragraphs[0]
-        p.font.size = Pt(40)
+        p.font.size = Pt(title_font)
         p.font.bold = True
         p.font.color.rgb = self.colors["text"]
         p.font.name = 'Calibri'
-        y += 1.1
+        y += title_height
 
         # Tagline (if present)
         if tagline:
-            tagline_box = slide.shapes.add_textbox(Inches(0.5), Inches(y), Inches(9), Inches(0.7))
+            tag_font = 20 if sections >= 4 else 24
+            tagline_text = tagline[:100] if len(tagline) > 100 else tagline
+            tagline_box = slide.shapes.add_textbox(Inches(0.5), Inches(y), Inches(9), Inches(0.6))
             tf_tag = tagline_box.text_frame
-            tf_tag.text = tagline
+            tf_tag.word_wrap = True
+            tf_tag.text = tagline_text
             p_tag = tf_tag.paragraphs[0]
-            p_tag.font.size = Pt(24)
+            p_tag.font.size = Pt(tag_font)
             p_tag.font.color.rgb = self.colors["secondary"]
             p_tag.font.name = 'Calibri'
             p_tag.font.italic = True
-            y += 0.7
+            y += 0.6
 
         # Subtitle (if present)
         if subtitle:
-            subtitle_box = slide.shapes.add_textbox(Inches(0.5), Inches(y), Inches(9), Inches(0.7))
+            sub_font = 16 if sections >= 4 else 20
+            subtitle_text = subtitle[:120] if len(subtitle) > 120 else subtitle
+            subtitle_box = slide.shapes.add_textbox(Inches(0.5), Inches(y), Inches(9), Inches(0.6))
             tf_sub = subtitle_box.text_frame
-            tf_sub.text = subtitle
+            tf_sub.word_wrap = True
+            tf_sub.text = subtitle_text
             p_sub = tf_sub.paragraphs[0]
-            p_sub.font.size = Pt(20)
+            p_sub.font.size = Pt(sub_font)
             p_sub.font.color.rgb = self.colors["secondary"]
             p_sub.font.name = 'Calibri'
-            y += 0.7
+            y += 0.6
 
         # Presented by (if present)
         if presented_by:
-            pb_box = slide.shapes.add_textbox(Inches(0.5), Inches(y), Inches(9), Inches(0.6))
+            pb_font = 14 if sections >= 4 else 18
+            pb_box = slide.shapes.add_textbox(Inches(0.5), Inches(y), Inches(9), Inches(0.5))
             tf_pb = pb_box.text_frame
+            tf_pb.word_wrap = True
             tf_pb.text = f"Presented by: {presented_by}"
             p_pb = tf_pb.paragraphs[0]
-            p_pb.font.size = Pt(18)
+            p_pb.font.size = Pt(pb_font)
             p_pb.font.color.rgb = self.colors["text"]
             p_pb.font.name = 'Calibri'
-            y += 0.6
-        return slide
-        p.font.name = 'Calibri'
-        p.font.italic = True
-        
+
         return slide
     
     def create_section_slide(self, title):
@@ -451,58 +528,76 @@ class ModernPPTDesigner:
         return slide
     
     def create_content_slide(self, title, bullets):
-        """Modern content slide with bullets"""
+        """Modern content slide with bullets - auto-adjusts header for long titles"""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
-        
-        # Header bar
+
+        # Dynamic header height and font based on title length
+        title_text = title[:90] if len(title) > 90 else title
+        if len(title_text) > 60:
+            header_height = 1.3
+            title_font = 22
+            title_box_height = 1.0
+            title_y = 0.15
+        elif len(title_text) > 45:
+            header_height = 1.15
+            title_font = 26
+            title_box_height = 0.85
+            title_y = 0.15
+        elif len(title_text) > 30:
+            header_height = 1.0
+            title_font = 30
+            title_box_height = 0.7
+            title_y = 0.15
+        else:
+            header_height = 1.0
+            title_font = 36
+            title_box_height = 0.7
+            title_y = 0.15
+
+        # Header bar - dynamic height
         header = slide.shapes.add_shape(
             MSO_SHAPE.RECTANGLE,
             Inches(0), Inches(0),
-            Inches(10), Inches(1)
+            Inches(10), Inches(header_height)
         )
         header.fill.solid()
         header.fill.fore_color.rgb = self.colors["primary"]
         header.line.fill.background()
-        
-        # Title on header with dynamic sizing
+
+        # Title on header
         title_box = slide.shapes.add_textbox(
-            Inches(0.5), Inches(0.15),
-            Inches(9), Inches(0.7)
+            Inches(0.5), Inches(title_y),
+            Inches(9), Inches(title_box_height)
         )
         tf = title_box.text_frame
-        # Truncate very long content slide titles
-        if len(title) > 70:
-            tf.text = title[:67] + "..."
-        else:
-            tf.text = title
+        tf.text = title_text
         tf.word_wrap = True
-        
+        tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+
         p = tf.paragraphs[0]
-        # Dynamic font sizing for content slide titles
-        if len(title) > 50:
-            p.font.size = Pt(28)
-        elif len(title) > 35:
-            p.font.size = Pt(32)
-        else:
-            p.font.size = Pt(36)
+        p.font.size = Pt(title_font)
         p.font.bold = True
         p.font.color.rgb = RGBColor(255, 255, 255)
         p.font.name = 'Calibri'
-        
+
+        # Content starts after header
+        content_top = header_height + 0.15
+
         # Side accent bar
         side_bar = slide.shapes.add_shape(
             MSO_SHAPE.RECTANGLE,
-            Inches(0.3), Inches(1.3),
-            Inches(0.15), Inches(3.8)
+            Inches(0.3), Inches(content_top),
+            Inches(0.15), Inches(5.625 - content_top - 0.3)
         )
         side_bar.fill.solid()
         side_bar.fill.fore_color.rgb = self.colors["accent"]
         side_bar.line.fill.background()
-        
-        # Content
+
+        # Content area - adjusts based on header height
+        content_height = 5.625 - content_top - 0.3
         content_box = slide.shapes.add_textbox(
-            Inches(0.8), Inches(1.3),
-            Inches(8.7), Inches(4)
+            Inches(0.8), Inches(content_top),
+            Inches(8.7), Inches(content_height)
         )
         tf = content_box.text_frame
         tf.word_wrap = True
@@ -568,55 +663,78 @@ class ModernPPTDesigner:
         return slide
     
     def create_content_slide_with_image(self, title, bullets, image_path=None):
-        """Content slide with image on right side"""
+        """Content slide with image on right side - auto-adjusts header"""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
-        
+
+        # Dynamic header sizing
+        clean_title = fix_broken_words(title)
+        title_text = smart_truncate(clean_title, 90, "") if len(clean_title) > 90 else clean_title
+
+        if len(title_text) > 60:
+            header_height = 1.3
+            title_font = 22
+            title_box_height = 1.0
+        elif len(title_text) > 45:
+            header_height = 1.15
+            title_font = 26
+            title_box_height = 0.85
+        elif len(title_text) > 30:
+            header_height = 1.0
+            title_font = 30
+            title_box_height = 0.7
+        else:
+            header_height = 1.0
+            title_font = 36
+            title_box_height = 0.7
+
         # Header bar
-        header = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(10), Inches(1))
+        header = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(10), Inches(header_height))
         header.fill.solid()
         header.fill.fore_color.rgb = self.colors["primary"]
         header.line.fill.background()
-        
-        # Title (with smart truncation)
-        title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.15), Inches(9), Inches(0.7))
+
+        # Title
+        title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.15), Inches(9), Inches(title_box_height))
         tf = title_box.text_frame
-        clean_title = fix_broken_words(title)
-        tf.text = smart_truncate(clean_title, 70, "") if len(clean_title) > 70 else clean_title
+        tf.text = title_text
         tf.word_wrap = True
+        tf.vertical_anchor = MSO_ANCHOR.MIDDLE
         p = tf.paragraphs[0]
-        p.font.size = Pt(28 if len(title) > 50 else 32 if len(title) > 35 else 36)
+        p.font.size = Pt(title_font)
         p.font.bold = True
         p.font.color.rgb = RGBColor(255, 255, 255)
-        
+        p.font.name = 'Calibri'
+
+        content_top = header_height + 0.15
+        content_height = 5.625 - content_top - 0.3
+
         # Side bar
-        side_bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.3), Inches(1.3), Inches(0.15), Inches(3.8))
+        side_bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.3), Inches(content_top), Inches(0.15), Inches(content_height))
         side_bar.fill.solid()
         side_bar.fill.fore_color.rgb = self.colors["accent"]
         side_bar.line.fill.background()
-        
+
         # Add image if available
         content_width = 8.7
         if image_path and os.path.exists(image_path):
             try:
-                slide.shapes.add_picture(image_path, Inches(5.2), Inches(1.3), width=Inches(4.3), height=Inches(4))
+                slide.shapes.add_picture(image_path, Inches(5.2), Inches(content_top), width=Inches(4.3), height=Inches(content_height))
                 content_width = 4.5
             except:
                 pass
-        
+
         # Content
-        content_box = slide.shapes.add_textbox(Inches(0.8), Inches(1.3), Inches(content_width), Inches(4))
+        content_box = slide.shapes.add_textbox(Inches(0.8), Inches(content_top), Inches(content_width), Inches(content_height))
         tf = content_box.text_frame
         tf.word_wrap = True
-        
+
         total_chars = sum(len(b) for b in bullets)
         font_size = 14 if total_chars > 600 else 16 if total_chars > 400 else 18
-        
+
         for i, bullet in enumerate(bullets):
             p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-            # ISSUE 5: Clean markdown first
             clean_text = clean_markdown(bullet)
             clean_text = fix_broken_words(clean_bullet_point(clean_text))
-            # ISSUE 4: Increased limit from 150 to 200
             p.text = "● " + (smart_truncate(clean_text, 200) if len(clean_text) > 200 else clean_text)
             p.font.size = Pt(font_size)
             p.font.color.rgb = self.colors["text"]
@@ -816,25 +934,24 @@ def generate_beautiful_ppt(slides_or_text, output_path, color_scheme="corporate"
             slides = [{"title": original_topic or "Presentation", "main_title": original_topic or "Presentation"}]
 
         # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        # 🎨 AI IMAGE GENERATION via Pollinations.ai (FREE, No API Key)
+        # 🎨 FREE IMAGE GENERATION (Pollinations / LoremFlickr / Picsum)
         # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         slide_images = {}
         if generate_ai_images:
             print("\n" + "="*60)
-            print("🎨 POLLINATIONS.AI IMAGE GENERATION STARTED")
+            print("🎨 SLIDE IMAGE GENERATION STARTED")
             print("="*60)
 
             for idx, slide in enumerate(slides[1:], start=1):
                 title = slide.get("title", "")
                 bullets = slide.get("bullets", [])
-                if title:
-                    prompt = generate_slide_image_prompt(title, bullets)
-                    img_path = generate_pollinations_image(prompt, width=800, height=500)
+                if title and not slide.get("chart_image_path"):
+                    img_path = generate_slide_image(title, bullets, width=800, height=500)
                     if img_path:
                         slide_images[idx] = img_path
 
             if slide_images:
-                print(f"\n✅ Generated {len(slide_images)} images via Pollinations.ai!")
+                print(f"\n✅ Generated {len(slide_images)} images for slides!")
             else:
                 print("\n⚠️  No images generated")
 

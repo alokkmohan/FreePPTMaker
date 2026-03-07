@@ -3,6 +3,9 @@ import streamlit as st
 import os
 import re
 import time
+import subprocess
+import tempfile
+import json as json_mod
 from datetime import datetime
 from document_upload_component import document_upload_component
 
@@ -684,59 +687,91 @@ def is_valid_topic(text):
 
     return False, "Please ek clear topic batayein (minimum 10 characters). Example: 'Digital India' ya 'AI in Healthcare'."
 
+def run_pptxgenjs(js_code, output_path):
+    """Execute PptxGenJS code via Node.js subprocess. Returns (success, path_or_error)."""
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    wrapper_path = os.path.join(project_dir, "node_pptx", "pptx_wrapper.js")
+    node_cwd = os.path.join(project_dir, "node_pptx")
+
+    # Write AI code to temp file
+    fd, temp_js_path = tempfile.mkstemp(suffix='.js', prefix='pptx_slides_')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            f.write(js_code)
+
+        result = subprocess.run(
+            ['node', wrapper_path, output_path, temp_js_path],
+            capture_output=True, text=True, timeout=45,
+            cwd=node_cwd
+        )
+
+        if result.returncode == 0:
+            try:
+                response = json_mod.loads(result.stdout.strip())
+                if response.get('success'):
+                    return True, response['path']
+            except:
+                pass
+
+        # Parse error
+        err_msg = result.stderr or result.stdout or 'Node.js execution failed'
+        try:
+            err_data = json_mod.loads(err_msg.strip())
+            return False, err_data.get('error', err_msg)
+        except:
+            return False, err_msg
+    except subprocess.TimeoutExpired:
+        return False, 'Node.js execution timed out (45s)'
+    except Exception as e:
+        return False, str(e)
+    finally:
+        try:
+            os.unlink(temp_js_path)
+        except:
+            pass
+
+
 def generate_ppt(content, topic, theme):
-    """Generate PPT with topic-based filename (Issue 9)"""
+    """Generate PPT — tries PptxGenJS first, falls back to python-pptx."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_folder = os.path.join("output", f"output_{timestamp}")
     os.makedirs(output_folder, exist_ok=True)
 
-    # ISSUE 9: Generate meaningful filename from topic
-    # Extract first 3-5 meaningful words from topic
+    # Generate meaningful filename from topic
     if topic:
-        # Remove special characters and split into words
         words = re.sub(r'[^\w\s]', '', str(topic)).split()
-        # Take first 4 words, remove very short words
         meaningful_words = [w for w in words[:5] if len(w) > 2][:4]
-        if meaningful_words:
-            topic_slug = '_'.join(meaningful_words)
-        else:
-            topic_slug = 'presentation'
+        topic_slug = '_'.join(meaningful_words) if meaningful_words else 'presentation'
     else:
         topic_slug = 'presentation'
-
-    # Sanitize and limit length
     topic_slug = re.sub(r'[^\w]', '_', topic_slug)[:40]
     topic_slug = re.sub(r'_+', '_', topic_slug).strip('_')
-
-    # Format: TopicSlug_Date.pptx (e.g., AI_Healthcare_20260124.pptx)
     date_str = datetime.now().strftime("%Y%m%d")
     ppt_filename = f"{topic_slug}_{date_str}.pptx"
     ppt_path = os.path.join(output_folder, ppt_filename)
 
-    # ── INJECT CHART SLIDE if Excel/CSV data is available ──
+    # ── PRIMARY: PptxGenJS via Node.js ──
+    js_code = st.session_state.get('pptxgenjs_code')
+    if js_code:
+        success, result = run_pptxgenjs(js_code, ppt_path)
+        if success:
+            print(f"[PPTXGENJS] Successfully generated: {ppt_path}")
+            return True, ppt_path
+        else:
+            print(f"[PPTXGENJS] Failed: {result}, falling back to python-pptx")
+
+    # ── FALLBACK: python-pptx ──
+    # Inject chart slide if Excel/CSV data is available
     if isinstance(content, list) and st.session_state.get('chart_data') and PANDAS_AVAILABLE:
         chart_data = st.session_state.chart_data
         chart_settings = st.session_state.get('chart_settings', {})
         chart_type = chart_settings.get('chart_type', 'bar')
         chart_title = chart_settings.get('chart_title', f"Data from {chart_data['filename']}")
-
-        chart_img = create_chart_image(
-            chart_data['df'],
-            chart_type=chart_type,
-            title=chart_title
-        )
+        chart_img = create_chart_image(chart_data['df'], chart_type=chart_type, title=chart_title)
         if chart_img:
-            # Insert chart slide after the first (title) slide
-            chart_slide = {
-                "slide_number": 2,
-                "title": chart_title,
-                "bullets": [],
-                "chart_image_path": chart_img
-            }
+            chart_slide = {"slide_number": 2, "title": chart_title, "bullets": [], "chart_image_path": chart_img}
             content.insert(1, chart_slide)
-            print(f"[CHART] Injected chart slide: {chart_title}")
 
-    # If content is a list of slides, pass as structured
     if isinstance(content, list) and all(isinstance(slide, dict) for slide in content):
         success = generate_beautiful_ppt(content, ppt_path, color_scheme=theme, use_ai=False, original_topic=topic, min_slides=6, max_slides=6, generate_ai_images=True)
     else:
@@ -1623,115 +1658,120 @@ if user_input:
             # Pass context and language to AI generator
             generator = MultiAIGenerator()
             language = st.session_state.get('language', 'English')
+            theme = st.session_state.get('theme', 'dark')
 
-            # ─────────────────────────────────────────────────────────────
-            # 🎯 AI-POWERED SMART TITLE GENERATION
-            # ─────────────────────────────────────────────────────────────
-            content_for_title = user_provided_content if use_user_content else user_input
-            smart_titles = generator.generate_smart_title(
-                content=content_for_title,
-                language=language,
-                style=st.session_state.get('theme', 'corporate')
-            )
-
-            if smart_titles.get('success'):
-                print(f"[DEBUG] AI-generated titles for topic:")
-                print(f"  Main Title: {smart_titles['main_title']}")
-                print(f"  Tagline: {smart_titles['tagline']}")
-                print(f"  Subtitle: {smart_titles['subtitle']}")
-
-            # ISSUE 8: Prioritize user content over web search
+            # Build web context for AI
             if use_user_content:
-                custom_instructions = f"USER PROVIDED CONTENT (use this as the PRIMARY source for slide content):\n{user_provided_content}\n\nLanguage: {language}\nTone: Government / Training\nSTRICT: Each bullet = 1 complete sentence, max 15 words. Each title max 35 chars. Never truncate."
+                web_ctx = f"USER PROVIDED CONTENT (use as PRIMARY source):\n{user_provided_content}"
             else:
-                custom_instructions = f"{google_context}\n\nLanguage: {language}\nTone: Government / Training\nSTRICT: Each bullet = 1 complete sentence, max 15 words. Each title max 35 chars. Never truncate."
-            content_dict = generator.generate_ppt_content(
+                web_ctx = google_context
+
+            # ─────────────────────────────────────────────────────────────
+            # 🎨 PRIMARY: Generate PptxGenJS JavaScript code via AI
+            # ─────────────────────────────────────────────────────────────
+            js_result = generator.generate_pptxgenjs_code(
                 topic=user_input,
-                min_slides=10,
-                max_slides=15,
-                style=st.session_state.theme,
-                audience="general",
-                custom_instructions=custom_instructions,
-                bullets_per_slide=st.session_state.get('bullets_per_slide', 4),
-                bullet_word_limit=30,
-                tone="government/training",
-                required_phrases="",
-                forbidden_content=""
+                theme=theme,
+                web_context=web_ctx,
+                language=language,
             )
-            # Parse AI output into slides (robust parser)
 
-            def parse_slides(ai_output):
+            js_code = js_result.get('output', '')
+            if js_code:
+                st.session_state.pptxgenjs_code = js_code
+                # Create placeholder slides for preview display
+                slide_titles = [
+                    "Title Slide", "Overview", "Background",
+                    "Main Topic A", "Main Topic B", "Timeline",
+                    "Stats & Data", "Challenges", "Future Outlook", "Conclusion"
+                ]
                 slides = []
-                if not ai_output:
+                for i, title in enumerate(slide_titles):
+                    slide = {"slide_number": i + 1, "title": title, "bullets": []}
+                    if i == 0:
+                        slide["main_title"] = user_input[:35]
+                        slide["tagline"] = "AI-Generated Presentation"
+                        slide["subtitle"] = ""
+                        if st.session_state.presenter_name:
+                            slide["presented_by"] = st.session_state.presenter_name
+                    slides.append(slide)
+                print(f"[PPTXGENJS] AI generated JavaScript code ({len(js_code)} chars)")
+            else:
+                # ─────────────────────────────────────────────────────────
+                # 🔄 FALLBACK: Generate text-based content
+                # ─────────────────────────────────────────────────────────
+                print(f"[FALLBACK] PptxGenJS generation failed: {js_result.get('error', 'unknown')}")
+                st.session_state.pptxgenjs_code = None
+
+                # Generate smart titles
+                content_for_title = user_provided_content if use_user_content else user_input
+                smart_titles = generator.generate_smart_title(
+                    content=content_for_title, language=language, style=theme
+                )
+
+                custom_instructions = f"{web_ctx}\n\nLanguage: {language}\nTone: Government / Training\nSTRICT: Each bullet = 1 complete sentence, max 15 words. Each title max 35 chars."
+                content_dict = generator.generate_ppt_content(
+                    topic=user_input, min_slides=10, max_slides=15,
+                    style=theme, audience="general",
+                    custom_instructions=custom_instructions,
+                    bullets_per_slide=4, bullet_word_limit=30,
+                    tone="government/training",
+                )
+
+                def parse_slides(ai_output):
+                    slides = []
+                    if not ai_output:
+                        return slides
+                    lines = [l.strip() for l in ai_output.split('\n') if l.strip()]
+                    current_slide = {}
+                    for line in lines:
+                        m = re.match(r"^\*{0,2}Slide\s*(\d+)\s*[:\-]\s*(.+?)\*{0,2}$", line, re.IGNORECASE)
+                        if m:
+                            if current_slide:
+                                slides.append(current_slide)
+                            current_slide = {"slide_number": int(m.group(1)), "title": m.group(2).strip(), "bullets": []}
+                        elif line.lower().startswith('main title:'):
+                            current_slide["main_title"] = line.split(':',1)[1].strip()
+                        elif line.lower().startswith('tagline:'):
+                            current_slide["tagline"] = line.split(':',1)[1].strip()
+                        elif line.lower().startswith('subtitle:'):
+                            current_slide["subtitle"] = line.split(':',1)[1].strip()
+                        elif line.lower().startswith('presented by:'):
+                            current_slide["presented_by"] = line.split(':',1)[1].strip()
+                        elif line.startswith('- ') or line.startswith('• ') or line.startswith('* '):
+                            bullet_text = line[2:].strip()
+                            if bullet_text and current_slide:
+                                current_slide.setdefault("bullets", []).append(bullet_text)
+                        elif re.match(r'^\d+\.\s+', line):
+                            bullet_text = re.sub(r'^\d+\.\s+', '', line).strip()
+                            if bullet_text and current_slide:
+                                current_slide.setdefault("bullets", []).append(bullet_text)
+                    if current_slide:
+                        slides.append(current_slide)
+                    if slides:
+                        first = slides[0]
+                        if st.session_state.presenter_name:
+                            first["presented_by"] = st.session_state.presenter_name
+                        if st.session_state.presenter_designation:
+                            if first.get("subtitle"):
+                                first["subtitle"] = (first.get("subtitle","") + f"\n{st.session_state.presenter_designation}").strip()
+                            else:
+                                first["subtitle"] = st.session_state.presenter_designation
                     return slides
-                lines = [l.strip() for l in ai_output.split('\n') if l.strip()]
-                current_slide = {}
-                for line in lines:
-                    # Slide start - more flexible pattern
-                    # Matches: "Slide 1: Title", "Slide1: Title", "**Slide 1: Title**", "Slide 1 - Title", etc.
-                    m = re.match(r"^\*{0,2}Slide\s*(\d+)\s*[:\-]\s*(.+?)\*{0,2}$", line, re.IGNORECASE)
-                    if m:
-                        # Save previous slide
-                        if current_slide:
-                            slides.append(current_slide)
-                        current_slide = {"slide_number": int(m.group(1)), "title": m.group(2).strip(), "bullets": []}
-                    elif line.lower().startswith('main title:'):
-                        current_slide["main_title"] = line.split(':',1)[1].strip()
-                    elif line.lower().startswith('tagline:'):
-                        current_slide["tagline"] = line.split(':',1)[1].strip()
-                    elif line.lower().startswith('subtitle:'):
-                        current_slide["subtitle"] = line.split(':',1)[1].strip()
-                    elif line.lower().startswith('presented by:'):
-                        current_slide["presented_by"] = line.split(':',1)[1].strip()
-                    elif line.startswith('- ') or line.startswith('• ') or line.startswith('* '):
-                        # Handle various bullet styles
-                        bullet_text = line[2:].strip()
-                        if bullet_text and current_slide:
-                            current_slide.setdefault("bullets", []).append(bullet_text)
-                    elif re.match(r'^\d+\.\s+', line):
-                        # Handle numbered lists like "1. Point"
-                        bullet_text = re.sub(r'^\d+\.\s+', '', line).strip()
-                        if bullet_text and current_slide:
-                            current_slide.setdefault("bullets", []).append(bullet_text)
-                # Add last slide
-                if current_slide:
-                    slides.append(current_slide)
-                # Inject presenter name/designation if not present
-                if slides:
-                    first = slides[0]
-                    if st.session_state.presenter_name:
-                        first["presented_by"] = st.session_state.presenter_name
-                    if st.session_state.presenter_designation:
-                        # Add designation to subtitle if present, else as a new field
-                        if first.get("subtitle"):
-                            first["subtitle"] = (first.get("subtitle","") + f"\n{st.session_state.presenter_designation}").strip()
-                        else:
-                            first["subtitle"] = st.session_state.presenter_designation
-                # Debug: print parsed slides count
-                print(f"[DEBUG] Parsed {len(slides)} slides from AI output")
-                return slides
 
-            ai_output = content_dict.get("output", "")
-            if not ai_output:
-                ai_output = content_dict.get("error", "No AI output.")
-            slides = parse_slides(ai_output)
+                ai_output = content_dict.get("output", "") or content_dict.get("error", "No AI output.")
+                slides = parse_slides(ai_output)
 
-            # ─────────────────────────────────────────────────────────────
-            # 🎨 INJECT AI-GENERATED SMART TITLES INTO FIRST SLIDE
-            # ─────────────────────────────────────────────────────────────
-            if slides and smart_titles.get('success'):
-                first_slide = slides[0]
-                # Override with AI-generated titles
-                first_slide["main_title"] = smart_titles['main_title']
-                first_slide["tagline"] = smart_titles['tagline']
-                first_slide["subtitle"] = smart_titles['subtitle']
-                print(f"[DEBUG] Smart titles injected into first slide for topic generation")
+                if slides and smart_titles.get('success'):
+                    first_slide = slides[0]
+                    first_slide["main_title"] = smart_titles['main_title']
+                    first_slide["tagline"] = smart_titles['tagline']
+                    first_slide["subtitle"] = smart_titles['subtitle']
 
-            # Store AI output for collapsible display, show brief message in chat
-            st.session_state.full_ai_output = ai_output if len(ai_output) > 50 else None
-            brief_msg = f"✨ Generated {len(slides)} slides for **{user_input}**. View full content in the preview below."
+            # Store for preview & generation
+            st.session_state.full_ai_output = js_code[:500] + "..." if js_code and len(js_code) > 500 else None
+            brief_msg = f"✨ Generated 10 slides for **{user_input}**. View preview below."
             add_message("assistant", brief_msg)
-            # Save topic and slides to session for PPT generation
             st.session_state.topic = user_input
             st.session_state.parsed_slides = slides
             print(f"[DEBUG] Topic: {user_input}, Slides count: {len(slides)}")
@@ -1759,18 +1799,18 @@ if st.session_state.stage == 'generating':
             import time
             time.sleep(0.3)
 
-            # Step 3: Generating content
-            status_text.text("🎨 Step 3/6: Generating slide content...")
+            # Step 3: Generating presentation code
+            status_text.text("🎨 Step 3/6: AI generating presentation code...")
             progress_bar.progress(45)
 
             time.sleep(0.3)
 
-            # Step 4: Adding visuals
-            status_text.text("🖼️ Step 4/6: Adding visuals & layout...")
+            # Step 4: Building layouts
+            status_text.text("🖼️ Step 4/6: Building PowerPoint via PptxGenJS...")
             progress_bar.progress(65)
 
-            # Step 5: Building PPT
-            status_text.text("📊 Step 5/6: Building PowerPoint file...")
+            # Step 5: Rendering slides
+            status_text.text("📊 Step 5/6: Rendering slides...")
             progress_bar.progress(80)
 
             # Generate PPT
@@ -1825,50 +1865,22 @@ if st.session_state.stage == 'preview':
     # ─────────────────────────────────────────────────────────────────────────────
     # 🎨 CHANGE THEME SECTION (TOP - easy to access)
     # ─────────────────────────────────────────────────────────────────────────────
-    st.markdown("### 🎨 Change Design / Theme")
-
-    col_theme1, col_theme2, col_theme3, col_theme4 = st.columns(4)
+    st.markdown("### 🎨 Theme")
     current_theme = st.session_state.get('theme', 'dark')
-
-    with col_theme1:
-        if st.button(
-            "🌙 Dark" + (" ✓" if current_theme == 'dark' else ""),
-            use_container_width=True,
-            type="primary" if current_theme == 'dark' else "secondary"
-        ):
-            st.session_state.theme = 'dark'
-            st.session_state.stage = 'regenerating'
-            st.rerun()
-
-    with col_theme2:
-        if st.button(
-            "🏢 Corporate" + (" ✓" if current_theme == 'corporate' else ""),
-            use_container_width=True,
-            type="primary" if current_theme == 'corporate' else "secondary"
-        ):
-            st.session_state.theme = 'corporate'
-            st.session_state.stage = 'regenerating'
-            st.rerun()
-
-    with col_theme3:
-        if st.button(
-            "🎨 Modern" + (" ✓" if current_theme == 'modern' else ""),
-            use_container_width=True,
-            type="primary" if current_theme == 'modern' else "secondary"
-        ):
-            st.session_state.theme = 'modern'
-            st.session_state.stage = 'regenerating'
-            st.rerun()
-
-    with col_theme4:
-        if st.button(
-            "✨ Creative" + (" ✓" if current_theme == 'creative' else ""),
-            use_container_width=True,
-            type="primary" if current_theme == 'creative' else "secondary"
-        ):
-            st.session_state.theme = 'creative'
-            st.session_state.stage = 'regenerating'
-            st.rerun()
+    theme_options = ["🌙 Dark", "☀️ Light"]
+    theme_index = 0 if current_theme == 'dark' else 1
+    new_theme = st.radio(
+        "Choose theme:",
+        theme_options,
+        index=theme_index,
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+    theme_value = "dark" if new_theme == "🌙 Dark" else "light"
+    if theme_value != current_theme:
+        st.session_state.theme = theme_value
+        st.session_state.stage = 'regenerating'
+        st.rerun()
 
     # ─────────────────────────────────────────────────────────────────────────────
     # 📄 COLLAPSIBLE AI OUTPUT SECTION
@@ -1969,84 +1981,62 @@ if st.session_state.stage == 'preview':
     # Store that we're in preview mode for chat handling
     st.session_state.in_preview_mode = True
 
-# Regeneration process (with new theme/slides)
+# Regeneration process (theme change → re-generate PptxGenJS code with new colors)
 if st.session_state.stage == 'regenerating':
     with st.chat_message("assistant"):
-        progress_placeholder = st.empty()
+        progress_bar = st.progress(0)
+        status_text = st.empty()
         try:
-            progress_placeholder.markdown("**Regenerating presentation...**\n\nApplying new settings...")
+            theme = st.session_state.get('theme', 'dark')
+            topic = st.session_state.get('topic', 'Presentation')
 
-            # Use existing parsed slides or regenerate
+            status_text.text(f"🎨 Regenerating with {theme} theme...")
+            progress_bar.progress(15)
+
+            # Re-generate PptxGenJS code with new theme colors
+            generator = MultiAIGenerator()
+            language = st.session_state.get('language', 'English')
+
+            status_text.text("🧠 AI generating new presentation code...")
+            progress_bar.progress(30)
+
+            js_result = generator.generate_pptxgenjs_code(
+                topic=topic,
+                theme=theme,
+                language=language,
+            )
+
+            js_code = js_result.get('output', '')
+            if js_code:
+                st.session_state.pptxgenjs_code = js_code
+                print(f"[REGEN] PptxGenJS code regenerated for {theme} theme ({len(js_code)} chars)")
+            else:
+                print(f"[REGEN] PptxGenJS failed: {js_result.get('error')}, using fallback")
+                st.session_state.pptxgenjs_code = None
+
+            status_text.text("📊 Building PowerPoint file...")
+            progress_bar.progress(70)
+
             content = st.session_state.get('parsed_slides', [])
-            num_slides = st.session_state.get('num_slides', 6)
+            success, ppt_path = generate_ppt(content, topic, theme)
 
-            # If slide count changed, regenerate content
-            if num_slides != len(content):
-                progress_placeholder.markdown(f"**Regenerating presentation...**\n\nGenerating {num_slides} slides...")
-                generator = MultiAIGenerator()
-                language = st.session_state.get('language', 'English')
-                custom_instructions = f"Language: {language}\nTone: Government / Training"
-                content_dict = generator.generate_ppt_content(
-                    topic=st.session_state.topic,
-                    min_slides=num_slides,
-                    max_slides=num_slides,
-                    style=st.session_state.theme,
-                    audience="general",
-                    custom_instructions=custom_instructions,
-                    bullets_per_slide=st.session_state.get('bullets_per_slide', 4),
-                    bullet_word_limit=25,
-                    tone="government/training",
-                    required_phrases="",
-                    forbidden_content=""
-                )
-                ai_output = content_dict.get("output", "")
-                # Reparse slides
-                lines = [l.strip() for l in ai_output.split('\n') if l.strip()]
-                slides = []
-                current_slide = {}
-                for line in lines:
-                    m = re.match(r"^\*{0,2}Slide\s*(\d+)\s*[:\-]\s*(.+?)\*{0,2}$", line, re.IGNORECASE)
-                    if m:
-                        if current_slide:
-                            slides.append(current_slide)
-                        current_slide = {"slide_number": int(m.group(1)), "title": m.group(2).strip(), "bullets": []}
-                    elif line.lower().startswith('main title:'):
-                        current_slide["main_title"] = line.split(':',1)[1].strip()
-                    elif line.lower().startswith('tagline:'):
-                        current_slide["tagline"] = line.split(':',1)[1].strip()
-                    elif line.lower().startswith('subtitle:'):
-                        current_slide["subtitle"] = line.split(':',1)[1].strip()
-                    elif line.lower().startswith('presented by:'):
-                        current_slide["presented_by"] = line.split(':',1)[1].strip()
-                    elif line.startswith('- ') or line.startswith('• ') or line.startswith('* '):
-                        bullet_text = line[2:].strip()
-                        if bullet_text and current_slide:
-                            current_slide.setdefault("bullets", []).append(bullet_text)
-                    elif re.match(r'^\d+\.\s+', line):
-                        bullet_text = re.sub(r'^\d+\.\s+', '', line).strip()
-                        if bullet_text and current_slide:
-                            current_slide.setdefault("bullets", []).append(bullet_text)
-                if current_slide:
-                    slides.append(current_slide)
-                content = slides
-                st.session_state.parsed_slides = slides
-
-            progress_placeholder.markdown(f"**Regenerating presentation...**\n\nApplying **{st.session_state.theme}** theme...")
-
-            # Generate PPT with new settings
-            success, ppt_path = generate_ppt(content, st.session_state.topic, st.session_state.theme)
+            status_text.text("✅ Finalizing...")
+            progress_bar.progress(100)
 
             if success:
                 st.session_state.ppt_path = ppt_path
                 st.session_state.stage = 'done'
-                progress_placeholder.empty()
-                add_message("assistant", f"**Regenerated!** New presentation with **{st.session_state.theme}** theme and **{len(content)}** slides is ready.")
+                progress_bar.empty()
+                status_text.empty()
+                add_message("assistant", f"**Regenerated!** New presentation with **{theme}** theme is ready.")
                 st.rerun()
             else:
-                progress_placeholder.error("Failed to regenerate. Please try again.")
+                progress_bar.empty()
+                status_text.error("Failed to regenerate. Please try again.")
                 st.session_state.stage = 'done'
         except Exception as e:
-            progress_placeholder.error(f"Error: {str(e)}")
+            progress_bar.empty()
+            status_text.error(f"Error: {str(e)}")
             st.session_state.stage = 'done'
             st.rerun()
 

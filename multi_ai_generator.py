@@ -392,3 +392,172 @@ IMPORTANT RULES:
             'error': "AI title generation not available, using fallback",
             'ai_source': 'Fallback'
         }
+
+    # ───────────────────────────────────────────────────────────────────────────
+    # 🎨 PPTXGENJS CODE GENERATION (AI generates JavaScript slide code)
+    # ───────────────────────────────────────────────────────────────────────────
+
+    THEME_COLORS = {
+        "dark": {
+            "BG": "0D1B2A",
+            "CARD": "1B2E42",
+            "CARD_ALT": "223A52",
+            "TITLE": "FFFFFF",
+            "BODY": "B0BEC5",
+            "ACCENT": "E84545",
+            "TEAL": "00BCD4",
+            "GOLD": "FFD166",
+            "MUTED": "8D99AE",
+        },
+        "light": {
+            "BG": "FFFFFF",
+            "CARD": "E8EAF6",
+            "CARD_ALT": "DCE1F0",
+            "TITLE": "1A1A2E",
+            "BODY": "37474F",
+            "ACCENT": "E84545",
+            "TEAL": "0277BD",
+            "GOLD": "F5A623",
+            "MUTED": "757575",
+        },
+    }
+
+    def generate_pptxgenjs_code(
+        self,
+        topic: str,
+        theme: str = "dark",
+        web_context: str = "",
+        language: str = "English",
+        error_context: str = "",
+    ) -> Dict:
+        """Generate PptxGenJS JavaScript code for a 10-slide presentation."""
+        global _last_ai_source
+
+        colors = self.THEME_COLORS.get(theme, self.THEME_COLORS["dark"])
+        color_block = "\n".join(f"  {k}: \"{v}\"" for k, v in colors.items())
+
+        web_section = ""
+        if web_context:
+            web_section = f"USE THIS RESEARCH for accurate, topic-specific content:\n{web_context}\n\n"
+
+        error_section = ""
+        if error_context:
+            error_section = f"\n\nPREVIOUS ATTEMPT FAILED WITH ERROR:\n{error_context}\nFix the error and generate correct code.\n"
+
+        bg = colors["BG"]
+        card = colors["CARD"]
+        card_alt = colors["CARD_ALT"]
+        title_c = colors["TITLE"]
+        body_c = colors["BODY"]
+        accent = colors["ACCENT"]
+        teal = colors["TEAL"]
+        gold = colors["GOLD"]
+        muted = colors["MUTED"]
+
+        prompt = f"""{web_section}You are a PptxGenJS JavaScript code generator. Generate code that creates a professional 10-slide presentation about the topic below.
+
+The code receives a `pptx` object (PptxGenJS instance, LAYOUT_WIDE 13.33x7.5 inches) as its only parameter.
+Do NOT use require(). Do NOT call pptx.writeFile(). Just add slides to `pptx`.
+
+LANGUAGE: {language}
+
+EXACT COLORS TO USE:
+  Background: "{bg}"
+  Card fill: "{card}"
+  Card alt fill: "{card_alt}"
+  Title text: "{title_c}"
+  Body text: "{body_c}"
+  Accent (top bar): "{accent}"
+  Teal (card border): "{teal}"
+  Gold (highlights): "{gold}"
+  Muted text: "{muted}"
+
+SLIDE STRUCTURE (exactly 10 slides):
+  Slide 1: Title slide (big title centered, tagline below, "Presented by: AI" at bottom)
+  Slide 2: Overview / Introduction (card grid layout - 4 cards in 2x2)
+  Slide 3: Background / Context (two-column layout)
+  Slide 4: Main Topic A - deep dive (card grid layout - 3 or 4 cards)
+  Slide 5: Main Topic B - deep dive (two-column layout)
+  Slide 6: Timeline / Key Steps (vertical timeline with circles and lines)
+  Slide 7: Stats / Data (big number stat callouts - 3 or 4 stats)
+  Slide 8: Challenges / Issues (card grid layout)
+  Slide 9: Future Outlook (two-column or card layout)
+  Slide 10: Conclusion / Thank You (centered text, key takeaway)
+
+DESIGN RULES:
+1. Every slide: slide.background = {{ fill: "{bg}" }};
+2. Every slide: accent top bar:
+   slide.addShape(pptx.shapes.RECTANGLE, {{ x: 0, y: 0, w: "100%", h: 0.15, fill: {{ color: "{accent}" }} }});
+3. Slide title on every slide (except slide 1):
+   slide.addText("Title Here", {{ x: 0.5, y: 0.25, w: 12, h: 0.7, fontSize: 24, fontFace: "Arial", color: "{title_c}", bold: true }});
+4. Use ONLY card-based layouts. NEVER use plain bullet lists.
+5. Card = rounded rectangle shape + text overlay:
+   slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {{ x: X, y: Y, w: W, h: H, fill: {{ color: "{card}" }}, rectRadius: 0.1, line: {{ color: "{teal}", width: 1 }} }});
+   slide.addText([{{ text: "\\u2B50 Card Title\\n", options: {{ fontSize: 13, bold: true, color: "{title_c}" }} }}, {{ text: "Card body text here.", options: {{ fontSize: 11, color: "{body_c}" }} }}], {{ x: X+0.15, y: Y+0.1, w: W-0.3, h: H-0.2, fontFace: "Calibri", valign: "top" }});
+6. Title max 35 characters. Card body max 12 words per card.
+7. Use emoji characters directly in card title strings.
+8. No addImage() calls. No images at all.
+9. For timeline slides: use circles (OVAL shape) connected by lines, with text beside each step.
+10. For stat slides: big fontSize 36-44 numbers with small description text below.
+11. Card minimum height: 1.4 inches. Leave spacing between cards.
+12. Slide 1 title: fontSize 40, centered. Tagline: fontSize 18. Both centered vertically.
+13. Slide 10: centered "Thank You" fontSize 36, key takeaway in a card below.
+
+LAYOUT POSITIONS:
+
+// 2x2 card grid (4 cards):
+// Card positions: (0.4, 1.2, 5.8, 2.5), (6.7, 1.2, 5.8, 2.5), (0.4, 4.0, 5.8, 2.5), (6.7, 4.0, 5.8, 2.5)
+
+// Two-column layout:
+// Left column card: (0.4, 1.2, 5.8, 5.5)
+// Right column card: (6.7, 1.2, 5.8, 5.5)
+
+// Timeline (4 steps vertical):
+// Circle at x:1.0, text card at x:1.8 for each step, y increments by 1.5
+
+// Stat callouts (3 stats):
+// Three cards across: (0.4, 1.5, 3.8, 4.5), (4.6, 1.5, 3.8, 4.5), (8.8, 1.5, 3.8, 4.5)
+// Big number fontSize:40 centered, description below fontSize:12
+
+TOPIC: {topic}
+{error_section}
+Output ONLY valid JavaScript code. No markdown fences, no backticks, no explanations."""
+
+        mistral_api_key = get_secret("MISTRAL_API_KEY") or "sXgAOYTxA51tQ0N1C4O5ppFnELJisujD"
+        if not mistral_api_key:
+            return {"error": "No Mistral API key found."}
+
+        try:
+            import requests
+            resp = requests.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {mistral_api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "mistral-large-latest",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a PptxGenJS code generator. Output ONLY valid JavaScript code that adds slides to a pptx object. No markdown, no explanations, no backticks.",
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    "max_tokens": 12000,
+                    "temperature": 0.4,
+                },
+                timeout=90,
+            )
+            resp.raise_for_status()
+            ai_output = resp.json()["choices"][0]["message"]["content"].strip()
+            _last_ai_source = "Mistral"
+
+            # Strip markdown fences if AI added them
+            import re
+            ai_output = re.sub(r'^```(?:javascript|js)?\s*\n?', '', ai_output)
+            ai_output = re.sub(r'\n?```\s*$', '', ai_output)
+
+            return {"output": ai_output, "ai_source": "Mistral"}
+        except Exception as e:
+            return {"error": f"PptxGenJS code generation failed: {str(e)}"}

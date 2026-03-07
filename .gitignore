@@ -30,6 +30,9 @@ dist/
 .DS_Store
 Thumbs.db
 
+# Node.js
+node_pptx/node_modules/
+
 # Project specific
 temp_uploads/
 outputs/

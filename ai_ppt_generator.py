@@ -469,14 +469,17 @@ class ModernPPTDesigner:
         line.line.fill.background()
 
     def _truncate_bullet(self, text, max_words=18, max_chars=120):
-        """Truncate bullet to max words/chars for visual slides."""
+        """Clean bullet text. Only truncates as last resort — AI should produce short text."""
         text = clean_markdown(text)
         text = fix_broken_words(clean_bullet_point(text))
-        words = text.split()
-        if len(words) > max_words:
-            text = ' '.join(words[:max_words]) + '...'
+        # Only truncate if text is unreasonably long (AI should keep it under 15 words)
         if len(text) > max_chars:
-            # Truncate at last word boundary before max_chars
+            # Try to end at a sentence boundary first
+            for sep in ['. ', '? ', '! ']:
+                idx = text.rfind(sep, 0, max_chars)
+                if idx > max_chars * 0.5:
+                    return text[:idx + 1]
+            # Fallback: truncate at last word boundary
             truncated = text[:max_chars]
             last_space = truncated.rfind(' ')
             if last_space > max_chars * 0.6:

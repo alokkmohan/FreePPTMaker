@@ -160,63 +160,43 @@ class MultiAIGenerator:
         # ─────────────────────────────────────────────────────────────────────
         web_context = f"WEB RESEARCH CONTEXT (use this information to generate unique, topic-specific slide content):\n{custom_instructions}\n\n" if custom_instructions else ""
 
-        prompt = f"""{web_context}You are an expert presentation content writer. Generate a detailed, sectioned, slide-by-slide outline for a PowerPoint presentation.
+        prompt = f"""{web_context}You are an expert presentation content writer. Generate a slide-by-slide outline for a PowerPoint presentation.
 
-CRITICAL RULES:
+STRICT RULES:
 - Number of slides: MINIMUM {min_slides} slides, MAXIMUM {max_slides} slides
-- You MUST generate AT LEAST {min_slides} slides covering all important topics
-- Each slide should have:
-    - Slide number and clear title (e.g., Slide 1: Title Slide)
-    - Main Title (if Slide 1)
-    - Tagline (if Slide 1)
-    - Subtitle (if Slide 1)
-    - Presented by (if Slide 1)
-    - For other slides: a section title and 4-6 DETAILED bullet points (flexible based on content complexity)
+- Each slide title: MAXIMUM 35 characters. Keep titles short and clear.
+- Each bullet: exactly 1 COMPLETE sentence, MAXIMUM 15 words. Never leave a sentence unfinished.
+- Never truncate or use "..." — better to write less than to leave incomplete.
+- 4 bullet points per slide (no more, no less)
+- Each bullet must be a full, meaningful sentence that ends with a period.
+- DO NOT write long paragraphs — write SHORT, PUNCHY, COMPLETE sentences.
+- No emojis, no markdown, no filler, no repetition
 
-BULLET POINT RULES (VERY IMPORTANT):
-- Generate 4-6 bullet points per slide based on how much detail is needed to explain the topic properly
-- MINIMUM 4 bullets per slide, MAXIMUM 6 bullets per slide
-- If the topic for a slide is simple: use 4 bullets
-- If the topic requires more explanation: use 5-6 bullets to cover all important aspects
-- Adjust the number of bullets based on content needs - don't force a fixed number
-- Each bullet point MUST be a COMPLETE SENTENCE of 20-35 words (1-2 full lines)
-- DO NOT write short phrases like "NEP 2020 implementation" - write full explanatory sentences
-- Bullet points should be informative paragraphs that explain the concept clearly
-- If writing in Hindi: Write complete Hindi sentences with proper grammar, not just keywords
-  Example of WRONG Hindi: "शिक्षा नीति 2020"
-  Example of CORRECT Hindi: "राष्ट्रीय शिक्षा नीति 2020 भारत की शिक्षा प्रणाली में व्यापक बदलाव लाने के लिए तैयार की गई एक महत्वपूर्ण नीति है जो छात्रों के समग्र विकास पर केंद्रित है।"
+WRONG (too long, will get cut off):
+- "The implementation of artificial intelligence in healthcare has significantly improved patient outcomes by enabling early diagnosis and reducing treatment delays across hospitals."
+
+CORRECT (short, complete, impactful):
+- "AI enables early diagnosis and reduces treatment delays in hospitals."
 
 - Tone: {tone}
 - Style: {style}
 - Audience: {audience}
-- No emojis, no markdown, no filler, no repetition
-- Cover ALL important topics from the provided content
+- If writing in Hindi: Write complete short Hindi sentences, not keywords.
 
-Output format (flexible bullets per slide based on content):
+Output format:
 Slide 1: Title Slide
-Main Title: ...
-Tagline: ...
-Subtitle: ...
-Presented by: ...
+Main Title: [max 35 chars]
+Tagline: [max 50 chars]
+Subtitle: [max 50 chars]
+Presented by: [optional]
 
-Slide 2: [Section Title]
-- A complete sentence explaining the first key point with relevant details and context (20-35 words)
-- A complete sentence explaining the second key point with relevant details and context (20-35 words)
-- A complete sentence explaining the third key point with relevant details and context (20-35 words)
-- A complete sentence explaining the fourth key point with relevant details and context (20-35 words)
-- [Optional 5th bullet if needed] A complete sentence with additional important details (20-35 words)
-- [Optional 6th bullet if needed] A complete sentence with additional important details (20-35 words)
-
-Slide 3: [Section Title]
-- A complete sentence explaining the first key point with relevant details and context (20-35 words)
-- A complete sentence explaining the second key point with relevant details and context (20-35 words)
-- A complete sentence explaining the third key point with relevant details and context (20-35 words)
-- A complete sentence explaining the fourth key point with relevant details and context (20-35 words)
-- [Optional 5th bullet if needed] A complete sentence with additional important details (20-35 words)
-- [Optional 6th bullet if needed] A complete sentence with additional important details (20-35 words)
+Slide 2: [Short Title max 35 chars]
+- Complete sentence, max 15 words.
+- Complete sentence, max 15 words.
+- Complete sentence, max 15 words.
+- Complete sentence, max 15 words.
 
 (Continue for ALL {min_slides} to {max_slides} slides - DO NOT STOP EARLY)
-REMEMBER: Use 4-6 bullets per slide based on content needs. Don't force a fixed number!
 
 Do not include anything outside this format.
 
@@ -310,23 +290,19 @@ CONTENT TO ANALYZE:
 YOUR TASK:
 Generate THREE components for a presentation title slide:
 
-1. MAIN TITLE (40-80 characters):
-   - Should be catchy, professional, and immediately convey the main topic
+1. MAIN TITLE (max 35 characters):
+   - Short, catchy, professional
    - Must capture the essence of the content
    - Style: {style}
    - Language: {language}
    - NO generic words like "Presentation" or "Overview"
-   - Make it impactful and memorable
 
-2. TAGLINE (50-100 characters):
+2. TAGLINE (max 50 characters):
    - A compelling subtitle that adds context
-   - Should complement the main title
-   - Can be descriptive or aspirational
    - Language: {language}
 
-3. SUBTITLE (50-100 characters):
+3. SUBTITLE (max 50 characters):
    - Additional context or focus area
-   - Can mention the scope, purpose, or key theme
    - Language: {language}
 
 OUTPUT FORMAT (strict - output ONLY these three lines, nothing else):

@@ -792,14 +792,18 @@ Bullets: {current_slide.get('bullets', [])}
 
 User's instruction: {instruction}
 
-IMPORTANT: Each bullet point MUST be a detailed, complete sentence of 20-35 words (1-2 lines).
-Do NOT write short phrases - write informative sentences that explain the concept clearly.
+STRICT RULES:
+- Slide title: max 35 characters
+- Each bullet: exactly 1 COMPLETE sentence, max 15 words
+- Never truncate or use "..." — write short but complete sentences
+- 4 bullet points total
 
 Generate the updated slide in this exact format:
-Slide {slide_num}: [New Title]
-- A complete sentence explaining the first key point with relevant details (20-35 words)
-- A complete sentence explaining the second key point with relevant details (20-35 words)
-- A complete sentence explaining the third key point with relevant details (20-35 words)
+Slide {slide_num}: [Short Title max 35 chars]
+- Complete sentence, max 15 words.
+- Complete sentence, max 15 words.
+- Complete sentence, max 15 words.
+- Complete sentence, max 15 words.
 
 Language: {language}
 Only output the slide content, nothing else."""
@@ -1248,16 +1252,17 @@ if st.session_state.awaiting_upload_confirm and st.session_state.get('file_names
 {content_for_ai}
 {web_context}
 
-INSTRUCTIONS:
-- Extract key points, themes, and important information from the above content
-- Use web research context to enrich and validate the information
-- Organize the information logically into slides - CREATE AS MANY SLIDES AS NEEDED to cover all important topics
-- IMPORTANT: Create detailed bullet points (1-2 complete sentences each, 20-35 words) that fully explain each point
-- If Language is Hindi: Write complete Hindi sentences, not short phrases. Use proper Hindi grammar and vocabulary.
-- Generate appropriate slide titles based on the content sections
+STRICT RULES:
+- Each slide title: max 35 characters
+- Each bullet: exactly 1 COMPLETE sentence, max 15 words. Never leave incomplete.
+- Never truncate or use "..." — better to write less than leave incomplete.
+- 4 bullet points per slide (no more, no less)
+- Extract key points from the document content above
+- Use web research context to enrich the information
+- If Language is Hindi: Write complete short Hindi sentences, not keywords.
 - Language: {language}
 - Tone: Professional / Informative
-- For large documents: Extract ALL key topics and create comprehensive slides (minimum 10, no maximum limit)"""
+- Create 8-10 slides covering all important topics"""
 
                         # Calculate dynamic slide count based on content size
                         content_length = len(combined_content)
@@ -1637,9 +1642,9 @@ if user_input:
 
             # ISSUE 8: Prioritize user content over web search
             if use_user_content:
-                custom_instructions = f"USER PROVIDED CONTENT (use this as the PRIMARY source for slide content):\n{user_provided_content}\n\nLanguage: {language}\nTone: Government / Training\nIMPORTANT: Write detailed bullet points (20-35 words each). If Hindi, write complete Hindi sentences."
+                custom_instructions = f"USER PROVIDED CONTENT (use this as the PRIMARY source for slide content):\n{user_provided_content}\n\nLanguage: {language}\nTone: Government / Training\nSTRICT: Each bullet = 1 complete sentence, max 15 words. Each title max 35 chars. Never truncate."
             else:
-                custom_instructions = f"{google_context}\n\nLanguage: {language}\nTone: Government / Training\nIMPORTANT: Write detailed bullet points (20-35 words each). If Hindi, write complete Hindi sentences."
+                custom_instructions = f"{google_context}\n\nLanguage: {language}\nTone: Government / Training\nSTRICT: Each bullet = 1 complete sentence, max 15 words. Each title max 35 chars. Never truncate."
             content_dict = generator.generate_ppt_content(
                 topic=user_input,
                 min_slides=10,

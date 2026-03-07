@@ -49,12 +49,12 @@ Presentation Structure:
    - Clear summary
    - Future readiness message
 
-Output Format Rules:
-- Write slide-wise content
-- Each slide must have:
-  - A clear title
-  - 4–5 bullet points
-- Each bullet point should be practical and complete
+STRICT Output Format Rules:
+- Each slide title: max 35 characters
+- Each bullet: exactly 1 COMPLETE sentence, max 15 words
+- Never truncate or use "..." — write short but complete sentences
+- 4 bullet points per slide
+- Each bullet must be practical, specific, and end with a period
 - Avoid vague or filler language
 """
     # Call Ollama API for content generation (local only)

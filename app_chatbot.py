@@ -1787,11 +1787,12 @@ if st.session_state.stage == 'generating':
                 st.session_state.ai_source = ai_source
                 # Update PPT generated count
                 try:
-                    with open("visitor_count.json", 'r') as f:
+                    _stats_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "visitor_count.json")
+                    with open(_stats_file, 'r') as f:
                         stats = json.load(f)
                     stats["ppt_generated"] = stats.get("ppt_generated", 0) + 1
                     stats["last_ppt"] = datetime.now().isoformat()
-                    with open("visitor_count.json", 'w') as f:
+                    with open(_stats_file, 'w') as f:
                         json.dump(stats, f)
                 except:
                     pass

@@ -733,8 +733,9 @@ def run_pptxgenjs(js_code, output_path):
 
 def generate_ppt(content, topic, theme):
     """Generate PPT — tries PptxGenJS first, falls back to python-pptx."""
+    project_dir = os.path.dirname(os.path.abspath(__file__))
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_folder = os.path.join("output", f"output_{timestamp}")
+    output_folder = os.path.join(project_dir, "output", f"output_{timestamp}")
     os.makedirs(output_folder, exist_ok=True)
 
     # Generate meaningful filename from topic
@@ -1574,6 +1575,9 @@ if user_input:
                     slides[slide_num - 1] = new_slide
                     st.session_state.parsed_slides = slides
 
+                    # Clear PptxGenJS code so fallback python-pptx uses edited slides
+                    st.session_state.pptxgenjs_code = None
+
                     # Regenerate PPT with updated slides
                     success, ppt_path = generate_ppt(slides, topic, st.session_state.theme)
                     if success:
@@ -1584,6 +1588,10 @@ if user_input:
                     add_message("assistant", f"❌ Could not update Slide {slide_num}: {error}\n\nPlease try again with a clearer instruction.")
 
                 st.rerun()
+        else:
+            # User is in preview mode but didn't specify a slide number
+            add_message("assistant", "💡 To edit a specific slide, please mention the slide number.\n\nExamples:\n- \"Slide 3 mein bullets kam karo\"\n- \"Slide 5 ko Hindi mein likho\"\n- \"Add more points in Slide 2\"\n\nOr click **New** to create a fresh presentation on a different topic.")
+            st.rerun()
 
     # Show the user's message immediately in chat
     with st.chat_message("user"):

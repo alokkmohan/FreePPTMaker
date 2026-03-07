@@ -558,7 +558,7 @@ if 'suggested_title' not in st.session_state:
 if 'ppt_path' not in st.session_state:
     st.session_state.ppt_path = None
 if 'theme' not in st.session_state:
-    st.session_state.theme = 'corporate'
+    st.session_state.theme = 'dark'
 if 'bullets_per_slide' not in st.session_state:
     st.session_state.bullets_per_slide = 4  # Default: 4 bullets per slide
 if 'file_content' not in st.session_state:
@@ -1796,10 +1796,20 @@ if st.session_state.stage == 'preview':
     # ─────────────────────────────────────────────────────────────────────────────
     st.markdown("### 🎨 Change Design / Theme")
 
-    col_theme1, col_theme2, col_theme3 = st.columns(3)
-    current_theme = st.session_state.get('theme', 'corporate')
+    col_theme1, col_theme2, col_theme3, col_theme4 = st.columns(4)
+    current_theme = st.session_state.get('theme', 'dark')
 
     with col_theme1:
+        if st.button(
+            "🌙 Dark" + (" ✓" if current_theme == 'dark' else ""),
+            use_container_width=True,
+            type="primary" if current_theme == 'dark' else "secondary"
+        ):
+            st.session_state.theme = 'dark'
+            st.session_state.stage = 'regenerating'
+            st.rerun()
+
+    with col_theme2:
         if st.button(
             "🏢 Corporate" + (" ✓" if current_theme == 'corporate' else ""),
             use_container_width=True,
@@ -1809,7 +1819,7 @@ if st.session_state.stage == 'preview':
             st.session_state.stage = 'regenerating'
             st.rerun()
 
-    with col_theme2:
+    with col_theme3:
         if st.button(
             "🎨 Modern" + (" ✓" if current_theme == 'modern' else ""),
             use_container_width=True,
@@ -1819,7 +1829,7 @@ if st.session_state.stage == 'preview':
             st.session_state.stage = 'regenerating'
             st.rerun()
 
-    with col_theme3:
+    with col_theme4:
         if st.button(
             "✨ Creative" + (" ✓" if current_theme == 'creative' else ""),
             use_container_width=True,

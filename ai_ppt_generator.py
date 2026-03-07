@@ -315,48 +315,486 @@ class ModernPPTDesigner:
     # Professional Color Schemes
     COLOR_SCHEMES = {
         "ocean": {
-            "primary": RGBColor(13, 71, 161),      # Deep Blue
-            "secondary": RGBColor(3, 169, 244),    # Light Blue
-            "accent": RGBColor(255, 193, 7),       # Amber
-            "text": RGBColor(33, 33, 33),          # Dark Gray
-            "bg": RGBColor(250, 250, 250),         # Light Gray
+            "primary": RGBColor(13, 71, 161),
+            "secondary": RGBColor(3, 169, 244),
+            "accent": RGBColor(255, 193, 7),
+            "text": RGBColor(33, 33, 33),
+            "bg": RGBColor(250, 250, 250),
+            "card_bg": RGBColor(235, 240, 248),
+            "card_bg_alt": RGBColor(225, 235, 245),
         },
         "forest": {
-            "primary": RGBColor(27, 94, 32),       # Dark Green
-            "secondary": RGBColor(76, 175, 80),    # Green
-            "accent": RGBColor(255, 152, 0),       # Orange
+            "primary": RGBColor(27, 94, 32),
+            "secondary": RGBColor(76, 175, 80),
+            "accent": RGBColor(255, 152, 0),
             "text": RGBColor(33, 33, 33),
             "bg": RGBColor(250, 250, 250),
+            "card_bg": RGBColor(232, 245, 233),
+            "card_bg_alt": RGBColor(220, 237, 222),
         },
         "sunset": {
-            "primary": RGBColor(183, 28, 28),      # Deep Red
-            "secondary": RGBColor(244, 67, 54),    # Red
-            "accent": RGBColor(255, 235, 59),      # Yellow
+            "primary": RGBColor(183, 28, 28),
+            "secondary": RGBColor(244, 67, 54),
+            "accent": RGBColor(255, 235, 59),
             "text": RGBColor(33, 33, 33),
             "bg": RGBColor(250, 250, 250),
+            "card_bg": RGBColor(255, 235, 238),
+            "card_bg_alt": RGBColor(248, 225, 228),
         },
         "corporate": {
-            "primary": RGBColor(26, 35, 126),      # Indigo
-            "secondary": RGBColor(92, 107, 192),   # Light Indigo
-            "accent": RGBColor(0, 188, 212),       # Cyan
+            "primary": RGBColor(26, 35, 126),
+            "secondary": RGBColor(92, 107, 192),
+            "accent": RGBColor(0, 188, 212),
             "text": RGBColor(33, 33, 33),
             "bg": RGBColor(255, 255, 255),
+            "card_bg": RGBColor(232, 234, 246),
+            "card_bg_alt": RGBColor(220, 225, 240),
+        },
+        "dark": {
+            "primary": RGBColor(13, 27, 42),        # Dark navy
+            "secondary": RGBColor(46, 196, 182),     # Teal
+            "accent": RGBColor(230, 57, 70),         # Red
+            "gold": RGBColor(255, 209, 102),         # Gold
+            "text": RGBColor(224, 225, 221),         # Light text
+            "bg": RGBColor(13, 27, 42),              # Dark navy
+            "card_bg": RGBColor(27, 46, 66),         # Lighter navy
+            "card_bg_alt": RGBColor(34, 58, 82),     # Alt card bg
+            "muted_text": RGBColor(141, 153, 174),   # Muted
         },
         "eg": {
-            "primary": RGBColor(255, 47, 47),      # Bright Red (EG Template Title)
-            "secondary": RGBColor(200, 30, 30),    # Darker Red
-            "accent": RGBColor(255, 100, 100),     # Light Red
-            "text": RGBColor(38, 38, 38),          # Dark Gray (EG Template Text)
-            "bg": RGBColor(255, 255, 255),         # White
-        }
+            "primary": RGBColor(255, 47, 47),
+            "secondary": RGBColor(200, 30, 30),
+            "accent": RGBColor(255, 100, 100),
+            "text": RGBColor(38, 38, 38),
+            "bg": RGBColor(255, 255, 255),
+            "card_bg": RGBColor(255, 240, 240),
+            "card_bg_alt": RGBColor(248, 230, 230),
+        },
     }
-    
+
+    # Map UI theme names to color schemes
+    THEME_ALIASES = {
+        "modern": "ocean",
+        "creative": "sunset",
+    }
+
     def __init__(self, scheme="corporate"):
-        self.colors = self.COLOR_SCHEMES.get(scheme, self.COLOR_SCHEMES["corporate"])
+        resolved = self.THEME_ALIASES.get(scheme, scheme)
+        self.scheme_name = resolved
+        self.is_dark = (resolved == "dark")
+        self.colors = self.COLOR_SCHEMES.get(resolved, self.COLOR_SCHEMES["corporate"])
         self.prs = Presentation()
         self.prs.slide_width = Inches(10)
         self.prs.slide_height = Inches(5.625)
+        # Accent colors for cycling through cards
+        self._accent_colors = [
+            self.colors["secondary"],
+            self.colors.get("accent", self.colors["secondary"]),
+            self.colors.get("gold", self.colors.get("accent", self.colors["secondary"])),
+        ]
     
+    # ─────────────────────────────────────────────────────────────────────
+    # 🔧 HELPER METHODS
+    # ─────────────────────────────────────────────────────────────────────
+
+    def _add_bg(self, slide):
+        """Add full-slide background."""
+        bg = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE, Inches(0), Inches(0),
+            Inches(10), Inches(5.625)
+        )
+        bg.fill.solid()
+        bg.fill.fore_color.rgb = self.colors["bg"]
+        bg.line.fill.background()
+        slide.shapes._spTree.remove(bg._element)
+        slide.shapes._spTree.insert(2, bg._element)
+
+    def _add_card(self, slide, left, top, width, height, fill_color=None):
+        """Add a card shape. Returns the shape."""
+        card = slide.shapes.add_shape(
+            MSO_SHAPE.ROUNDED_RECTANGLE,
+            Inches(left), Inches(top), Inches(width), Inches(height)
+        )
+        card.fill.solid()
+        card.fill.fore_color.rgb = fill_color or self.colors.get("card_bg", RGBColor(230, 230, 240))
+        card.line.fill.background()
+        return card
+
+    def _add_accent_strip(self, slide, left, top, height, color, width=0.08):
+        """Add a thin colored accent strip (left edge of card)."""
+        strip = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            Inches(left), Inches(top), Inches(width), Inches(height)
+        )
+        strip.fill.solid()
+        strip.fill.fore_color.rgb = color
+        strip.line.fill.background()
+
+    def _add_title_text(self, slide, title, y=0.3, font_size=28):
+        """Add slide title text."""
+        text_color = self.colors["text"]
+        title_box = slide.shapes.add_textbox(Inches(0.6), Inches(y), Inches(8.8), Inches(0.7))
+        tf = title_box.text_frame
+        tf.word_wrap = True
+        title_text = title[:80] if len(title) > 80 else title
+        tf.text = title_text
+        p = tf.paragraphs[0]
+        # Dynamic size
+        if len(title_text) > 55:
+            font_size = min(font_size, 22)
+        elif len(title_text) > 40:
+            font_size = min(font_size, 26)
+        p.font.size = Pt(font_size)
+        p.font.bold = True
+        p.font.color.rgb = text_color
+        p.font.name = 'Calibri'
+
+    def _add_underline(self, slide, y=0.85, color=None, left=0.6, width=2.5):
+        """Add thin accent underline below title."""
+        line = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            Inches(left), Inches(y), Inches(width), Inches(0.05)
+        )
+        line.fill.solid()
+        line.fill.fore_color.rgb = color or self.colors["secondary"]
+        line.line.fill.background()
+
+    def _truncate_bullet(self, text, max_words=18):
+        """Truncate bullet to max words for visual slides."""
+        text = clean_markdown(text)
+        text = fix_broken_words(clean_bullet_point(text))
+        words = text.split()
+        if len(words) > max_words:
+            return ' '.join(words[:max_words]) + '...'
+        return text
+
+    @staticmethod
+    def _detect_stat_content(bullets):
+        """Detect bullets with stats/numbers. Returns [(number, description)]."""
+        stats = []
+        for bullet in bullets:
+            patterns = [
+                r'(\d[\d,]*\.?\d*\s*%)',
+                r'(\$[\d,]+\.?\d*\s*[BMKbmk]?)',
+                r'(Rs\.?\s*[\d,]+\.?\d*\s*(?:Crore|Lakh|cr|lakh)?)',
+                r'(\d[\d,]*\.?\d*\s*[xX]\b)',
+                r'(\d[\d,]*\+)',
+                r'(\b\d{3,}[\d,]*\b)',
+            ]
+            for pat in patterns:
+                match = re.search(pat, bullet)
+                if match:
+                    num_str = match.group(1).strip()
+                    desc = bullet.replace(match.group(0), '').strip(' :-,.')
+                    if desc:
+                        stats.append((num_str, desc))
+                    break
+        return stats
+
+    # ─────────────────────────────────────────────────────────────────────
+    # 🃏 CARD SLIDE - Content in visual containers (2x2 or 3-col)
+    # ─────────────────────────────────────────────────────────────────────
+
+    def create_card_slide(self, title, bullets, image_path=None):
+        """Content in card containers instead of plain bullets."""
+        slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
+        self._add_bg(slide)
+        self._add_title_text(slide, title)
+        self._add_underline(slide)
+
+        bullets = bullets[:6]  # Max 6 cards
+        n = len(bullets)
+
+        # Add image in top-right if available
+        if image_path and os.path.exists(image_path):
+            try:
+                slide.shapes.add_picture(image_path, Inches(7.5), Inches(0.15), width=Inches(2.2), height=Inches(0.7))
+            except:
+                pass
+
+        if n <= 3:
+            # 3 horizontal cards
+            card_w = 2.8
+            card_h = 3.5
+            gap = 0.3
+            start_x = 0.5
+            y = 1.1
+            for i, bullet in enumerate(bullets):
+                x = start_x + i * (card_w + gap)
+                color = self._accent_colors[i % len(self._accent_colors)]
+                self._add_card(slide, x, y, card_w, card_h, self.colors.get("card_bg"))
+                self._add_accent_strip(slide, x, y, card_h, color)
+                # Text inside card
+                tb = slide.shapes.add_textbox(
+                    Inches(x + 0.25), Inches(y + 0.2),
+                    Inches(card_w - 0.4), Inches(card_h - 0.4)
+                )
+                tf = tb.text_frame
+                tf.word_wrap = True
+                tf.text = self._truncate_bullet(bullet, 20)
+                p = tf.paragraphs[0]
+                p.font.size = Pt(14)
+                p.font.color.rgb = self.colors["text"]
+                p.font.name = 'Calibri'
+        else:
+            # 2x2 or 2x3 grid
+            card_w = 4.2
+            card_h = 1.9
+            gap_x = 0.6
+            gap_y = 0.2
+            for i, bullet in enumerate(bullets[:6]):
+                col = i % 2
+                row = i // 2
+                x = 0.5 + col * (card_w + gap_x)
+                y = 1.1 + row * (card_h + gap_y)
+                color = self._accent_colors[i % len(self._accent_colors)]
+                self._add_card(slide, x, y, card_w, card_h, self.colors.get("card_bg"))
+                self._add_accent_strip(slide, x, y, card_h, color)
+                tb = slide.shapes.add_textbox(
+                    Inches(x + 0.25), Inches(y + 0.15),
+                    Inches(card_w - 0.4), Inches(card_h - 0.3)
+                )
+                tf = tb.text_frame
+                tf.word_wrap = True
+                tf.text = self._truncate_bullet(bullet, 16)
+                p = tf.paragraphs[0]
+                p.font.size = Pt(13)
+                p.font.color.rgb = self.colors["text"]
+                p.font.name = 'Calibri'
+        return slide
+
+    # ─────────────────────────────────────────────────────────────────────
+    # 📊 STAT SLIDE - Big number callouts
+    # ─────────────────────────────────────────────────────────────────────
+
+    def create_stat_slide(self, title, stats):
+        """Big stat/number callout slide."""
+        slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
+        self._add_bg(slide)
+        self._add_title_text(slide, title, font_size=26)
+        self._add_underline(slide)
+
+        stats = stats[:4]  # Max 4 stats
+        n = len(stats)
+        stat_width = 8.0 / n
+        start_x = 1.0
+
+        for i, (num_str, desc) in enumerate(stats):
+            x = start_x + i * stat_width
+            color = self._accent_colors[i % len(self._accent_colors)]
+
+            # Card background
+            self._add_card(slide, x - 0.2, 1.2, stat_width - 0.2, 3.5,
+                          self.colors.get("card_bg"))
+
+            # Big number
+            num_box = slide.shapes.add_textbox(
+                Inches(x), Inches(1.5), Inches(stat_width - 0.6), Inches(1.2)
+            )
+            tf = num_box.text_frame
+            tf.text = num_str
+            p = tf.paragraphs[0]
+            p.alignment = PP_ALIGN.CENTER
+            p.font.size = Pt(44)
+            p.font.bold = True
+            p.font.color.rgb = color
+            p.font.name = 'Calibri'
+
+            # Description
+            desc_box = slide.shapes.add_textbox(
+                Inches(x), Inches(2.8), Inches(stat_width - 0.6), Inches(1.5)
+            )
+            tf = desc_box.text_frame
+            tf.word_wrap = True
+            desc_text = desc[:60] if len(desc) > 60 else desc
+            tf.text = desc_text
+            p = tf.paragraphs[0]
+            p.alignment = PP_ALIGN.CENTER
+            p.font.size = Pt(13)
+            p.font.color.rgb = self.colors.get("muted_text", self.colors["text"])
+            p.font.name = 'Calibri'
+
+        return slide
+
+    # ─────────────────────────────────────────────────────────────────────
+    # ⏱️ TIMELINE SLIDE - Horizontal steps
+    # ─────────────────────────────────────────────────────────────────────
+
+    def create_timeline_slide(self, title, bullets):
+        """Horizontal timeline with circles and text."""
+        slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
+        self._add_bg(slide)
+        self._add_title_text(slide, title, font_size=26)
+        self._add_underline(slide)
+
+        bullets = bullets[:5]  # Max 5 timeline items
+        n = len(bullets)
+        if n < 2:
+            return self.create_card_slide(title, bullets)
+
+        # Timeline line
+        line_y = 2.2
+        line = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            Inches(0.8), Inches(line_y + 0.2),
+            Inches(8.4), Inches(0.06)
+        )
+        line.fill.solid()
+        line.fill.fore_color.rgb = self.colors["secondary"]
+        line.line.fill.background()
+
+        # Circles and text
+        spacing = 8.0 / (n - 1) if n > 1 else 4.0
+        for i, bullet in enumerate(bullets):
+            cx = 1.0 + i * spacing
+            color = self._accent_colors[i % len(self._accent_colors)]
+
+            # Circle node
+            circle = slide.shapes.add_shape(
+                MSO_SHAPE.OVAL,
+                Inches(cx - 0.25), Inches(line_y),
+                Inches(0.5), Inches(0.5)
+            )
+            circle.fill.solid()
+            circle.fill.fore_color.rgb = color
+            circle.line.fill.background()
+
+            # Step number inside circle
+            num_box = slide.shapes.add_textbox(
+                Inches(cx - 0.25), Inches(line_y + 0.05),
+                Inches(0.5), Inches(0.4)
+            )
+            tf = num_box.text_frame
+            tf.text = str(i + 1)
+            p = tf.paragraphs[0]
+            p.alignment = PP_ALIGN.CENTER
+            p.font.size = Pt(14)
+            p.font.bold = True
+            p.font.color.rgb = RGBColor(255, 255, 255)
+            p.font.name = 'Calibri'
+
+            # Text below
+            text_w = min(spacing, 2.0)
+            tb = slide.shapes.add_textbox(
+                Inches(cx - text_w / 2), Inches(line_y + 0.65),
+                Inches(text_w), Inches(2.2)
+            )
+            tf = tb.text_frame
+            tf.word_wrap = True
+            tf.text = self._truncate_bullet(bullet, 12)
+            p = tf.paragraphs[0]
+            p.alignment = PP_ALIGN.CENTER
+            p.font.size = Pt(11)
+            p.font.color.rgb = self.colors["text"]
+            p.font.name = 'Calibri'
+
+        return slide
+
+    # ─────────────────────────────────────────────────────────────────────
+    # 📰 TWO-COLUMN SLIDE
+    # ─────────────────────────────────────────────────────────────────────
+
+    def create_two_column_slide(self, title, bullets, image_path=None):
+        """Split content into two side-by-side containers."""
+        slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
+        self._add_bg(slide)
+        self._add_title_text(slide, title)
+        self._add_underline(slide)
+
+        mid = len(bullets) // 2
+        left_bullets = bullets[:mid] if mid > 0 else bullets[:2]
+        right_bullets = bullets[mid:] if mid > 0 else bullets[2:]
+
+        # Left card
+        self._add_card(slide, 0.5, 1.1, 4.3, 4.0, self.colors.get("card_bg"))
+        self._add_accent_strip(slide, 0.5, 1.1, 0.06, self.colors["secondary"], width=4.3)
+
+        tb_left = slide.shapes.add_textbox(Inches(0.8), Inches(1.3), Inches(3.8), Inches(3.6))
+        tf = tb_left.text_frame
+        tf.word_wrap = True
+        for i, b in enumerate(left_bullets[:3]):
+            p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+            p.text = "  " + self._truncate_bullet(b, 15)
+            p.font.size = Pt(13)
+            p.font.color.rgb = self.colors["text"]
+            p.font.name = 'Calibri'
+            p.space_after = Pt(10)
+
+        # Right card - use image if available, else second column
+        if image_path and os.path.exists(image_path):
+            try:
+                slide.shapes.add_picture(
+                    image_path, Inches(5.2), Inches(1.1),
+                    width=Inches(4.3), height=Inches(4.0)
+                )
+            except:
+                self._add_card(slide, 5.2, 1.1, 4.3, 4.0, self.colors.get("card_bg_alt"))
+        else:
+            self._add_card(slide, 5.2, 1.1, 4.3, 4.0, self.colors.get("card_bg_alt"))
+            self._add_accent_strip(slide, 5.2, 1.1, 0.06, self.colors.get("accent", self.colors["secondary"]), width=4.3)
+
+            tb_right = slide.shapes.add_textbox(Inches(5.5), Inches(1.3), Inches(3.8), Inches(3.6))
+            tf = tb_right.text_frame
+            tf.word_wrap = True
+            for i, b in enumerate(right_bullets[:3]):
+                p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+                p.text = "  " + self._truncate_bullet(b, 15)
+                p.font.size = Pt(13)
+                p.font.color.rgb = self.colors["text"]
+                p.font.name = 'Calibri'
+                p.space_after = Pt(10)
+
+        return slide
+
+    # ─────────────────────────────────────────────────────────────────────
+    # 🖼️ IMAGE + CONTENT SLIDE - Photo takes 50%, text in container
+    # ─────────────────────────────────────────────────────────────────────
+
+    def create_image_content_slide(self, title, bullets, image_path=None):
+        """Image on left/right, text in container on other side."""
+        slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
+        self._add_bg(slide)
+        self._add_title_text(slide, title)
+        self._add_underline(slide)
+
+        has_image = image_path and os.path.exists(image_path)
+
+        if has_image:
+            # Image on left side
+            try:
+                slide.shapes.add_picture(
+                    image_path, Inches(0.4), Inches(1.1),
+                    width=Inches(4.5), height=Inches(4.1)
+                )
+            except:
+                has_image = False
+
+        # Text container on right (or full width if no image)
+        if has_image:
+            card_x, card_w = 5.2, 4.4
+        else:
+            card_x, card_w = 0.5, 9.0
+
+        self._add_card(slide, card_x, 1.1, card_w, 4.1, self.colors.get("card_bg"))
+        self._add_accent_strip(slide, card_x, 1.1, 4.1, self.colors["secondary"])
+
+        tb = slide.shapes.add_textbox(
+            Inches(card_x + 0.3), Inches(1.3),
+            Inches(card_w - 0.5), Inches(3.7)
+        )
+        tf = tb.text_frame
+        tf.word_wrap = True
+        for i, b in enumerate(bullets[:4]):
+            p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+            text = self._truncate_bullet(b, 18)
+            p.text = "●  " + text
+            p.font.size = Pt(14)
+            p.font.color.rgb = self.colors["text"]
+            p.font.name = 'Calibri'
+            p.space_after = Pt(12)
+
+        return slide
+
     def add_gradient_background(self, slide, style="light"):
         """Add gradient background to slide"""
         # Note: python-pptx doesn't support gradients directly
@@ -377,15 +815,25 @@ class ModernPPTDesigner:
     def create_title_slide(self, main_title, tagline=None, subtitle=None, presented_by=None):
         """Beautiful title slide with dynamic sizing to prevent overflow"""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
-        # Add decorative shape at top
-        shape = slide.shapes.add_shape(
-            MSO_SHAPE.RECTANGLE,
-            Inches(0), Inches(0),
-            Inches(10), Inches(1.2)
-        )
-        shape.fill.solid()
-        shape.fill.fore_color.rgb = self.colors["primary"]
-        shape.line.fill.background()
+
+        if self.is_dark:
+            # Dark theme: full dark background
+            self._add_bg(slide)
+            # Accent strip at top
+            strip = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(10), Inches(0.08)
+            )
+            strip.fill.solid()
+            strip.fill.fore_color.rgb = self.colors["secondary"]
+            strip.line.fill.background()
+        else:
+            # Light theme: colored header bar
+            shape = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(10), Inches(1.2)
+            )
+            shape.fill.solid()
+            shape.fill.fore_color.rgb = self.colors["primary"]
+            shape.line.fill.background()
 
         # Calculate how many sections we have to fit
         sections = 1  # main title always present
@@ -475,46 +923,40 @@ class ModernPPTDesigner:
     def create_section_slide(self, title):
         """Section divider slide"""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
-        
-        # Background with gradient effect using two rectangles
-        bg_bottom = slide.shapes.add_shape(
-            MSO_SHAPE.RECTANGLE,
-            Inches(0), Inches(0),
-            Inches(10), Inches(5.625)
-        )
-        bg_bottom.fill.solid()
-        bg_bottom.fill.fore_color.rgb = RGBColor(250, 250, 250)
-        bg_bottom.line.fill.background()
-        
-        # Diagonal accent (properly contained within slide)
-        accent = slide.shapes.add_shape(
-            MSO_SHAPE.RECTANGLE,
-            Inches(0), Inches(0),
-            Inches(10), Inches(3.5)
-        )
-        accent.fill.solid()
-        accent.fill.fore_color.rgb = self.colors["secondary"]
-        accent.line.fill.background()
-        accent.rotation = 0  # Keep it horizontal, no overflow
-        
-        # Title with dynamic sizing
-        title_box = slide.shapes.add_textbox(
-            Inches(1), Inches(2),
-            Inches(8), Inches(1.5)
-        )
-        tf = title_box.text_frame
-        # Truncate very long section titles
-        if len(title) > 80:
-            tf.text = title[:77] + "..."
+
+        if self.is_dark:
+            # Dark theme section
+            self._add_bg(slide)
+            # Card in center
+            self._add_card(slide, 1.5, 1.5, 7, 2.8, self.colors.get("card_bg"))
+            self._add_accent_strip(slide, 1.5, 1.5, 2.8, self.colors["secondary"])
+            title_color = self.colors["text"]
         else:
-            tf.text = title
+            # Light theme section
+            bg_bottom = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(10), Inches(5.625)
+            )
+            bg_bottom.fill.solid()
+            bg_bottom.fill.fore_color.rgb = RGBColor(250, 250, 250)
+            bg_bottom.line.fill.background()
+            accent = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(10), Inches(3.5)
+            )
+            accent.fill.solid()
+            accent.fill.fore_color.rgb = self.colors["secondary"]
+            accent.line.fill.background()
+            accent.rotation = 0
+            title_color = RGBColor(255, 255, 255)
+
+        # Title with dynamic sizing
+        title_box = slide.shapes.add_textbox(Inches(1), Inches(2), Inches(8), Inches(1.5))
+        tf = title_box.text_frame
+        tf.text = title[:77] + "..." if len(title) > 80 else title
         tf.vertical_anchor = MSO_ANCHOR.MIDDLE
         tf.word_wrap = True
-        
+
         p = tf.paragraphs[0]
         p.alignment = PP_ALIGN.CENTER
-        
-        # Dynamic font sizing for section titles
         if len(title) > 60:
             p.font.size = Pt(36)
         elif len(title) > 40:
@@ -522,9 +964,9 @@ class ModernPPTDesigner:
         else:
             p.font.size = Pt(48)
         p.font.bold = True
-        p.font.color.rgb = RGBColor(255, 255, 255)
+        p.font.color.rgb = title_color
         p.font.name = 'Calibri'
-        
+
         return slide
     
     def create_content_slide(self, title, bullets):
@@ -779,41 +1221,57 @@ class ModernPPTDesigner:
     def create_end_slide(self):
         """Beautiful thank you slide"""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
-        
-        # Background
-        bg = slide.shapes.add_shape(
-            MSO_SHAPE.RECTANGLE,
-            Inches(0), Inches(0),
-            Inches(10), Inches(5.625)
-        )
-        bg.fill.solid()
-        bg.fill.fore_color.rgb = self.colors["primary"]
-        bg.line.fill.background()
-        
-        # Circle decoration
-        circle = slide.shapes.add_shape(
-            MSO_SHAPE.OVAL,
-            Inches(3), Inches(1),
-            Inches(4), Inches(4)
-        )
-        circle.fill.solid()
-        circle.fill.fore_color.rgb = self.colors["secondary"]
-        circle.line.fill.background()
-        
-        # Thank you text
-        text_box = slide.shapes.add_textbox(
-            Inches(2), Inches(2.3),
-            Inches(6), Inches(1)
-        )
-        tf = text_box.text_frame
-        tf.text = "Thank You!"
-        p = tf.paragraphs[0]
-        p.alignment = PP_ALIGN.CENTER
-        p.font.size = Pt(60)
-        p.font.bold = True
-        p.font.color.rgb = RGBColor(255, 255, 255)
-        p.font.name = 'Calibri'
-        
+
+        if self.is_dark:
+            # Dark theme end slide
+            self._add_bg(slide)
+            # Card in center
+            self._add_card(slide, 2.5, 1.2, 5, 3.2, self.colors.get("card_bg"))
+            # Accent line at top of card
+            self._add_accent_strip(slide, 2.5, 1.2, 0.06, self.colors["secondary"], width=5)
+            # Thank you text
+            text_box = slide.shapes.add_textbox(Inches(2.5), Inches(2.0), Inches(5), Inches(1))
+            tf = text_box.text_frame
+            tf.text = "Thank You!"
+            p = tf.paragraphs[0]
+            p.alignment = PP_ALIGN.CENTER
+            p.font.size = Pt(52)
+            p.font.bold = True
+            p.font.color.rgb = self.colors["secondary"]
+            p.font.name = 'Calibri'
+            # Subtitle
+            sub = slide.shapes.add_textbox(Inches(2.5), Inches(3.1), Inches(5), Inches(0.6))
+            tf2 = sub.text_frame
+            tf2.text = "Questions & Discussion"
+            p2 = tf2.paragraphs[0]
+            p2.alignment = PP_ALIGN.CENTER
+            p2.font.size = Pt(18)
+            p2.font.color.rgb = self.colors.get("muted_text", self.colors["text"])
+            p2.font.name = 'Calibri'
+        else:
+            # Light theme end slide
+            bg = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(10), Inches(5.625)
+            )
+            bg.fill.solid()
+            bg.fill.fore_color.rgb = self.colors["primary"]
+            bg.line.fill.background()
+            circle = slide.shapes.add_shape(
+                MSO_SHAPE.OVAL, Inches(3), Inches(1), Inches(4), Inches(4)
+            )
+            circle.fill.solid()
+            circle.fill.fore_color.rgb = self.colors["secondary"]
+            circle.line.fill.background()
+            text_box = slide.shapes.add_textbox(Inches(2), Inches(2.3), Inches(6), Inches(1))
+            tf = text_box.text_frame
+            tf.text = "Thank You!"
+            p = tf.paragraphs[0]
+            p.alignment = PP_ALIGN.CENTER
+            p.font.size = Pt(60)
+            p.font.bold = True
+            p.font.color.rgb = RGBColor(255, 255, 255)
+            p.font.name = 'Calibri'
+
         return slide
     
     def save(self, filepath):
@@ -969,25 +1427,60 @@ def generate_beautiful_ppt(slides_or_text, output_path, color_scheme="corporate"
         presented_by = first.get("presented_by") or ""
         designer.create_title_slide(main_title, tagline, subtitle, presented_by)
 
-        # Content slides with AI images (if available)
-        for idx, slide in enumerate(slides[1:], start=1):
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # 🎯 SMART LAYOUT ROTATION
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # Layout cycle: cards -> two_column -> image_content -> cards...
+        layout_cycle = ["cards", "two_column", "image_content"]
+        layout_idx = 0
+        # Keywords that suggest timeline/step content
+        timeline_keywords = ['step', 'phase', 'stage', 'timeline', 'process',
+                            'workflow', 'journey', 'roadmap', 'milestone', 'sequence']
+
+        content_slides = slides[1:]
+        for idx, slide in enumerate(content_slides, start=1):
             title = slide.get("title", "")
             bullets = slide.get("bullets", [])
             chart_image = slide.get("chart_image_path")
+            title_lower = title.lower()
 
             if chart_image and os.path.exists(chart_image):
-                # Chart slide
-                print(f"📊 Adding chart slide {idx}: {title}")
+                # Chart slide (from Excel/CSV data)
+                print(f"  [LAYOUT] Chart slide {idx}: {title[:40]}")
                 designer.create_chart_slide(title, chart_image)
-            elif title or bullets:
-                # Check if we have an AI-generated image for this slide
-                image_path = slide_images.get(idx, None)
+                continue
 
-                if image_path:
-                    print(f"📸 Adding AI image to slide {idx}: {title}")
-                    designer.create_content_slide_with_image(title, bullets, image_path)
-                else:
-                    designer.create_content_slide_with_image(title, bullets, None)
+            if not title and not bullets:
+                continue
+
+            image_path = slide_images.get(idx, None)
+
+            # 1. Detect stats -> stat slide
+            stats = designer._detect_stat_content(bullets) if bullets else []
+            if len(stats) >= 2:
+                print(f"  [LAYOUT] Stat slide {idx}: {title[:40]}")
+                designer.create_stat_slide(title, stats)
+                continue
+
+            # 2. Detect timeline/step content -> timeline slide
+            if any(kw in title_lower for kw in timeline_keywords) and len(bullets) >= 3:
+                print(f"  [LAYOUT] Timeline slide {idx}: {title[:40]}")
+                designer.create_timeline_slide(title, bullets)
+                continue
+
+            # 3. Rotate through visual layouts
+            current_layout = layout_cycle[layout_idx % len(layout_cycle)]
+            layout_idx += 1
+
+            if current_layout == "cards":
+                print(f"  [LAYOUT] Card slide {idx}: {title[:40]}")
+                designer.create_card_slide(title, bullets, image_path)
+            elif current_layout == "two_column":
+                print(f"  [LAYOUT] Two-column slide {idx}: {title[:40]}")
+                designer.create_two_column_slide(title, bullets, image_path)
+            else:  # image_content
+                print(f"  [LAYOUT] Image+content slide {idx}: {title[:40]}")
+                designer.create_image_content_slide(title, bullets, image_path)
 
         designer.create_end_slide()
         designer.save(output_path)

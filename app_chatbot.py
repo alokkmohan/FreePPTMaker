@@ -2,6 +2,7 @@ import streamlit as st
 
 import os
 import re
+import time
 from datetime import datetime
 from document_upload_component import document_upload_component
 
@@ -1735,29 +1736,49 @@ if user_input:
 # Generation process
 if st.session_state.stage == 'generating':
     with st.chat_message("assistant"):
-        progress_placeholder = st.empty()
+        progress_bar = st.progress(0)
+        status_text = st.empty()
 
         try:
-            # Show progress
-            progress_placeholder.markdown("**Creating your presentation...**\n\nThinking about the structure...")
+            # Step 1: Analyzing
+            status_text.text("🧠 Step 1/6: Analyzing topic...")
+            progress_bar.progress(10)
 
-            # Use parsed slides (structured data) - this is the primary content
             content = st.session_state.get('parsed_slides', [])
             ai_source = get_last_ai_source()
 
-            progress_placeholder.markdown("**Creating your presentation...**\n\n Creating Slide 1: Title...")
-            progress_placeholder.markdown("**Creating your presentation...**\n\n Creating Slide 2: Introduction...")
-            progress_placeholder.markdown("**Creating your presentation...**\n\n Creating Slide 3-5: Key Concepts...")
-            progress_placeholder.markdown("**Creating your presentation...**\n\n Creating Slide 6-8: Details...")
-            progress_placeholder.markdown("**Creating your presentation...**\n\n Creating Final Slides...")
-            progress_placeholder.markdown("**Creating your presentation...**\n\n Applying theme & formatting...")
+            # Step 2: Planning
+            status_text.text("📋 Step 2/6: Planning slide structure...")
+            progress_bar.progress(25)
+
+            import time
+            time.sleep(0.3)
+
+            # Step 3: Generating content
+            status_text.text("🎨 Step 3/6: Generating slide content...")
+            progress_bar.progress(45)
+
+            time.sleep(0.3)
+
+            # Step 4: Adding visuals
+            status_text.text("🖼️ Step 4/6: Adding visuals & layout...")
+            progress_bar.progress(65)
+
+            # Step 5: Building PPT
+            status_text.text("📊 Step 5/6: Building PowerPoint file...")
+            progress_bar.progress(80)
 
             # Generate PPT
             success, ppt_path = generate_ppt(content, st.session_state.topic, st.session_state.theme)
 
+            # Step 6: Finalizing
+            status_text.text("✅ Step 6/6: Finalizing & preparing download...")
+            progress_bar.progress(100)
+
             if success:
+                status_text.text("🎉 Done! Your presentation is ready.")
                 st.session_state.ppt_path = ppt_path
-                st.session_state.stage = 'preview'  # Go to preview stage instead of done
+                st.session_state.stage = 'preview'
                 st.session_state.ai_source = ai_source
                 # Update PPT generated count
                 try:
@@ -1769,14 +1790,18 @@ if st.session_state.stage == 'generating':
                         json.dump(stats, f)
                 except:
                     pass
-                progress_placeholder.empty()
+                time.sleep(0.5)
+                progress_bar.empty()
+                status_text.empty()
                 st.rerun()
             else:
-                progress_placeholder.error("Failed to create presentation. Please try again.")
+                progress_bar.empty()
+                status_text.error("Failed to create presentation. Please try again.")
                 st.session_state.stage = 'awaiting_topic'
 
         except Exception as e:
-            progress_placeholder.error(f"Error: {str(e)}")
+            progress_bar.empty()
+            status_text.error(f"Error: {str(e)}")
             st.session_state.stage = 'awaiting_topic'
             add_message("assistant", f"Sorry, there was an error. Please try again with a different topic.")
             st.rerun()

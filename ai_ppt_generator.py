@@ -431,23 +431,32 @@ class ModernPPTDesigner:
         strip.line.fill.background()
 
     def _add_title_text(self, slide, title, y=0.3, font_size=28):
-        """Add slide title text."""
+        """Add slide title text. Max 40 chars, max 32pt."""
         text_color = self.colors["text"]
-        title_box = slide.shapes.add_textbox(Inches(0.6), Inches(y), Inches(8.8), Inches(0.7))
+        title_box = slide.shapes.add_textbox(Inches(0.6), Inches(y), Inches(9), Inches(0.7))
         tf = title_box.text_frame
         tf.word_wrap = True
-        title_text = title[:80] if len(title) > 80 else title
+        title_text = title[:40] if len(title) > 40 else title
         tf.text = title_text
         p = tf.paragraphs[0]
-        # Dynamic size
-        if len(title_text) > 55:
-            font_size = min(font_size, 22)
-        elif len(title_text) > 40:
-            font_size = min(font_size, 26)
+        font_size = min(font_size, 32)
+        if len(title_text) > 35:
+            font_size = min(font_size, 24)
+        elif len(title_text) > 25:
+            font_size = min(font_size, 28)
         p.font.size = Pt(font_size)
         p.font.bold = True
         p.font.color.rgb = text_color
         p.font.name = 'Calibri'
+
+    def _add_red_top_bar(self, slide):
+        """Add thin red accent bar at top of every slide (dark theme)."""
+        bar = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(10), Inches(0.12)
+        )
+        bar.fill.solid()
+        bar.fill.fore_color.rgb = self.colors.get("accent", RGBColor(230, 57, 70))
+        bar.line.fill.background()
 
     def _add_underline(self, slide, y=0.85, color=None, left=0.6, width=2.5):
         """Add thin accent underline below title."""
@@ -459,13 +468,21 @@ class ModernPPTDesigner:
         line.fill.fore_color.rgb = color or self.colors["secondary"]
         line.line.fill.background()
 
-    def _truncate_bullet(self, text, max_words=18):
-        """Truncate bullet to max words for visual slides."""
+    def _truncate_bullet(self, text, max_words=18, max_chars=120):
+        """Truncate bullet to max words/chars for visual slides."""
         text = clean_markdown(text)
         text = fix_broken_words(clean_bullet_point(text))
         words = text.split()
         if len(words) > max_words:
-            return ' '.join(words[:max_words]) + '...'
+            text = ' '.join(words[:max_words]) + '...'
+        if len(text) > max_chars:
+            # Truncate at last word boundary before max_chars
+            truncated = text[:max_chars]
+            last_space = truncated.rfind(' ')
+            if last_space > max_chars * 0.6:
+                text = truncated[:last_space] + '...'
+            else:
+                text = truncated + '...'
         return text
 
     @staticmethod
@@ -495,22 +512,19 @@ class ModernPPTDesigner:
     # 🃏 CARD SLIDE - Content in visual containers (2x2 or 3-col)
     # ─────────────────────────────────────────────────────────────────────
 
+    # Emoji icons to use in cards (cycling)
+    CARD_EMOJIS = ['🔹', '🔸', '▪️', '🔷', '🔶', '⬥']
+
     def create_card_slide(self, title, bullets, image_path=None):
-        """Content in card containers instead of plain bullets."""
+        """Content in card containers with emoji icons instead of plain bullets."""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
         self._add_bg(slide)
-        self._add_title_text(slide, title)
-        self._add_underline(slide)
+        self._add_red_top_bar(slide)
+        self._add_title_text(slide, title, y=0.2)
+        self._add_underline(slide, y=0.75)
 
         bullets = bullets[:6]  # Max 6 cards
         n = len(bullets)
-
-        # Add image in top-right if available
-        if image_path and os.path.exists(image_path):
-            try:
-                slide.shapes.add_picture(image_path, Inches(7.5), Inches(0.15), width=Inches(2.2), height=Inches(0.7))
-            except:
-                pass
 
         if n <= 3:
             # 3 horizontal cards
@@ -518,49 +532,70 @@ class ModernPPTDesigner:
             card_h = 3.5
             gap = 0.3
             start_x = 0.5
-            y = 1.1
+            y = 1.0
             for i, bullet in enumerate(bullets):
                 x = start_x + i * (card_w + gap)
                 color = self._accent_colors[i % len(self._accent_colors)]
                 self._add_card(slide, x, y, card_w, card_h, self.colors.get("card_bg"))
                 self._add_accent_strip(slide, x, y, card_h, color)
-                # Text inside card
+                emoji = self.CARD_EMOJIS[i % len(self.CARD_EMOJIS)]
                 tb = slide.shapes.add_textbox(
-                    Inches(x + 0.25), Inches(y + 0.2),
-                    Inches(card_w - 0.4), Inches(card_h - 0.4)
+                    Inches(x + 0.2), Inches(y + 0.15),
+                    Inches(card_w - 0.35), Inches(card_h - 0.3)
                 )
                 tf = tb.text_frame
                 tf.word_wrap = True
-                tf.text = self._truncate_bullet(bullet, 20)
-                p = tf.paragraphs[0]
-                p.font.size = Pt(14)
-                p.font.color.rgb = self.colors["text"]
-                p.font.name = 'Calibri'
-        else:
-            # 2x2 or 2x3 grid
-            card_w = 4.2
-            card_h = 1.9
-            gap_x = 0.6
-            gap_y = 0.2
-            for i, bullet in enumerate(bullets[:6]):
-                col = i % 2
-                row = i // 2
-                x = 0.5 + col * (card_w + gap_x)
-                y = 1.1 + row * (card_h + gap_y)
-                color = self._accent_colors[i % len(self._accent_colors)]
-                self._add_card(slide, x, y, card_w, card_h, self.colors.get("card_bg"))
-                self._add_accent_strip(slide, x, y, card_h, color)
-                tb = slide.shapes.add_textbox(
-                    Inches(x + 0.25), Inches(y + 0.15),
-                    Inches(card_w - 0.4), Inches(card_h - 0.3)
-                )
-                tf = tb.text_frame
-                tf.word_wrap = True
-                tf.text = self._truncate_bullet(bullet, 16)
+                tf.text = f"{emoji} {self._truncate_bullet(bullet, 18, 120)}"
                 p = tf.paragraphs[0]
                 p.font.size = Pt(13)
                 p.font.color.rgb = self.colors["text"]
                 p.font.name = 'Calibri'
+        else:
+            # 2x2 or 2x3 grid
+            card_w = 4.3
+            card_h = 1.25
+            gap_x = 0.4
+            gap_y = 0.15
+            for i, bullet in enumerate(bullets[:6]):
+                col = i % 2
+                row = i // 2
+                x = 0.3 + col * (card_w + gap_x)
+                y = 1.0 + row * (card_h + gap_y)
+                color = self._accent_colors[i % len(self._accent_colors)]
+                self._add_card(slide, x, y, card_w, card_h, self.colors.get("card_bg"))
+                self._add_accent_strip(slide, x, y, card_h, color)
+                emoji = self.CARD_EMOJIS[i % len(self.CARD_EMOJIS)]
+                # Title line (first few words bold)
+                text = self._truncate_bullet(bullet, 15, 120)
+                words = text.split()
+                card_title = ' '.join(words[:4])
+                card_desc = ' '.join(words[4:]) if len(words) > 4 else ''
+                # Title
+                tb_title = slide.shapes.add_textbox(
+                    Inches(x + 0.15), Inches(y + 0.1),
+                    Inches(card_w - 0.3), Inches(0.4)
+                )
+                tf = tb_title.text_frame
+                tf.word_wrap = True
+                tf.text = f"{emoji} {card_title}"
+                p = tf.paragraphs[0]
+                p.font.size = Pt(13)
+                p.font.bold = True
+                p.font.color.rgb = color
+                p.font.name = 'Calibri'
+                # Description
+                if card_desc:
+                    tb_desc = slide.shapes.add_textbox(
+                        Inches(x + 0.15), Inches(y + 0.5),
+                        Inches(card_w - 0.3), Inches(0.65)
+                    )
+                    tf2 = tb_desc.text_frame
+                    tf2.word_wrap = True
+                    tf2.text = card_desc
+                    p2 = tf2.paragraphs[0]
+                    p2.font.size = Pt(11)
+                    p2.font.color.rgb = self.colors.get("muted_text", self.colors["text"])
+                    p2.font.name = 'Calibri'
         return slide
 
     # ─────────────────────────────────────────────────────────────────────
@@ -571,8 +606,9 @@ class ModernPPTDesigner:
         """Big stat/number callout slide."""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
         self._add_bg(slide)
-        self._add_title_text(slide, title, font_size=26)
-        self._add_underline(slide)
+        self._add_red_top_bar(slide)
+        self._add_title_text(slide, title, y=0.2, font_size=26)
+        self._add_underline(slide, y=0.75)
 
         stats = stats[:4]  # Max 4 stats
         n = len(stats)
@@ -624,8 +660,9 @@ class ModernPPTDesigner:
         """Horizontal timeline with circles and text."""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
         self._add_bg(slide)
-        self._add_title_text(slide, title, font_size=26)
-        self._add_underline(slide)
+        self._add_red_top_bar(slide)
+        self._add_title_text(slide, title, y=0.2, font_size=26)
+        self._add_underline(slide, y=0.75)
 
         bullets = bullets[:5]  # Max 5 timeline items
         n = len(bullets)
@@ -698,8 +735,9 @@ class ModernPPTDesigner:
         """Split content into two side-by-side containers."""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
         self._add_bg(slide)
-        self._add_title_text(slide, title)
-        self._add_underline(slide)
+        self._add_red_top_bar(slide)
+        self._add_title_text(slide, title, y=0.2)
+        self._add_underline(slide, y=0.75)
 
         mid = len(bullets) // 2
         left_bullets = bullets[:mid] if mid > 0 else bullets[:2]
@@ -751,47 +789,33 @@ class ModernPPTDesigner:
     # ─────────────────────────────────────────────────────────────────────
 
     def create_image_content_slide(self, title, bullets, image_path=None):
-        """Image on left/right, text in container on other side."""
+        """Full-width card with emoji bullet points."""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
         self._add_bg(slide)
-        self._add_title_text(slide, title)
-        self._add_underline(slide)
+        self._add_red_top_bar(slide)
+        self._add_title_text(slide, title, y=0.2)
+        self._add_underline(slide, y=0.75)
 
-        has_image = image_path and os.path.exists(image_path)
-
-        if has_image:
-            # Image on left side
-            try:
-                slide.shapes.add_picture(
-                    image_path, Inches(0.4), Inches(1.1),
-                    width=Inches(4.5), height=Inches(4.1)
-                )
-            except:
-                has_image = False
-
-        # Text container on right (or full width if no image)
-        if has_image:
-            card_x, card_w = 5.2, 4.4
-        else:
-            card_x, card_w = 0.5, 9.0
-
-        self._add_card(slide, card_x, 1.1, card_w, 4.1, self.colors.get("card_bg"))
-        self._add_accent_strip(slide, card_x, 1.1, 4.1, self.colors["secondary"])
+        # Full-width card container
+        card_x, card_w = 0.4, 9.2
+        self._add_card(slide, card_x, 0.95, card_w, 4.3, self.colors.get("card_bg"))
+        self._add_accent_strip(slide, card_x, 0.95, 4.3, self.colors["secondary"])
 
         tb = slide.shapes.add_textbox(
-            Inches(card_x + 0.3), Inches(1.3),
-            Inches(card_w - 0.5), Inches(3.7)
+            Inches(card_x + 0.3), Inches(1.1),
+            Inches(card_w - 0.5), Inches(4.0)
         )
         tf = tb.text_frame
         tf.word_wrap = True
         for i, b in enumerate(bullets[:4]):
             p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-            text = self._truncate_bullet(b, 18)
-            p.text = "●  " + text
+            emoji = self.CARD_EMOJIS[i % len(self.CARD_EMOJIS)]
+            text = self._truncate_bullet(b, 18, 120)
+            p.text = f"{emoji}  {text}"
             p.font.size = Pt(14)
             p.font.color.rgb = self.colors["text"]
             p.font.name = 'Calibri'
-            p.space_after = Pt(12)
+            p.space_after = Pt(14)
 
         return slide
 
@@ -816,53 +840,38 @@ class ModernPPTDesigner:
         """Beautiful title slide with dynamic sizing to prevent overflow"""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
 
-        if self.is_dark:
-            # Dark theme: full dark background
-            self._add_bg(slide)
-            # Accent strip at top
-            strip = slide.shapes.add_shape(
-                MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(10), Inches(0.08)
-            )
-            strip.fill.solid()
-            strip.fill.fore_color.rgb = self.colors["secondary"]
-            strip.line.fill.background()
-        else:
-            # Light theme: colored header bar
+        self._add_bg(slide)
+        self._add_red_top_bar(slide)
+
+        if not self.is_dark:
+            # Light theme: colored header bar below red bar
             shape = slide.shapes.add_shape(
-                MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(10), Inches(1.2)
+                MSO_SHAPE.RECTANGLE, Inches(0), Inches(0.12), Inches(10), Inches(1.1)
             )
             shape.fill.solid()
             shape.fill.fore_color.rgb = self.colors["primary"]
             shape.line.fill.background()
 
-        # Calculate how many sections we have to fit
-        sections = 1  # main title always present
+        main_title = main_title or "Presentation"
+        # Truncate title to 40 chars max
+        main_title = main_title[:40] if len(main_title) > 40 else main_title
+
+        # Count sections for spacing
+        sections = 1
         if tagline: sections += 1
         if subtitle: sections += 1
         if presented_by: sections += 1
 
-        # Available space: slide height (5.625) - top bar (1.2) - bottom margin (0.3) = 4.125 inches
-        available_height = 4.125
-        main_title = main_title or "Presentation"
-
-        # Dynamic title font size based on text length
-        if len(main_title) > 80:
-            title_font = 24
+        # Dynamic title font size — max 52pt for title slide
+        if len(main_title) > 35:
+            title_font = 32
             title_height = 1.0
-        elif len(main_title) > 50:
-            title_font = 30
-            title_height = 1.0
-        elif len(main_title) > 30:
-            title_font = 36
+        elif len(main_title) > 25:
+            title_font = 40
             title_height = 1.1
         else:
-            title_font = 40
+            title_font = 48
             title_height = 1.2
-
-        # Shrink further if many sections need to fit
-        if sections >= 4:
-            title_font = min(title_font, 32)
-            title_height = min(title_height, 0.9)
 
         y = 1.4
         # Main Title
@@ -1187,31 +1196,18 @@ class ModernPPTDesigner:
     def create_chart_slide(self, title, chart_image_path):
         """Create a slide with an embedded chart image"""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
-
-        # Header bar
-        header = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(10), Inches(1))
-        header.fill.solid()
-        header.fill.fore_color.rgb = self.colors["primary"]
-        header.line.fill.background()
-
-        # Title
-        title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.15), Inches(9), Inches(0.7))
-        tf = title_box.text_frame
-        tf.text = title[:70] if len(title) > 70 else title
-        tf.word_wrap = True
-        p = tf.paragraphs[0]
-        p.font.size = Pt(32)
-        p.font.bold = True
-        p.font.color.rgb = RGBColor(255, 255, 255)
-        p.font.name = 'Calibri'
+        self._add_bg(slide)
+        self._add_red_top_bar(slide)
+        self._add_title_text(slide, title, y=0.2, font_size=28)
+        self._add_underline(slide, y=0.75)
 
         # Chart image centered
         if chart_image_path and os.path.exists(chart_image_path):
             try:
                 slide.shapes.add_picture(
                     chart_image_path,
-                    Inches(1), Inches(1.2),
-                    width=Inches(8), height=Inches(4.2)
+                    Inches(1), Inches(1.0),
+                    width=Inches(8), height=Inches(4.3)
                 )
             except Exception as e:
                 print(f"[CHART] Error adding chart to slide: {e}")
@@ -1392,26 +1388,15 @@ def generate_beautiful_ppt(slides_or_text, output_path, color_scheme="corporate"
             slides = [{"title": original_topic or "Presentation", "main_title": original_topic or "Presentation"}]
 
         # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        # 🎨 FREE IMAGE GENERATION (Pollinations / LoremFlickr / Picsum)
+        # 📏 LIMIT TO EXACTLY 10 SLIDES (1 title + 8 content + 1 end)
         # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        MAX_CONTENT_SLIDES = 8
+        if len(slides) > MAX_CONTENT_SLIDES + 1:  # +1 for title slide
+            print(f"[LIMIT] Trimming {len(slides)} slides to {MAX_CONTENT_SLIDES + 1}")
+            slides = slides[:MAX_CONTENT_SLIDES + 1]
+
+        # Skip image generation for content slides (use emoji+card instead)
         slide_images = {}
-        if generate_ai_images:
-            print("\n" + "="*60)
-            print("🎨 SLIDE IMAGE GENERATION STARTED")
-            print("="*60)
-
-            for idx, slide in enumerate(slides[1:], start=1):
-                title = slide.get("title", "")
-                bullets = slide.get("bullets", [])
-                if title and not slide.get("chart_image_path"):
-                    img_path = generate_slide_image(title, bullets, width=800, height=500)
-                    if img_path:
-                        slide_images[idx] = img_path
-
-            if slide_images:
-                print(f"\n✅ Generated {len(slide_images)} images for slides!")
-            else:
-                print("\n⚠️  No images generated")
 
         # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         # 📊 CREATE PPT WITH IMAGES

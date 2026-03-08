@@ -454,74 +454,25 @@ IMPORTANT RULES:
         gold = colors["GOLD"]
         muted = colors["MUTED"]
 
-        prompt = f"""{web_section}You are a PptxGenJS JavaScript code generator. Generate code that creates a professional 10-slide presentation about the topic below.
+        prompt = f"""{web_section}Generate PptxGenJS code for 10 slides about: {topic}
 
-The code receives a `pptx` object (PptxGenJS instance, LAYOUT_WIDE 13.33x7.5 inches) as its only parameter.
-Do NOT use require(). Do NOT call pptx.writeFile(). Just add slides to `pptx`.
+The code receives `pptx` object (LAYOUT_WIDE). Do NOT use require(). Do NOT call writeFile().
+Language: {language}
 
-LANGUAGE: {language}
+Colors: BG="{bg}", Card="{card}", Title="{title_c}", Body="{body_c}", Accent="{accent}", Teal="{teal}", Gold="{gold}"
 
-EXACT COLORS TO USE:
-  Background: "{bg}"
-  Card fill: "{card}"
-  Card alt fill: "{card_alt}"
-  Title text: "{title_c}"
-  Body text: "{body_c}"
-  Accent (top bar): "{accent}"
-  Teal (card border): "{teal}"
-  Gold (highlights): "{gold}"
-  Muted text: "{muted}"
+Every slide: slide.background={{fill:"{bg}"}}; + red bar: slide.addShape(pptx.shapes.RECTANGLE,{{x:0,y:0,w:"100%",h:0.15,fill:{{color:"{accent}"}}}});
+Title: slide.addText("Title",{{x:0.5,y:0.25,w:12,h:0.7,fontSize:24,fontFace:"Arial",color:"{title_c}",bold:true}});
+Card: slide.addShape(pptx.shapes.ROUNDED_RECTANGLE,{{x:X,y:Y,w:W,h:H,fill:{{color:"{card}"}},rectRadius:0.1,line:{{color:"{teal}",width:1}}}});
+Card text: slide.addText([{{text:"Icon Title\\n",options:{{fontSize:13,bold:true,color:"{title_c}"}}}},{{text:"Body text.",options:{{fontSize:11,color:"{body_c}"}}}}],{{x:X+0.15,y:Y+0.1,w:W-0.3,h:H-0.2,fontFace:"Calibri",valign:"top"}});
 
-SLIDE STRUCTURE (exactly 10 slides):
-  Slide 1: Title slide (big title centered, tagline below, "Presented by: AI" at bottom)
-  Slide 2: Overview / Introduction (card grid layout - 4 cards in 2x2)
-  Slide 3: Background / Context (two-column layout)
-  Slide 4: Main Topic A - deep dive (card grid layout - 3 or 4 cards)
-  Slide 5: Main Topic B - deep dive (two-column layout)
-  Slide 6: Timeline / Key Steps (vertical timeline with circles and lines)
-  Slide 7: Stats / Data (big number stat callouts - 3 or 4 stats)
-  Slide 8: Challenges / Issues (card grid layout)
-  Slide 9: Future Outlook (two-column or card layout)
-  Slide 10: Conclusion / Thank You (centered text, key takeaway)
+10 slides: 1.Title(fontSize40,centered) 2.Overview(4 cards 2x2) 3.Background(two-column) 4.TopicA(cards) 5.TopicB(two-col) 6.Timeline(circles+lines) 7.Stats(big numbers) 8.Challenges(cards) 9.Future(two-col) 10.ThankYou
 
-DESIGN RULES:
-1. Every slide: slide.background = {{ fill: "{bg}" }};
-2. Every slide: accent top bar:
-   slide.addShape(pptx.shapes.RECTANGLE, {{ x: 0, y: 0, w: "100%", h: 0.15, fill: {{ color: "{accent}" }} }});
-3. Slide title on every slide (except slide 1):
-   slide.addText("Title Here", {{ x: 0.5, y: 0.25, w: 12, h: 0.7, fontSize: 24, fontFace: "Arial", color: "{title_c}", bold: true }});
-4. Use ONLY card-based layouts. NEVER use plain bullet lists.
-5. Card = rounded rectangle shape + text overlay:
-   slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {{ x: X, y: Y, w: W, h: H, fill: {{ color: "{card}" }}, rectRadius: 0.1, line: {{ color: "{teal}", width: 1 }} }});
-   slide.addText([{{ text: "\\u2B50 Card Title\\n", options: {{ fontSize: 13, bold: true, color: "{title_c}" }} }}, {{ text: "Card body text here.", options: {{ fontSize: 11, color: "{body_c}" }} }}], {{ x: X+0.15, y: Y+0.1, w: W-0.3, h: H-0.2, fontFace: "Calibri", valign: "top" }});
-6. Title max 35 characters. Card body max 12 words per card.
-7. Use emoji characters directly in card title strings.
-8. No addImage() calls. No images at all.
-9. For timeline slides: use circles (OVAL shape) connected by lines, with text beside each step.
-10. For stat slides: big fontSize 36-44 numbers with small description text below.
-11. Card minimum height: 1.4 inches. Leave spacing between cards.
-12. Slide 1 title: fontSize 40, centered. Tagline: fontSize 18. Both centered vertically.
-13. Slide 10: centered "Thank You" fontSize 36, key takeaway in a card below.
-
-LAYOUT POSITIONS:
-
-// 2x2 card grid (4 cards):
-// Card positions: (0.4, 1.2, 5.8, 2.5), (6.7, 1.2, 5.8, 2.5), (0.4, 4.0, 5.8, 2.5), (6.7, 4.0, 5.8, 2.5)
-
-// Two-column layout:
-// Left column card: (0.4, 1.2, 5.8, 5.5)
-// Right column card: (6.7, 1.2, 5.8, 5.5)
-
-// Timeline (4 steps vertical):
-// Circle at x:1.0, text card at x:1.8 for each step, y increments by 1.5
-
-// Stat callouts (3 stats):
-// Three cards across: (0.4, 1.5, 3.8, 4.5), (4.6, 1.5, 3.8, 4.5), (8.8, 1.5, 3.8, 4.5)
-// Big number fontSize:40 centered, description below fontSize:12
-
-TOPIC: {topic}
+Card grid positions: (0.4,1.2,5.8,2.5),(6.7,1.2,5.8,2.5),(0.4,4.0,5.8,2.5),(6.7,4.0,5.8,2.5)
+Two-col: left(0.4,1.2,5.8,5.5) right(6.7,1.2,5.8,5.5)
+Use emoji in card titles. No images. Card body max 12 words. Title max 35 chars.
 {error_section}
-Output ONLY valid JavaScript code. No markdown fences, no backticks, no explanations."""
+Output ONLY JavaScript code. No markdown, no backticks."""
 
         mistral_api_key = get_secret("MISTRAL_API_KEY") or "sXgAOYTxA51tQ0N1C4O5ppFnELJisujD"
         if not mistral_api_key:
@@ -544,10 +495,10 @@ Output ONLY valid JavaScript code. No markdown fences, no backticks, no explanat
                         },
                         {"role": "user", "content": prompt},
                     ],
-                    "max_tokens": 12000,
+                    "max_tokens": 10000,
                     "temperature": 0.4,
                 },
-                timeout=90,
+                timeout=120,
             )
             resp.raise_for_status()
             ai_output = resp.json()["choices"][0]["message"]["content"].strip()

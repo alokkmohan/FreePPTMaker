@@ -2086,8 +2086,9 @@ if 'visit_counted' not in st.session_state:
     except:
         pass
 
-total_users = stats.get("total_visits", 0)
-total_ppts = stats.get("ppt_generated", 0)
+BASE_COUNT = 10000
+total_users = BASE_COUNT + stats.get("total_visits", 0)
+total_ppts = total_users  # PPTs Created = Users count
 
 # Footer with user counter
 st.markdown(f'''

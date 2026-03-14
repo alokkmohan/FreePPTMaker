@@ -846,6 +846,14 @@ def generate_ppt(content, topic, theme):
             print(f"[PPTXGENJS] Failed: {result}, falling back to python-pptx")
 
     # ── FALLBACK: python-pptx ──
+    # Guard: if content is empty and no JS code, nothing to render → fail gracefully
+    has_content = isinstance(content, list) and any(
+        slide.get('bullets') or slide.get('main_title') or slide.get('title', '').strip()
+        for slide in content if isinstance(slide, dict)
+    )
+    if not js_code and not has_content:
+        print("[GENERATE_PPT] No JS code and no slide content — AI generation likely failed.")
+        return False, "AI generation failed. Please try again."
     # Inject chart slide if Excel/CSV data is available
     if isinstance(content, list) and st.session_state.get('chart_data') and PANDAS_AVAILABLE:
         chart_data = st.session_state.chart_data
@@ -1934,8 +1942,9 @@ if st.session_state.stage == 'generating':
                 st.rerun()
             else:
                 progress_bar.empty()
-                status_text.error("Failed to create presentation. Please try again.")
+                status_text.error("Failed to create presentation. AI may be busy — please try again in a moment.")
                 st.session_state.stage = 'awaiting_topic'
+                add_message("assistant", "⚠️ AI generation failed (possibly due to network/API issue). Please type your topic again to retry.")
 
         except Exception as e:
             progress_bar.empty()
@@ -2018,7 +2027,7 @@ if st.session_state.stage == 'preview':
                         <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); padding: 16px; border-radius: 12px; margin-bottom: 12px; min-height: 180px; border: 2px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
                             <div style="font-size: 10px; color: #6366f1; font-weight: bold; margin-bottom: 6px;">SLIDE {slide_num}</div>
                             <div style="font-size: 12px; font-weight: bold; color: #1e293b; margin-bottom: 10px; line-height: 1.3;">{title[:40]}{'...' if len(title) > 40 else ''}</div>
-                            {bullet_preview if bullets else '<div style="font-size: 10px; color: #888;">No content</div>'}
+                            {bullet_preview if bullets else '<div style="font-size: 10px; color: #6366f1; font-style: italic;">✨ AI-generated content in downloaded PPT</div>'}
                         </div>
                         """, unsafe_allow_html=True)
     else:

@@ -687,6 +687,88 @@ def is_valid_topic(text):
 
     return False, "Please ek clear topic batayein (minimum 10 characters). Example: 'Digital India' ya 'AI in Healthcare'."
 
+def fix_pptx_backgrounds(pptx_path):
+    """Post-process PPTX: replace slide.background <p:bgPr> with full-slide rectangle shapes.
+    Fixes blank display in PowerPoint/Google Slides where layout bg1=white overrides bgPr.
+    """
+    import zipfile as _zipfile, shutil as _shutil, re as _re
+    import os as _os
+
+    # Slide dimensions for LAYOUT_WIDE (13.33" x 7.5" in EMU)
+    SLIDE_W = 12192000
+    SLIDE_H = 6858000
+
+    try:
+        with _zipfile.ZipFile(pptx_path, 'r') as zin:
+            info_map = {info.filename: info for info in zin.infolist()}
+            file_contents = {info.filename: zin.read(info.filename) for info in zin.infolist()}
+
+        modified = False
+        slide_pattern = _re.compile(r'^ppt/slides/slide\d+\.xml$')
+        bg_pattern = _re.compile(
+            r'<p:bg><p:bgPr><a:solidFill><a:srgbClr val="([0-9A-Fa-f]{6})"/>'
+            r'</a:solidFill></p:bgPr></p:bg>'
+        )
+
+        for fname in file_contents:
+            if not slide_pattern.match(fname):
+                continue
+            xml = file_contents[fname].decode('utf-8')
+
+            # Skip if already processed
+            if 'name="BG_RECT"' in xml:
+                continue
+
+            match = bg_pattern.search(xml)
+            if not match:
+                continue
+
+            bg_color = match.group(1).upper()
+
+            # Build full-slide background rectangle as first shape in spTree
+            bg_rect = (
+                f'<p:sp><p:nvSpPr><p:cNvPr id="999" name="BG_RECT"/>'
+                f'<p:cNvSpPr/><p:nvPr/></p:nvSpPr>'
+                f'<p:spPr><a:xfrm><a:off x="0" y="0"/>'
+                f'<a:ext cx="{SLIDE_W}" cy="{SLIDE_H}"/></a:xfrm>'
+                f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
+                f'<a:solidFill><a:srgbClr val="{bg_color}"/></a:solidFill>'
+                f'<a:ln><a:noFill/></a:ln></p:spPr></p:sp>'
+            )
+
+            # Insert after </p:grpSpPr> (before other shapes = bottom of z-order)
+            insert_after = '</p:grpSpPr>'
+            pos = xml.find(insert_after)
+            if pos == -1:
+                continue
+            pos += len(insert_after)
+            xml = xml[:pos] + bg_rect + xml[pos:]
+            file_contents[fname] = xml.encode('utf-8')
+            modified = True
+
+        if not modified:
+            return
+
+        # Rewrite PPTX preserving original compress_type per file
+        tmp_path = pptx_path + '.bgfix.tmp'
+        with _zipfile.ZipFile(tmp_path, 'w') as zout:
+            for arcname, content in file_contents.items():
+                orig_info = info_map.get(arcname)
+                compress = orig_info.compress_type if orig_info else _zipfile.ZIP_DEFLATED
+                zout.writestr(arcname, content, compress_type=compress)
+
+        _shutil.move(tmp_path, pptx_path)
+        print(f"[FIX_BG] Background rectangles added to PPTX slides.")
+
+    except Exception as e:
+        print(f"[FIX_BG] Post-processing failed (non-critical): {e}")
+        try:
+            if _os.path.exists(pptx_path + '.bgfix.tmp'):
+                _os.unlink(pptx_path + '.bgfix.tmp')
+        except:
+            pass
+
+
 def run_pptxgenjs(js_code, output_path):
     """Execute PptxGenJS code via Node.js subprocess. Returns (success, path_or_error)."""
     project_dir = os.path.dirname(os.path.abspath(__file__))
@@ -709,6 +791,8 @@ def run_pptxgenjs(js_code, output_path):
             try:
                 response = json_mod.loads(result.stdout.strip())
                 if response.get('success'):
+                    # Post-process: add background rectangles for viewer compatibility
+                    fix_pptx_backgrounds(response['path'])
                     return True, response['path']
             except:
                 pass

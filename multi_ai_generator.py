@@ -461,7 +461,9 @@ Language: {language}
 
 Colors: BG="{bg}", Card="{card}", Title="{title_c}", Body="{body_c}", Accent="{accent}", Teal="{teal}", Gold="{gold}"
 
-Every slide: slide.background={{fill:"{bg}"}}; + red bar: slide.addShape(pptx.shapes.RECTANGLE,{{x:0,y:0,w:"100%",h:0.15,fill:{{color:"{accent}"}}}});
+Every slide: FIRST add full-slide background rect (IMPORTANT - do NOT use slide.background):
+slide.addShape(pptx.shapes.RECTANGLE,{{x:0,y:0,w:13.33,h:7.5,fill:{{color:"{bg}"}},line:{{type:"none"}}}});
+Then add red accent bar: slide.addShape(pptx.shapes.RECTANGLE,{{x:0,y:0,w:13.33,h:0.15,fill:{{color:"{accent}"}},line:{{type:"none"}}}});
 Title: slide.addText("Title",{{x:0.5,y:0.25,w:12,h:0.7,fontSize:24,fontFace:"Arial",color:"{title_c}",bold:true}});
 Card: slide.addShape(pptx.shapes.ROUNDED_RECTANGLE,{{x:X,y:Y,w:W,h:H,fill:{{color:"{card}"}},rectRadius:0.1,line:{{color:"{teal}",width:1}}}});
 Card text: slide.addText([{{text:"Icon Title\\n",options:{{fontSize:13,bold:true,color:"{title_c}"}}}},{{text:"Body text.",options:{{fontSize:11,color:"{body_c}"}}}}],{{x:X+0.15,y:Y+0.1,w:W-0.3,h:H-0.2,fontFace:"Calibri",valign:"top"}});

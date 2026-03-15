@@ -1911,20 +1911,9 @@ if st.session_state.stage == 'generating':
             theme = st.session_state.get('theme', 'modern')
             language = st.session_state.get('language', 'English')
 
-            # Step 1: Generating AI content
-            status_text.text("🤖 Step 1/4: AI generating slide content...")
+            # Step 1: Content already generated in awaiting_topic stage
+            status_text.text("🤖 Step 1/4: Preparing slide content...")
             progress_bar.progress(15)
-
-            generator = MultiAIGenerator()
-            js_result = generator.generate_pptxgenjs_code(
-                topic=topic, theme=theme, language=language,
-                web_context=st.session_state.get('google_context', ''),
-            )
-            js_code = js_result.get('output', '')
-            if js_code:
-                st.session_state.pptxgenjs_code = js_code
-            else:
-                st.session_state.pptxgenjs_code = None
 
             ai_source = get_last_ai_source()
 

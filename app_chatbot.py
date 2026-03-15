@@ -1047,6 +1047,24 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
+# Auto-scroll to latest message (works on desktop and mobile)
+if st.session_state.messages:
+    st.markdown("""
+    <script>
+        (function() {
+            function scrollToBottom() {
+                // Try chat container first
+                var el = window.parent.document.querySelector('[data-testid="stChatMessageContainer"]');
+                if (el) { el.scrollTop = el.scrollHeight; return; }
+                // Fallback to page scroll
+                window.parent.scrollTo(0, window.parent.document.body.scrollHeight);
+            }
+            scrollToBottom();
+            setTimeout(scrollToBottom, 100);
+            setTimeout(scrollToBottom, 400);
+        })();
+    </script>
+    """, unsafe_allow_html=True)
 
 # Chat input (fixed at bottom by Streamlit)
 user_input = st.chat_input("Send topic, paste content (Hindi/English)...", key="main_chat_input")

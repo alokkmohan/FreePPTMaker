@@ -1112,7 +1112,7 @@ if st.session_state.stage == 'done' and st.session_state.ppt_path:
                     mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
                     use_container_width=True, type="primary")
         with col2:
-            if st.button("New", use_container_width=True):
+            if st.button("Create New PPT", use_container_width=True):
                 st.session_state.messages = []
                 st.session_state.stage = 'idle'
                 st.session_state.ppt_path = None
@@ -2280,7 +2280,7 @@ if st.session_state.stage == 'preview':
             st.session_state.stage = 'regenerating'
             st.rerun()
     with col_new:
-        if st.button("New", use_container_width=True):
+        if st.button("Create New PPT", use_container_width=True):
             st.session_state.messages = []
             st.session_state.stage = 'idle'
             st.session_state.ppt_path = None

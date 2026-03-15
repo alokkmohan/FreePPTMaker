@@ -468,6 +468,33 @@ IMPORTANT RULES:
         gold = colors["GOLD"]
         muted = colors["MUTED"]
 
+        # Build dynamic slide structure based on num_slides
+        content_slides = num_slides - 2  # exclude title + thank you
+        all_topics = [
+            "Overview (4-BOX): 4 key aspects",
+            "Background/History (2-COL): Historical context and origin",
+            "Key Topic A (4-BOX): Main aspect details",
+            "Key Topic B (2-COL): Another major aspect",
+            "Timeline (2-COL): Key events and dates",
+            "Statistics/Facts (2-COL): Key numbers and data",
+            "Challenges (4-BOX): Problems and challenges",
+            "Solutions/Strategies (2-COL): How to address challenges",
+            "Case Studies (4-BOX): Real examples",
+            "Impact/Results (2-COL): Outcomes and achievements",
+            "Future Trends (2-COL): What lies ahead",
+            "Key Players (4-BOX): Important people or organizations",
+            "Technology/Tools (2-COL): Tools and methods used",
+            "Recommendations (4-BOX): Suggested actions",
+            "Global Perspective (2-COL): International view",
+            "Conclusion (2-COL): Summary and final thoughts",
+            "Best Practices (4-BOX): Proven approaches",
+            "Resources (2-COL): Further reading and references",
+        ]
+        selected = all_topics[:content_slides]
+        slide_structure = "\n".join(
+            f"{i+2}. {t} of \"{topic}\"" for i, t in enumerate(selected)
+        )
+
         prompt = f"""{web_section}Generate PptxGenJS JavaScript code for a {num_slides}-slide presentation on: "{topic}"
 
 CRITICAL: Every card, text box, and bullet MUST contain REAL, SPECIFIC content about "{topic}".
@@ -505,22 +532,16 @@ slide.addShape(pptx.shapes.ROUNDED_RECTANGLE,{{x:0.4,y:1.1,w:6.1,h:5.8,fill:{{co
 slide.addText([{{text:"Left Heading\\n",options:{{fontSize:13,bold:true,color:"{title_c}",fontFace:"Calibri"}}}},{{text:"- Point 1\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 2\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 3\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 4\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 5\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 6\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 7\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 8",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}}],{{x:0.5,y:1.15,w:5.9,h:5.65,fontFace:"Calibri",valign:"top",shrinkText:true}});
 (repeat with x:7.0 for right column)
 
-Slide structure:
+Slide structure ({num_slides} slides total):
 1. TITLE SLIDE: Title at top-center, subtitle below it. Use this exact layout:
    slide1.addText("Real Title About {topic}",{{x:0.5,y:1.2,w:12.3,h:1.5,fontSize:40,bold:true,color:"{title_c}",fontFace:"Calibri",align:"center"}});
    slide1.addText("Real subtitle or tagline about {topic}",{{x:0.5,y:2.9,w:12.3,h:0.8,fontSize:22,color:"{body_c}",fontFace:"Calibri",align:"center"}});
-2. Overview (4-BOX): 4 aspects of "{topic}"
-3. Background/History (2-COL): Historical context
-4. Key Topic A (4-BOX): Main aspect details
-5. Key Topic B (2-COL): Another major aspect
-6. Timeline (2-COL): Key events/dates
-7. Statistics/Facts (2-COL): Key numbers and facts
-8. Challenges (4-BOX): Problems and challenges
-9. Future/Outcome (2-COL): Results and future
-10. THANK YOU SLIDE: "Thank You" at top-center, "Any Questions?" below it. Use this exact layout:
-    slide10.addText("Thank You",{{x:0.5,y:1.5,w:12.3,h:1.5,fontSize:48,bold:true,color:"{title_c}",fontFace:"Calibri",align:"center"}});
-    slide10.addText("Any Questions?",{{x:0.5,y:3.2,w:12.3,h:0.8,fontSize:28,color:"{gold}",fontFace:"Calibri",align:"center"}});
+{slide_structure}
+{num_slides}. THANK YOU SLIDE (slide{num_slides}): "Thank You" at top-center, "Any Questions?" below it:
+    slide{num_slides}.addText("Thank You",{{x:0.5,y:1.5,w:12.3,h:1.5,fontSize:48,bold:true,color:"{title_c}",fontFace:"Calibri",align:"center"}});
+    slide{num_slides}.addText("Any Questions?",{{x:0.5,y:3.2,w:12.3,h:0.8,fontSize:28,color:"{gold}",fontFace:"Calibri",align:"center"}});
 
+IMPORTANT: Generate EXACTLY {num_slides} slides. No more, no less.
 REMEMBER: NO emojis. All text in {language}. Real specific content about "{topic}". Complete sentences in bullets.
 {error_section}
 Output ONLY JavaScript code. No markdown, no backticks, no explanations."""

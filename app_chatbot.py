@@ -1047,21 +1047,6 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# Auto-scroll to bottom when new messages appear
-if st.session_state.messages:
-    st.markdown("""
-    <script>
-        var chatContainer = window.parent.document.querySelector('[data-testid="stChatMessageContainer"]');
-        if (chatContainer) {
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-        // Fallback: scroll main container
-        var main = window.parent.document.querySelector('.main');
-        if (main) {
-            main.scrollTop = main.scrollHeight;
-        }
-    </script>
-    """, unsafe_allow_html=True)
 
 # Chat input (fixed at bottom by Streamlit)
 user_input = st.chat_input("Send topic, paste content (Hindi/English)...", key="main_chat_input")

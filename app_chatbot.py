@@ -7,6 +7,14 @@ import subprocess
 import tempfile
 import json as json_mod
 from datetime import datetime
+
+# Auto-install node_modules on Streamlit Cloud (npm not available locally but nodejs is)
+_node_pptx_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "node_pptx")
+if not os.path.exists(os.path.join(_node_pptx_dir, "node_modules")):
+    try:
+        subprocess.run(["npm", "install"], cwd=_node_pptx_dir, capture_output=True, timeout=120)
+    except Exception:
+        pass
 from document_upload_component import document_upload_component
 
 # Imports

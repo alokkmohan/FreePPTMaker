@@ -8,13 +8,20 @@ import tempfile
 import json as json_mod
 from datetime import datetime
 
-# Auto-install node_modules on Streamlit Cloud (npm not available locally but nodejs is)
+# Auto-install node_modules if missing (needed on Streamlit Cloud)
 _node_pptx_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "node_pptx")
 if not os.path.exists(os.path.join(_node_pptx_dir, "node_modules")):
-    try:
-        subprocess.run(["npm", "install"], cwd=_node_pptx_dir, capture_output=True, timeout=120)
-    except Exception:
-        pass
+    for _npm_cmd in ["npm", "/usr/bin/npm", "/usr/local/bin/npm"]:
+        try:
+            _r = subprocess.run([_npm_cmd, "install"], cwd=_node_pptx_dir, capture_output=True, timeout=120)
+            if _r.returncode == 0:
+                print(f"[STARTUP] npm install OK with {_npm_cmd}")
+                break
+            else:
+                print(f"[STARTUP] npm install failed with {_npm_cmd}: {_r.stderr[:100]}")
+        except Exception as _e:
+            print(f"[STARTUP] {_npm_cmd} not found: {_e}")
+            continue
 from document_upload_component import document_upload_component
 
 # Imports
@@ -2104,10 +2111,13 @@ if st.session_state.stage == 'generating':
                 add_message("assistant", f"⚠️ Node error: {node_err[:100]}. Type topic again to retry.")
 
         except Exception as e:
+            import traceback
+            print(f"[GENERATE ERROR] {type(e).__name__}: {e}")
+            print(traceback.format_exc())
             progress_bar.empty()
             status_text.error(f"Error: {str(e)}")
             st.session_state.stage = 'awaiting_topic'
-            add_message("assistant", f"Sorry, there was an error. Please try again with a different topic.")
+            add_message("assistant", f"Sorry, there was an error ({type(e).__name__}: {str(e)[:80]}). Please try again.")
             st.rerun()
 
 # ═══════════════════════════════════════════════════════════════════════════════

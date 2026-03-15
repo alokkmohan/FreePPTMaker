@@ -53,7 +53,14 @@ def get_last_ai_source() -> str:
 
 
 def get_secret(key: str) -> Optional[str]:
-    """Get secret from environment variable or .env file"""
+    """Get secret from Streamlit secrets, environment variable, or .env file"""
+    try:
+        import streamlit as st
+        val = st.secrets.get(key)
+        if val:
+            return str(val)
+    except Exception:
+        pass
     from dotenv import load_dotenv
     load_dotenv()
     return os.getenv(key)

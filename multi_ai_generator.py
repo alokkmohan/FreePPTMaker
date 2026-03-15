@@ -56,9 +56,8 @@ def get_secret(key: str) -> Optional[str]:
     """Get secret from Streamlit secrets, environment variable, or .env file"""
     try:
         import streamlit as st
-        val = st.secrets.get(key)
-        if val:
-            return str(val)
+        if hasattr(st, 'secrets') and key in st.secrets:
+            return str(st.secrets[key])
     except Exception:
         pass
     from dotenv import load_dotenv

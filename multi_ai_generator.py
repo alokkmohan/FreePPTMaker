@@ -207,7 +207,7 @@ TOPIC: {topic}
         # 🚀 Execute AI Generation with Mistral
         # ─────────────────────────────────────────────────────────────────────
         
-        mistral_api_key = get_secret("MISTRAL_API_KEY") or "sXgAOYTxA51tQ0N1C4O5ppFnELJisujD"
+        mistral_api_key = get_secret("MISTRAL_API_KEY")
         if mistral_api_key:
             try:
                 import requests
@@ -319,7 +319,7 @@ IMPORTANT RULES:
 """
 
         # Try Mistral AI first
-        mistral_api_key = get_secret("MISTRAL_API_KEY") or "sXgAOYTxA51tQ0N1C4O5ppFnELJisujD"
+        mistral_api_key = get_secret("MISTRAL_API_KEY")
         if mistral_api_key:
             try:
                 import requests
@@ -569,46 +569,75 @@ REMEMBER: NO emojis. All text in {language}. Real specific content about "{topic
 {logo_section}{image_section}{error_section}
 Output ONLY JavaScript code. No markdown, no backticks, no explanations."""
 
-        mistral_api_key = get_secret("MISTRAL_API_KEY") or "sXgAOYTxA51tQ0N1C4O5ppFnELJisujD"
-        if not mistral_api_key:
-            return {"error": "No Mistral API key found."}
+        import requests, re as _re
 
-        try:
-            import requests
-            resp = requests.post(
-                "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {mistral_api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "mistral-small-latest",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "You are a PptxGenJS code generator. Output ONLY valid JavaScript code that adds slides to a pptx object. No markdown, no explanations, no backticks.",
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                    "max_tokens": 16000,
-                    "temperature": 0.3,
-                },
-                timeout=90,
-            )
-            resp.raise_for_status()
-            ai_output = resp.json()["choices"][0]["message"]["content"].strip()
-            _last_ai_source = "Mistral"
+        system_msg = "You are a PptxGenJS code generator. Output ONLY valid JavaScript code that adds slides to a pptx object. No markdown, no explanations, no backticks."
 
-            # Strip markdown fences if AI added them
-            import re
-            ai_output = re.sub(r'^```(?:javascript|js)?\s*\n?', '', ai_output)
-            ai_output = re.sub(r'\n?```\s*$', '', ai_output)
+        def _clean_output(text):
+            text = _re.sub(r'^```(?:javascript|js)?\s*\n?', '', text)
+            text = _re.sub(r'\n?```\s*$', '', text)
+            return text.strip()
 
-            # Validate: if last non-empty line ends mid-statement (not with ; or }), code was truncated
-            last_line = ai_output.rstrip().split('\n')[-1].strip() if ai_output.strip() else ''
-            if last_line and not last_line.endswith((';', '}', '//', '*/')):
-                return {"error": f"AI output was truncated (last line: {last_line[:60]!r}). Retry."}
+        def _is_truncated(text):
+            last = text.rstrip().split('\n')[-1].strip() if text.strip() else ''
+            return bool(last) and not last.endswith((';', '}', '//', '*/'))
 
-            return {"output": ai_output, "ai_source": "Mistral"}
-        except Exception as e:
-            return {"error": f"PptxGenJS code generation failed: {str(e)}"}
+        apis = [
+            {
+                "name": "Mistral",
+                "url": "https://api.mistral.ai/v1/chat/completions",
+                "key": get_secret("MISTRAL_API_KEY"),
+                "model": "mistral-small-latest",
+                "max_tokens": 16000,
+            },
+            {
+                "name": "DeepSeek",
+                "url": "https://api.deepseek.com/v1/chat/completions",
+                "key": get_secret("DEEPSEEK_API_KEY"),
+                "model": "deepseek-chat",
+                "max_tokens": 16000,
+            },
+            {
+                "name": "Groq",
+                "url": "https://api.groq.com/openai/v1/chat/completions",
+                "key": get_secret("GROQ_API_KEY"),
+                "model": "llama-3.1-70b-versatile",
+                "max_tokens": 8000,
+            },
+        ]
+
+        last_error = "All AI providers failed."
+        for api in apis:
+            if not api["key"]:
+                continue
+            try:
+                resp = requests.post(
+                    api["url"],
+                    headers={"Authorization": f"Bearer {api['key']}", "Content-Type": "application/json"},
+                    json={
+                        "model": api["model"],
+                        "messages": [
+                            {"role": "system", "content": system_msg},
+                            {"role": "user", "content": prompt},
+                        ],
+                        "max_tokens": api["max_tokens"],
+                        "temperature": 0.3,
+                    },
+                    timeout=90,
+                )
+                resp.raise_for_status()
+                ai_output = resp.json()["choices"][0]["message"]["content"].strip()
+                ai_output = _clean_output(ai_output)
+                if not ai_output:
+                    last_error = f"{api['name']}: empty response"
+                    continue
+                if _is_truncated(ai_output):
+                    last_error = f"{api['name']}: output truncated"
+                    continue
+                _last_ai_source = api["name"]
+                return {"output": ai_output, "ai_source": api["name"]}
+            except Exception as e:
+                last_error = f"{api['name']}: {str(e)}"
+                continue
+
+        return {"error": f"PptxGenJS generation failed: {last_error}"}

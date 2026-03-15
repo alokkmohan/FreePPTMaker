@@ -1856,22 +1856,15 @@ if user_input:
         else:
             # ── YouTube URL detection ──────────────────────────────────────
             yt_id = extract_youtube_id(user_input)
-            if yt_id:
-                add_message("assistant", "🎬 YouTube link mila! Transcript fetch kar raha hun...")
-                st.rerun()
-
-            if st.session_state.get('_yt_pending'):
-                yt_id = st.session_state.pop('_yt_pending')
-
             if yt_id and not st.session_state.get('file_content'):
                 with st.spinner("📥 Fetching YouTube transcript..."):
                     transcript, yt_err = get_youtube_transcript(yt_id)
                 if transcript:
                     st.session_state.file_content = transcript
                     user_input = "YouTube Video Summary"
-                    add_message("assistant", f"✅ Transcript mila ({len(transcript)} chars). Presentation ban rahi hai...")
+                    add_message("assistant", f"✅ YouTube transcript mila! Presentation ban rahi hai...")
                 else:
-                    add_message("assistant", f"❌ Transcript nahi mila: {yt_err}\n\nManually topic type karo.")
+                    add_message("assistant", f"❌ YouTube transcript nahi mila: {yt_err}\n\nManually topic type karo.")
                     st.session_state.stage = 'idle'
                     st.rerun()
 

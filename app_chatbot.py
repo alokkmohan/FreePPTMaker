@@ -557,7 +557,7 @@ st.markdown('<div class="content-container">', unsafe_allow_html=True)
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 if 'stage' not in st.session_state:
-    st.session_state.stage = 'idle'  # idle, ask_name, ask_designation, awaiting_topic, awaiting_theme, confirming, generating, done
+    st.session_state.stage = 'idle'  # idle, ask_name, ask_designation, awaiting_topic, awaiting_theme, awaiting_slides, confirming, generating, done
     # Start with welcome message first, ask name later if needed
 if 'presenter_name' not in st.session_state:
     st.session_state.presenter_name = None
@@ -581,6 +581,8 @@ if 'ai_source' not in st.session_state:
     st.session_state.ai_source = None
 if 'num_slides' not in st.session_state:
     st.session_state.num_slides = 6
+if 'slide_count' not in st.session_state:
+    st.session_state.slide_count = 10
 if 'parsed_slides' not in st.session_state:
     st.session_state.parsed_slides = None
 if 'file_names' not in st.session_state:
@@ -996,7 +998,7 @@ Only output the slide content, nothing else."""
 # Remove Streamlit native header and caption; only show custom HTML header
 
 # Language selection (bullets are now flexible 4-6 based on content)
-language = st.selectbox("Language", ["English", "Hindi"], key="ppt_language", index=0, label_visibility="collapsed")
+language = st.selectbox("Language", ["English", "Hindi", "Gujarati", "Tamil", "Bengali", "Marathi", "Telugu", "Kannada"], key="ppt_language", index=0, label_visibility="collapsed")
 st.session_state.language = language
 # Bullets per slide is now flexible (4-6) based on content needs - AI decides automatically
 st.session_state.bullets_per_slide = 5  # Default/average for compatibility
@@ -1669,20 +1671,38 @@ if user_input:
     # ═══════════════════════════════════════════════════════════════════════════
     if st.session_state.stage == 'awaiting_theme':
         choice = user_input.strip()
-        theme_map = {'1': 'modern', '2': 'dark', '3': 'light',
-                     'modern': 'modern', 'dark': 'dark', 'light': 'light'}
+        theme_map = {
+            '1': 'modern', '2': 'dark', '3': 'light',
+            '4': 'corporate', '5': 'nature', '6': 'bold', '7': 'purple',
+            'modern': 'modern', 'dark': 'dark', 'light': 'light',
+            'corporate': 'corporate', 'nature': 'nature', 'bold': 'bold', 'purple': 'purple',
+        }
         chosen = theme_map.get(choice.lower())
         if chosen:
             st.session_state.theme = chosen
+            st.session_state.stage = 'awaiting_slides'
+            add_message("assistant", f"Theme: **{chosen.capitalize()}** selected!\n\nHow many slides?\n\n**5** | **8** | **10** | **15** | **20**\n\nType a number:")
+            st.rerun()
+        else:
+            add_message("assistant", "Please type a number 1-7:")
+            st.rerun()
+
+    if st.session_state.stage == 'awaiting_slides':
+        choice = user_input.strip()
+        valid = {'5': 5, '8': 8, '10': 10, '15': 15, '20': 20}
+        chosen = valid.get(choice)
+        if chosen:
+            st.session_state.slide_count = chosen
             st.session_state.stage = 'generating'
             st.session_state.parsed_slides = []
             st.session_state.pptxgenjs_code = None
-            topic = st.session_state.get('pending_topic', choice)
+            topic = st.session_state.get('pending_topic', '')
             st.session_state.topic = topic
-            add_message("assistant", f"Theme: **{chosen.capitalize()}**. Generating your presentation on **{topic}**...")
+            theme = st.session_state.get('theme', 'modern')
+            add_message("assistant", f"**{chosen} slides** — Generating your **{theme.capitalize()}** presentation on **{topic}**...")
             st.rerun()
         else:
-            add_message("assistant", "Please type **1** (Modern), **2** (Dark), or **3** (Light):")
+            add_message("assistant", "Please type: **5**, **8**, **10**, **15**, or **20**")
             st.rerun()
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -1761,7 +1781,7 @@ if user_input:
             # Ask theme selection before generating
             if st.session_state.stage != 'awaiting_theme':
                 st.session_state.pending_topic = user_input
-                add_message("assistant", "Choose a theme for your presentation:\n\n**1. Modern** - Clean white, navy & blue (recommended)\n**2. Dark** - Dark navy background, light text\n**3. Light** - White background, colorful accents\n\nType 1, 2, or 3:")
+                add_message("assistant", "🎨 Choose a theme:\n\n**1. Modern** - Clean white, navy & blue\n**2. Dark** - Dark navy, light text\n**3. Light** - White, colorful accents\n**4. Corporate** - Professional blue\n**5. Nature** - Fresh green tones\n**6. Bold** - Dark with red accents\n**7. Purple** - Creative purple\n\nType 1-7:")
                 st.session_state.stage = 'awaiting_theme'
                 st.rerun()
 
@@ -1818,6 +1838,7 @@ if user_input:
                 theme=theme,
                 web_context=web_ctx,
                 language=language,
+                num_slides=st.session_state.get('slide_count', 10),
             )
 
             js_code = js_result.get('output', '')
@@ -1928,6 +1949,7 @@ if st.session_state.stage == 'generating':
                 js_result = generator.generate_pptxgenjs_code(
                     topic=topic, theme=theme, language=language,
                     web_context=st.session_state.get('google_context', ''),
+                    num_slides=st.session_state.get('slide_count', 10),
                 )
                 js_code = js_result.get('output', '')
                 if js_code:
@@ -2089,7 +2111,7 @@ if st.session_state.stage == 'preview':
     # ⬇️ DOWNLOAD BUTTON (BOTTOM - always visible, big & prominent)
     # ─────────────────────────────────────────────────────────────────────────────
     st.markdown("---")
-    col_dl, col_theme, col_new = st.columns([3, 2, 1])
+    col_dl, col_pdf, col_theme, col_new = st.columns([2, 2, 2, 1])
     with col_dl:
         if ppt_path and os.path.exists(ppt_path):
             download_filename = os.path.basename(ppt_path)
@@ -2102,11 +2124,32 @@ if st.session_state.stage == 'preview':
                     use_container_width=True,
                     type="primary"
                 )
+    with col_pdf:
+        if ppt_path and os.path.exists(ppt_path):
+            pdf_path = ppt_path.replace('.pptx', '.pdf')
+            if not os.path.exists(pdf_path):
+                try:
+                    subprocess.run(
+                        ['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir',
+                         os.path.dirname(ppt_path), ppt_path],
+                        capture_output=True, timeout=60
+                    )
+                except Exception:
+                    pdf_path = None
+            if pdf_path and os.path.exists(pdf_path):
+                with open(pdf_path, "rb") as f:
+                    st.download_button(
+                        "⬇️ Download PDF",
+                        f.read(),
+                        file_name=os.path.basename(pdf_path),
+                        mime="application/pdf",
+                        use_container_width=True,
+                    )
     with col_theme:
         current_theme = st.session_state.get('theme', 'modern')
-        theme_options = ["Modern", "Dark", "Light"]
-        theme_map_dl = {"Modern": "modern", "Dark": "dark", "Light": "light"}
-        theme_idx = {"modern": 0, "dark": 1, "light": 2}.get(current_theme, 0)
+        theme_options = ["Modern", "Dark", "Light", "Corporate", "Nature", "Bold", "Purple"]
+        theme_map_dl = {t: t.lower() for t in theme_options}
+        theme_idx = next((i for i, t in enumerate(theme_options) if t.lower() == current_theme), 0)
         new_theme_dl = st.selectbox("Change Theme", theme_options, index=theme_idx, label_visibility="collapsed")
         if theme_map_dl[new_theme_dl] != current_theme:
             st.session_state.theme = theme_map_dl[new_theme_dl]
@@ -2149,6 +2192,7 @@ if st.session_state.stage == 'regenerating':
                 topic=topic,
                 theme=theme,
                 language=language,
+                num_slides=st.session_state.get('slide_count', 10),
             )
 
             js_code = js_result.get('output', '')

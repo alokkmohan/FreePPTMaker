@@ -399,37 +399,39 @@ IMPORTANT RULES:
 
     THEME_COLORS = {
         "dark": {
-            "BG": "0D1B2A",
-            "CARD": "1B2E42",
-            "CARD_ALT": "223A52",
-            "TITLE": "FFFFFF",
-            "BODY": "B0BEC5",
-            "ACCENT": "E84545",
-            "TEAL": "00BCD4",
-            "GOLD": "FFD166",
-            "MUTED": "8D99AE",
+            "BG": "0D1B2A", "CARD": "1B2E42", "CARD_ALT": "223A52",
+            "TITLE": "FFFFFF", "BODY": "B0BEC5", "ACCENT": "E84545",
+            "TEAL": "00BCD4", "GOLD": "FFD166", "MUTED": "8D99AE",
         },
         "light": {
-            "BG": "FFFFFF",
-            "CARD": "E8EAF6",
-            "CARD_ALT": "DCE1F0",
-            "TITLE": "1A1A2E",
-            "BODY": "37474F",
-            "ACCENT": "E84545",
-            "TEAL": "0277BD",
-            "GOLD": "F5A623",
-            "MUTED": "757575",
+            "BG": "FFFFFF", "CARD": "E8EAF6", "CARD_ALT": "DCE1F0",
+            "TITLE": "1A1A2E", "BODY": "37474F", "ACCENT": "E84545",
+            "TEAL": "0277BD", "GOLD": "F5A623", "MUTED": "757575",
         },
         "modern": {
-            "BG": "F5F7FA",
-            "CARD": "FFFFFF",
-            "CARD_ALT": "EBF0F7",
-            "TITLE": "1C3557",
-            "BODY": "2D3E50",
-            "ACCENT": "1565C0",
-            "TEAL": "0097A7",
-            "GOLD": "F57C00",
-            "MUTED": "78909C",
+            "BG": "F5F7FA", "CARD": "FFFFFF", "CARD_ALT": "EBF0F7",
+            "TITLE": "1C3557", "BODY": "2D3E50", "ACCENT": "1565C0",
+            "TEAL": "0097A7", "GOLD": "F57C00", "MUTED": "78909C",
+        },
+        "corporate": {
+            "BG": "EEF2F7", "CARD": "FFFFFF", "CARD_ALT": "D6E4F0",
+            "TITLE": "0A2342", "BODY": "1C3557", "ACCENT": "0057A8",
+            "TEAL": "0096C7", "GOLD": "E8A020", "MUTED": "607D8B",
+        },
+        "nature": {
+            "BG": "F1F8F1", "CARD": "FFFFFF", "CARD_ALT": "D8EDD8",
+            "TITLE": "1B4332", "BODY": "2D6A4F", "ACCENT": "2D6A4F",
+            "TEAL": "40916C", "GOLD": "F4A261", "MUTED": "74A57F",
+        },
+        "bold": {
+            "BG": "1A1A1A", "CARD": "2D2D2D", "CARD_ALT": "3A3A3A",
+            "TITLE": "FFFFFF", "BODY": "E0E0E0", "ACCENT": "FF3333",
+            "TEAL": "FF9800", "GOLD": "FFD700", "MUTED": "9E9E9E",
+        },
+        "purple": {
+            "BG": "F3F0FF", "CARD": "FFFFFF", "CARD_ALT": "E8E0FF",
+            "TITLE": "2D0057", "BODY": "4A0080", "ACCENT": "7B2FBE",
+            "TEAL": "9C27B0", "GOLD": "FF9800", "MUTED": "9575CD",
         },
     }
 
@@ -440,8 +442,9 @@ IMPORTANT RULES:
         web_context: str = "",
         language: str = "English",
         error_context: str = "",
+        num_slides: int = 10,
     ) -> Dict:
-        """Generate PptxGenJS JavaScript code for a 10-slide presentation."""
+        """Generate PptxGenJS JavaScript code for a presentation."""
         global _last_ai_source
 
         colors = self.THEME_COLORS.get(theme, self.THEME_COLORS["dark"])
@@ -465,7 +468,7 @@ IMPORTANT RULES:
         gold = colors["GOLD"]
         muted = colors["MUTED"]
 
-        prompt = f"""{web_section}Generate PptxGenJS JavaScript code for a 10-slide presentation on: "{topic}"
+        prompt = f"""{web_section}Generate PptxGenJS JavaScript code for a {num_slides}-slide presentation on: "{topic}"
 
 CRITICAL: Every card, text box, and bullet MUST contain REAL, SPECIFIC content about "{topic}".
 DO NOT use placeholder text like "Body text.", "Key point here", "Description", or "Lorem ipsum".

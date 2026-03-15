@@ -549,7 +549,7 @@ st.markdown('<div class="content-container">', unsafe_allow_html=True)
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 if 'stage' not in st.session_state:
-    st.session_state.stage = 'idle'  # idle, ask_name, ask_designation, awaiting_topic, confirming, generating, done
+    st.session_state.stage = 'idle'  # idle, ask_name, ask_designation, awaiting_topic, awaiting_theme, confirming, generating, done
     # Start with welcome message first, ask name later if needed
 if 'presenter_name' not in st.session_state:
     st.session_state.presenter_name = None
@@ -562,7 +562,7 @@ if 'suggested_title' not in st.session_state:
 if 'ppt_path' not in st.session_state:
     st.session_state.ppt_path = None
 if 'theme' not in st.session_state:
-    st.session_state.theme = 'dark'
+    st.session_state.theme = 'modern'
 if 'bullets_per_slide' not in st.session_state:
     st.session_state.bullets_per_slide = 4  # Default: 4 bullets per slide
 if 'file_content' not in st.session_state:
@@ -775,6 +775,12 @@ def run_pptxgenjs(js_code, output_path):
     wrapper_path = os.path.join(project_dir, "node_pptx", "pptx_wrapper.js")
     node_cwd = os.path.join(project_dir, "node_pptx")
 
+    # Strip any pptx/PptxGenJS redeclarations the AI may have added
+    import re as _re2
+    js_code = _re2.sub(r'^\s*(const|let|var)\s+pptx\s*=\s*new\s+PptxGenJS[^\n]*\n?', '', js_code, flags=_re2.MULTILINE)
+    js_code = _re2.sub(r'^\s*(const|let|var)\s+pptx\s*=\s*require[^\n]*\n?', '', js_code, flags=_re2.MULTILINE)
+    js_code = _re2.sub(r'^\s*pptx\.layout\s*=[^\n]*\n?', '', js_code, flags=_re2.MULTILINE)
+
     # Write AI code to temp file
     fd, temp_js_path = tempfile.mkstemp(suffix='.js', prefix='pptx_slides_')
     try:
@@ -837,8 +843,10 @@ def generate_ppt(content, topic, theme):
 
     # ── PRIMARY: PptxGenJS via Node.js ──
     js_code = st.session_state.get('pptxgenjs_code')
+    print(f"[GENERATE_PPT] js_code present: {bool(js_code)}, length: {len(js_code) if js_code else 0}")
     if js_code:
         success, result = run_pptxgenjs(js_code, ppt_path)
+        print(f"[GENERATE_PPT] run_pptxgenjs result: success={success}, result={str(result)[:200]}")
         if success:
             print(f"[PPTXGENJS] Successfully generated: {ppt_path}")
             return True, ppt_path
@@ -846,13 +854,13 @@ def generate_ppt(content, topic, theme):
             print(f"[PPTXGENJS] Failed: {result}, falling back to python-pptx")
 
     # ── FALLBACK: python-pptx ──
-    # Guard: if content is empty and no JS code, nothing to render → fail gracefully
+    # Guard: if content is empty, nothing to render → fail gracefully
     has_content = isinstance(content, list) and any(
         slide.get('bullets') or slide.get('main_title') or slide.get('title', '').strip()
         for slide in content if isinstance(slide, dict)
     )
-    if not js_code and not has_content:
-        print("[GENERATE_PPT] No JS code and no slide content — AI generation likely failed.")
+    if not has_content:
+        print("[GENERATE_PPT] No slide content to render — AI generation failed.")
         return False, "AI generation failed. Please try again."
     # Inject chart slide if Excel/CSV data is available
     if isinstance(content, list) and st.session_state.get('chart_data') and PANDAS_AVAILABLE:
@@ -1649,6 +1657,27 @@ if user_input:
     add_message("user", user_input)
 
     # ═══════════════════════════════════════════════════════════════════════════
+    # THEME SELECTION STEP (after topic, before generating)
+    # ═══════════════════════════════════════════════════════════════════════════
+    if st.session_state.stage == 'awaiting_theme':
+        choice = user_input.strip()
+        theme_map = {'1': 'modern', '2': 'dark', '3': 'light',
+                     'modern': 'modern', 'dark': 'dark', 'light': 'light'}
+        chosen = theme_map.get(choice.lower())
+        if chosen:
+            st.session_state.theme = chosen
+            st.session_state.stage = 'generating'
+            st.session_state.parsed_slides = []
+            st.session_state.pptxgenjs_code = None
+            topic = st.session_state.get('pending_topic', choice)
+            st.session_state.topic = topic
+            add_message("assistant", f"Theme: **{chosen.capitalize()}**. Generating your presentation on **{topic}**...")
+            st.rerun()
+        else:
+            add_message("assistant", "Please type **1** (Modern), **2** (Dark), or **3** (Light):")
+            st.rerun()
+
+    # ═══════════════════════════════════════════════════════════════════════════
     # 🔧 CHECK IF USER WANTS TO EDIT A SLIDE (when in preview mode)
     # ═══════════════════════════════════════════════════════════════════════════
     if st.session_state.get('in_preview_mode') and st.session_state.get('parsed_slides'):
@@ -1721,6 +1750,13 @@ if user_input:
                 st.session_state.stage = 'idle'
                 st.rerun()
 
+            # Ask theme selection before generating
+            if st.session_state.stage != 'awaiting_theme':
+                st.session_state.pending_topic = user_input
+                add_message("assistant", "Choose a theme for your presentation:\n\n**1. Modern** - Clean white, navy & blue (recommended)\n**2. Dark** - Dark navy background, light text\n**3. Light** - White background, colorful accents\n\nType 1, 2, or 3:")
+                st.session_state.stage = 'awaiting_theme'
+                st.rerun()
+
             # ISSUE 8: Check if user provided substantial content (pasted text or uploaded file)
             user_provided_content = ""
             use_user_content = False
@@ -1779,22 +1815,7 @@ if user_input:
             js_code = js_result.get('output', '')
             if js_code:
                 st.session_state.pptxgenjs_code = js_code
-                # Create placeholder slides for preview display
-                slide_titles = [
-                    "Title Slide", "Overview", "Background",
-                    "Main Topic A", "Main Topic B", "Timeline",
-                    "Stats & Data", "Challenges", "Future Outlook", "Conclusion"
-                ]
-                slides = []
-                for i, title in enumerate(slide_titles):
-                    slide = {"slide_number": i + 1, "title": title, "bullets": []}
-                    if i == 0:
-                        slide["main_title"] = user_input[:35]
-                        slide["tagline"] = "AI-Generated Presentation"
-                        slide["subtitle"] = ""
-                        if st.session_state.presenter_name:
-                            slide["presented_by"] = st.session_state.presenter_name
-                    slides.append(slide)
+                slides = []  # PptxGenJS handles all content — no placeholders needed
                 print(f"[PPTXGENJS] AI generated JavaScript code ({len(js_code)} chars)")
             else:
                 # ─────────────────────────────────────────────────────────
@@ -1885,36 +1906,45 @@ if st.session_state.stage == 'generating':
         status_text = st.empty()
 
         try:
-            # Step 1: Analyzing
-            status_text.text("🧠 Step 1/6: Analyzing topic...")
-            progress_bar.progress(10)
+            import time
+            topic = st.session_state.get('topic', '')
+            theme = st.session_state.get('theme', 'modern')
+            language = st.session_state.get('language', 'English')
 
-            content = st.session_state.get('parsed_slides', [])
+            # Step 1: Generating AI content
+            status_text.text("🤖 Step 1/4: AI generating slide content...")
+            progress_bar.progress(15)
+
+            generator = MultiAIGenerator()
+            js_result = generator.generate_pptxgenjs_code(
+                topic=topic, theme=theme, language=language,
+                web_context=st.session_state.get('google_context', ''),
+            )
+            js_code = js_result.get('output', '')
+            if js_code:
+                st.session_state.pptxgenjs_code = js_code
+            else:
+                st.session_state.pptxgenjs_code = None
+
             ai_source = get_last_ai_source()
 
-            # Step 2: Planning
-            status_text.text("📋 Step 2/6: Planning slide structure...")
-            progress_bar.progress(25)
+            # Step 2: Building layout
+            status_text.text("🎨 Step 2/4: Building slide layout...")
+            progress_bar.progress(50)
+            time.sleep(0.2)
 
-            import time
-            time.sleep(0.3)
+            # Step 3: Rendering PPT
+            status_text.text("📊 Step 3/4: Rendering PowerPoint file...")
+            progress_bar.progress(75)
 
-            # Step 3: Generating presentation code
-            status_text.text("🎨 Step 3/6: AI generating presentation code...")
-            progress_bar.progress(45)
+            content = st.session_state.get('parsed_slides', [])
 
-            time.sleep(0.3)
-
-            # Step 4: Building layouts
-            status_text.text("🖼️ Step 4/6: Building PowerPoint via PptxGenJS...")
-            progress_bar.progress(65)
-
-            # Step 5: Rendering slides
-            status_text.text("📊 Step 5/6: Rendering slides...")
-            progress_bar.progress(80)
+            # Step 4: Finalizing
+            status_text.text("✅ Step 4/4: Finalizing...")
+            progress_bar.progress(90)
 
             # Generate PPT
-            success, ppt_path = generate_ppt(content, st.session_state.topic, st.session_state.theme)
+            success, ppt_path = generate_ppt(content, topic, theme)
 
             # Step 6: Finalizing
             status_text.text("✅ Step 6/6: Finalizing & preparing download...")
@@ -1942,9 +1972,24 @@ if st.session_state.stage == 'generating':
                 st.rerun()
             else:
                 progress_bar.empty()
-                status_text.error("Failed to create presentation. AI may be busy — please try again in a moment.")
+                js_present = bool(st.session_state.get('pptxgenjs_code'))
+                # Get actual node error from run_pptxgenjs debug
+                js_code_debug = st.session_state.get('pptxgenjs_code', '')
+                node_err = ""
+                if js_code_debug:
+                    import re as _re3
+                    js_debug = _re3.sub(r'^\s*(const|let|var)\s+pptx\s*=\s*new\s+PptxGenJS[^\n]*\n?', '', js_code_debug, flags=_re3.MULTILINE)
+                    import subprocess as _sp, tempfile as _tf
+                    _fd, _tmp = _tf.mkstemp(suffix='.js')
+                    with os.fdopen(_fd, 'w') as _f: _f.write(js_debug)
+                    _wp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "node_pptx", "pptx_wrapper.js")
+                    _r = _sp.run(['node', _wp, '/tmp/debug_test.pptx', _tmp], capture_output=True, text=True, timeout=45, cwd=os.path.join(os.path.dirname(os.path.abspath(__file__)), "node_pptx"))
+                    os.unlink(_tmp)
+                    node_err = (_r.stderr or _r.stdout)[:200]
+                status_text.error(f"Node error: {node_err[:150]}")
+                print(f"[DEBUG NODE ERROR]: {node_err}")
                 st.session_state.stage = 'awaiting_topic'
-                add_message("assistant", "⚠️ AI generation failed (possibly due to network/API issue). Please type your topic again to retry.")
+                add_message("assistant", f"⚠️ Node error: {node_err[:100]}. Type topic again to retry.")
 
         except Exception as e:
             progress_bar.empty()
@@ -1962,26 +2007,6 @@ if st.session_state.stage == 'preview':
 
     # Show success message
     st.success(f"✅ Your presentation on **{st.session_state.topic}** is ready!")
-
-    # ─────────────────────────────────────────────────────────────────────────────
-    # 🎨 CHANGE THEME SECTION (TOP - easy to access)
-    # ─────────────────────────────────────────────────────────────────────────────
-    st.markdown("### 🎨 Theme")
-    current_theme = st.session_state.get('theme', 'dark')
-    theme_options = ["🌙 Dark", "☀️ Light"]
-    theme_index = 0 if current_theme == 'dark' else 1
-    new_theme = st.radio(
-        "Choose theme:",
-        theme_options,
-        index=theme_index,
-        horizontal=True,
-        label_visibility="collapsed",
-    )
-    theme_value = "dark" if new_theme == "🌙 Dark" else "light"
-    if theme_value != current_theme:
-        st.session_state.theme = theme_value
-        st.session_state.stage = 'regenerating'
-        st.rerun()
 
     # ─────────────────────────────────────────────────────────────────────────────
     # 📄 COLLAPSIBLE AI OUTPUT SECTION
@@ -2055,7 +2080,7 @@ if st.session_state.stage == 'preview':
     # ⬇️ DOWNLOAD BUTTON (BOTTOM - always visible, big & prominent)
     # ─────────────────────────────────────────────────────────────────────────────
     st.markdown("---")
-    col_dl, col_new = st.columns([3, 1])
+    col_dl, col_theme, col_new = st.columns([3, 2, 1])
     with col_dl:
         if ppt_path and os.path.exists(ppt_path):
             download_filename = os.path.basename(ppt_path)
@@ -2068,8 +2093,18 @@ if st.session_state.stage == 'preview':
                     use_container_width=True,
                     type="primary"
                 )
+    with col_theme:
+        current_theme = st.session_state.get('theme', 'modern')
+        theme_options = ["Modern", "Dark", "Light"]
+        theme_map_dl = {"Modern": "modern", "Dark": "dark", "Light": "light"}
+        theme_idx = {"modern": 0, "dark": 1, "light": 2}.get(current_theme, 0)
+        new_theme_dl = st.selectbox("Change Theme", theme_options, index=theme_idx, label_visibility="collapsed")
+        if theme_map_dl[new_theme_dl] != current_theme:
+            st.session_state.theme = theme_map_dl[new_theme_dl]
+            st.session_state.stage = 'regenerating'
+            st.rerun()
     with col_new:
-        if st.button("🆕 New", use_container_width=True):
+        if st.button("New", use_container_width=True):
             st.session_state.messages = []
             st.session_state.stage = 'idle'
             st.session_state.ppt_path = None

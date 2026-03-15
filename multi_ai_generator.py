@@ -420,6 +420,17 @@ IMPORTANT RULES:
             "GOLD": "F5A623",
             "MUTED": "757575",
         },
+        "modern": {
+            "BG": "F5F7FA",
+            "CARD": "FFFFFF",
+            "CARD_ALT": "EBF0F7",
+            "TITLE": "1C3557",
+            "BODY": "2D3E50",
+            "ACCENT": "1565C0",
+            "TEAL": "0097A7",
+            "GOLD": "F57C00",
+            "MUTED": "78909C",
+        },
     }
 
     def generate_pptxgenjs_code(
@@ -454,27 +465,62 @@ IMPORTANT RULES:
         gold = colors["GOLD"]
         muted = colors["MUTED"]
 
-        prompt = f"""{web_section}Generate PptxGenJS code for 10 slides about: {topic}
+        prompt = f"""{web_section}Generate PptxGenJS JavaScript code for a 10-slide presentation on: "{topic}"
 
-The code receives `pptx` object (LAYOUT_WIDE). Do NOT use require(). Do NOT call writeFile().
+CRITICAL: Every card, text box, and bullet MUST contain REAL, SPECIFIC content about "{topic}".
+DO NOT use placeholder text like "Body text.", "Key point here", "Description", or "Lorem ipsum".
+Write actual meaningful sentences about the topic in {language}.
+
+The code receives a `pptx` object (LAYOUT_WIDE 13.33x7.5 inches). Do NOT use require(). Do NOT call writeFile().
+CRITICAL: Do NOT declare `const pptx`, `let pptx`, or `var pptx`. The pptx variable is already provided. Use it directly.
+Use `let slide = pptx.addSlide()` for each slide. Do NOT re-declare slide variable names across slides (use slide1, slide2, etc.).
 Language: {language}
 
 Colors: BG="{bg}", Card="{card}", Title="{title_c}", Body="{body_c}", Accent="{accent}", Teal="{teal}", Gold="{gold}"
 
-Every slide: FIRST add full-slide background rect (IMPORTANT - do NOT use slide.background):
-slide.addShape(pptx.shapes.RECTANGLE,{{x:0,y:0,w:13.33,h:7.5,fill:{{color:"{bg}"}},line:{{type:"none"}}}});
-Then add red accent bar: slide.addShape(pptx.shapes.RECTANGLE,{{x:0,y:0,w:13.33,h:0.15,fill:{{color:"{accent}"}},line:{{type:"none"}}}});
-Title: slide.addText("Title",{{x:0.5,y:0.25,w:12,h:0.7,fontSize:24,fontFace:"Arial",color:"{title_c}",bold:true}});
-Card: slide.addShape(pptx.shapes.ROUNDED_RECTANGLE,{{x:X,y:Y,w:W,h:H,fill:{{color:"{card}"}},rectRadius:0.1,line:{{color:"{teal}",width:1}}}});
-Card text: slide.addText([{{text:"Icon Title\\n",options:{{fontSize:13,bold:true,color:"{title_c}"}}}},{{text:"Body text.",options:{{fontSize:11,color:"{body_c}"}}}}],{{x:X+0.15,y:Y+0.1,w:W-0.3,h:H-0.2,fontFace:"Calibri",valign:"top"}});
+NO EMOJIS anywhere. No emoji icons in any text, titles, or bullets.
 
-10 slides: 1.Title(fontSize40,centered) 2.Overview(4 cards 2x2) 3.Background(two-column) 4.TopicA(cards) 5.TopicB(two-col) 6.Timeline(circles+lines) 7.Stats(big numbers) 8.Challenges(cards) 9.Future(two-col) 10.ThankYou
+EVERY slide must start with these two shapes:
+1. Full background: slide.addShape(pptx.shapes.RECTANGLE,{{x:0,y:0,w:13.33,h:7.5,fill:{{color:"{bg}"}},line:{{type:"none"}}}});
+2. Accent bar: slide.addShape(pptx.shapes.RECTANGLE,{{x:0,y:0,w:13.33,h:0.15,fill:{{color:"{accent}"}},line:{{type:"none"}}}});
 
-Card grid positions: (0.4,1.2,5.8,2.5),(6.7,1.2,5.8,2.5),(0.4,4.0,5.8,2.5),(6.7,4.0,5.8,2.5)
-Two-col: left(0.4,1.2,5.8,5.5) right(6.7,1.2,5.8,5.5)
-Use emoji in card titles. No images. Card body max 12 words. Title max 35 chars.
+MANDATORY: Every content slide (2-9) MUST have a REAL SLIDE TITLE (not placeholder text) as the first text:
+Example for slide about "Overview": slide.addText("Overview of {topic}",{{x:0.5,y:0.25,w:12,h:0.7,fontSize:24,fontFace:"Calibri",color:"{title_c}",bold:true}});
+NEVER write "Slide Title Here" — always write the REAL topic-specific title.
+
+--- LAYOUT RULES ---
+
+4-BOX LAYOUT (slides 2, 4, 8): 2x2 grid of 4 boxes. Each box: bold heading + 4 bullet points at 13pt.
+Box positions: top-left(0.4,1.1,6.1,2.8) top-right(7.0,1.1,6.1,2.8) bot-left(0.4,4.1,6.1,2.8) bot-right(7.0,4.1,6.1,2.8)
+slide.addShape(pptx.shapes.ROUNDED_RECTANGLE,{{x:0.4,y:1.1,w:6.1,h:2.8,fill:{{color:"{card}"}},rectRadius:0.08,line:{{color:"{teal}",width:1}}}});
+slide.addText([{{text:"Box Heading\\n",options:{{fontSize:13,bold:true,color:"{title_c}",fontFace:"Calibri"}}}},{{text:"- Real bullet 1 about {topic}\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Real bullet 2 about {topic}\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Real bullet 3 about {topic}\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Real bullet 4 about {topic}",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}}],{{x:0.5,y:1.15,w:5.9,h:2.65,fontFace:"Calibri",valign:"top",shrinkText:true}});
+(repeat for all 4 box positions)
+
+2-COLUMN LAYOUT (slides 3, 5, 6, 7, 9): 2 columns. Each column: bold heading + 8 bullet points at 13pt.
+Column positions: left(0.4,1.1,6.1,5.8) right(7.0,1.1,6.1,5.8)
+slide.addShape(pptx.shapes.ROUNDED_RECTANGLE,{{x:0.4,y:1.1,w:6.1,h:5.8,fill:{{color:"{card}"}},rectRadius:0.08,line:{{color:"{teal}",width:1}}}});
+slide.addText([{{text:"Left Heading\\n",options:{{fontSize:13,bold:true,color:"{title_c}",fontFace:"Calibri"}}}},{{text:"- Point 1\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 2\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 3\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 4\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 5\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 6\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 7\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 8",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}}],{{x:0.5,y:1.15,w:5.9,h:5.65,fontFace:"Calibri",valign:"top",shrinkText:true}});
+(repeat with x:7.0 for right column)
+
+Slide structure:
+1. TITLE SLIDE: Title at top-center, subtitle below it. Use this exact layout:
+   slide1.addText("Real Title About {topic}",{{x:0.5,y:1.2,w:12.3,h:1.5,fontSize:40,bold:true,color:"{title_c}",fontFace:"Calibri",align:"center"}});
+   slide1.addText("Real subtitle or tagline about {topic}",{{x:0.5,y:2.9,w:12.3,h:0.8,fontSize:22,color:"{body_c}",fontFace:"Calibri",align:"center"}});
+2. Overview (4-BOX): 4 aspects of "{topic}"
+3. Background/History (2-COL): Historical context
+4. Key Topic A (4-BOX): Main aspect details
+5. Key Topic B (2-COL): Another major aspect
+6. Timeline (2-COL): Key events/dates
+7. Statistics/Facts (2-COL): Key numbers and facts
+8. Challenges (4-BOX): Problems and challenges
+9. Future/Outcome (2-COL): Results and future
+10. THANK YOU SLIDE: "Thank You" at top-center, "Any Questions?" below it. Use this exact layout:
+    slide10.addText("Thank You",{{x:0.5,y:1.5,w:12.3,h:1.5,fontSize:48,bold:true,color:"{title_c}",fontFace:"Calibri",align:"center"}});
+    slide10.addText("Any Questions?",{{x:0.5,y:3.2,w:12.3,h:0.8,fontSize:28,color:"{gold}",fontFace:"Calibri",align:"center"}});
+
+REMEMBER: NO emojis. All text in {language}. Real specific content about "{topic}". Complete sentences in bullets.
 {error_section}
-Output ONLY JavaScript code. No markdown, no backticks."""
+Output ONLY JavaScript code. No markdown, no backticks, no explanations."""
 
         mistral_api_key = get_secret("MISTRAL_API_KEY") or "sXgAOYTxA51tQ0N1C4O5ppFnELJisujD"
         if not mistral_api_key:
@@ -489,7 +535,7 @@ Output ONLY JavaScript code. No markdown, no backticks."""
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "mistral-large-latest",
+                    "model": "mistral-small-latest",
                     "messages": [
                         {
                             "role": "system",
@@ -497,10 +543,10 @@ Output ONLY JavaScript code. No markdown, no backticks."""
                         },
                         {"role": "user", "content": prompt},
                     ],
-                    "max_tokens": 10000,
-                    "temperature": 0.4,
+                    "max_tokens": 16000,
+                    "temperature": 0.3,
                 },
-                timeout=120,
+                timeout=90,
             )
             resp.raise_for_status()
             ai_output = resp.json()["choices"][0]["message"]["content"].strip()
@@ -510,6 +556,11 @@ Output ONLY JavaScript code. No markdown, no backticks."""
             import re
             ai_output = re.sub(r'^```(?:javascript|js)?\s*\n?', '', ai_output)
             ai_output = re.sub(r'\n?```\s*$', '', ai_output)
+
+            # Validate: if last non-empty line ends mid-statement (not with ; or }), code was truncated
+            last_line = ai_output.rstrip().split('\n')[-1].strip() if ai_output.strip() else ''
+            if last_line and not last_line.endswith((';', '}', '//', '*/')):
+                return {"error": f"AI output was truncated (last line: {last_line[:60]!r}). Retry."}
 
             return {"output": ai_output, "ai_source": "Mistral"}
         except Exception as e:

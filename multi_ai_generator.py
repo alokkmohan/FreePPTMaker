@@ -444,6 +444,7 @@ IMPORTANT RULES:
         error_context: str = "",
         num_slides: int = 10,
         logo_data: str = None,
+        add_images: bool = False,
     ) -> Dict:
         """Generate PptxGenJS JavaScript code for a presentation."""
         global _last_ai_source
@@ -462,6 +463,16 @@ IMPORTANT RULES:
         logo_section = ""
         if logo_data:
             logo_section = f'\nLOGO: Add logo to top-right of every slide (including title and thank you) using:\nslide.addImage({{data: "{logo_data}", x: 11.8, y: 0.2, w: 1.3, h: 0.5}});\n'
+
+        image_section = ""
+        if add_images:
+            image_section = (
+                "\nIMAGES: For each content slide (slide 2 to second-last), add a small decorative image at bottom-right "
+                "using a unique picsum URL. Example for slide2:\n"
+                "slide2.addImage({path:'https://picsum.photos/seed/slide2topic/320/200', x:9.9, y:5.05, w:3.2, h:2.2});\n"
+                "Use a unique seed word related to the slide topic for each slide (e.g. 'overview', 'history', 'future').\n"
+                "Keep text boxes width to max 9.5 inches on slides with images so text does not overlap the image.\n"
+            )
 
         bg = colors["BG"]
         card = colors["CARD"]
@@ -555,7 +566,7 @@ Slide structure ({num_slides} slides total):
 
 IMPORTANT: Generate EXACTLY {num_slides} slides. No more, no less.
 REMEMBER: NO emojis. All text in {language}. Real specific content about "{topic}". Complete sentences in bullets.
-{logo_section}{error_section}
+{logo_section}{image_section}{error_section}
 Output ONLY JavaScript code. No markdown, no backticks, no explanations."""
 
         mistral_api_key = get_secret("MISTRAL_API_KEY") or "sXgAOYTxA51tQ0N1C4O5ppFnELJisujD"

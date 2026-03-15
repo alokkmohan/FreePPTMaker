@@ -11,3 +11,4 @@ PyPDF2
 groq
 pandas
 openpyxl
+youtube_transcript_api

@@ -236,6 +236,10 @@ st.markdown("""
         gap: 20px;
     }
 
+    @media (max-width: 768px) {
+        .footer-container { display: none !important; }
+    }
+
     .footer-container span {
         opacity: 0.9;
     }
@@ -600,6 +604,32 @@ if 'chart_data' not in st.session_state:
     st.session_state.chart_data = None  # Stores {'df': DataFrame, 'filename': str}
 if 'chart_settings' not in st.session_state:
     st.session_state.chart_settings = None  # Stores {'chart_type': str, 'columns': list}
+if 'youtube_transcript' not in st.session_state:
+    st.session_state.youtube_transcript = None
+if 'add_images' not in st.session_state:
+    st.session_state.add_images = False
+
+def extract_youtube_id(text):
+    """Return YouTube video ID if text contains a YouTube URL, else None."""
+    patterns = [
+        r'(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([^&\n?#\s]{8,15})'
+    ]
+    for p in patterns:
+        m = re.search(p, text.strip())
+        if m:
+            return m.group(1)
+    return None
+
+def get_youtube_transcript(video_id):
+    """Fetch transcript for a YouTube video. Returns (text, error)."""
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+        api = YouTubeTranscriptApi()
+        entries = api.fetch(video_id)
+        transcript = ' '.join([e.text for e in entries])
+        return transcript[:5000], None
+    except Exception as e:
+        return None, str(e)
 
 def generate_slide_thumbnails(ppt_path):
     """Convert PPTX to slide thumbnail images. Returns list of image paths."""
@@ -1067,7 +1097,7 @@ if st.session_state.messages:
     """, unsafe_allow_html=True)
 
 # Chat input (fixed at bottom by Streamlit)
-user_input = st.chat_input("Send topic, paste content (Hindi/English)...", key="main_chat_input")
+user_input = st.chat_input("Send topic, paste YouTube URL (Hindi/English)...", key="main_chat_input")
 
 # Show download button if PPT is ready
 if st.session_state.stage == 'done' and st.session_state.ppt_path:
@@ -1824,6 +1854,27 @@ if user_input:
 
         # If user input is a real topic/text/file, proceed to AI slide generation
         else:
+            # ── YouTube URL detection ──────────────────────────────────────
+            yt_id = extract_youtube_id(user_input)
+            if yt_id:
+                add_message("assistant", "🎬 YouTube link mila! Transcript fetch kar raha hun...")
+                st.rerun()
+
+            if st.session_state.get('_yt_pending'):
+                yt_id = st.session_state.pop('_yt_pending')
+
+            if yt_id and not st.session_state.get('file_content'):
+                with st.spinner("📥 Fetching YouTube transcript..."):
+                    transcript, yt_err = get_youtube_transcript(yt_id)
+                if transcript:
+                    st.session_state.file_content = transcript
+                    user_input = "YouTube Video Summary"
+                    add_message("assistant", f"✅ Transcript mila ({len(transcript)} chars). Presentation ban rahi hai...")
+                else:
+                    add_message("assistant", f"❌ Transcript nahi mila: {yt_err}\n\nManually topic type karo.")
+                    st.session_state.stage = 'idle'
+                    st.rerun()
+
             # Validate topic before proceeding
             is_valid, error_msg = is_valid_topic(user_input)
             if not is_valid:
@@ -1987,6 +2038,7 @@ if st.session_state.stage == 'awaiting_logo':
     with st.chat_message("assistant"):
         st.markdown("**Upload your logo (optional)**\n\nLogo will appear on the top-right corner of every slide.")
         logo_file = st.file_uploader("Upload logo PNG or JPG", type=["png", "jpg", "jpeg"], key="logo_upload_widget")
+        add_img_chk = st.checkbox("Add decorative images to slides", value=False, key="add_images_chk")
         col_upload, col_skip = st.columns([2, 1])
         with col_upload:
             if logo_file:
@@ -1996,6 +2048,7 @@ if st.session_state.stage == 'awaiting_logo':
                 mime = "image/png" if logo_ext == "png" else "image/jpeg"
                 st.session_state.logo_data = f"data:{mime};base64,{logo_b64}"
                 if st.button("Use this logo & Generate", type="primary", use_container_width=True):
+                    st.session_state.add_images = add_img_chk
                     st.session_state.stage = 'generating'
                     st.session_state.parsed_slides = []
                     st.session_state.pptxgenjs_code = None
@@ -2007,6 +2060,7 @@ if st.session_state.stage == 'awaiting_logo':
                     st.rerun()
         with col_skip:
             if st.button("Skip", use_container_width=True):
+                st.session_state.add_images = add_img_chk
                 st.session_state.logo_data = None
                 st.session_state.stage = 'generating'
                 st.session_state.parsed_slides = []
@@ -2041,6 +2095,7 @@ if st.session_state.stage == 'generating':
                     web_context=st.session_state.get('google_context', ''),
                     num_slides=st.session_state.get('slide_count', 10),
                     logo_data=st.session_state.get('logo_data'),
+                    add_images=st.session_state.get('add_images', False),
                 )
                 js_code = js_result.get('output', '')
                 if js_code:
@@ -2095,23 +2150,16 @@ if st.session_state.stage == 'generating':
             else:
                 progress_bar.empty()
                 js_present = bool(st.session_state.get('pptxgenjs_code'))
-                # Get actual node error from run_pptxgenjs debug
-                js_code_debug = st.session_state.get('pptxgenjs_code', '')
-                node_err = ""
-                if js_code_debug:
-                    import re as _re3
-                    js_debug = _re3.sub(r'^\s*(const|let|var)\s+pptx\s*=\s*new\s+PptxGenJS[^\n]*\n?', '', js_code_debug, flags=_re3.MULTILINE)
-                    import subprocess as _sp, tempfile as _tf
-                    _fd, _tmp = _tf.mkstemp(suffix='.js')
-                    with os.fdopen(_fd, 'w') as _f: _f.write(js_debug)
-                    _wp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "node_pptx", "pptx_wrapper.js")
-                    _r = _sp.run(['node', _wp, '/tmp/debug_test.pptx', _tmp], capture_output=True, text=True, timeout=45, cwd=os.path.join(os.path.dirname(os.path.abspath(__file__)), "node_pptx"))
-                    os.unlink(_tmp)
-                    node_err = (_r.stderr or _r.stdout)[:200]
-                status_text.error(f"Node error: {node_err[:150]}")
-                print(f"[DEBUG NODE ERROR]: {node_err}")
-                st.session_state.stage = 'awaiting_topic'
-                add_message("assistant", f"⚠️ Node error: {node_err[:100]}. Type topic again to retry.")
+                if not js_present:
+                    status_text.error("AI service busy. Please try again.")
+                    st.session_state.stage = 'idle'
+                    st.session_state.pptxgenjs_code = None
+                    add_message("assistant", "⚠️ AI service is busy right now. Please type your topic again to retry.")
+                else:
+                    status_text.error("Failed to build presentation. Please try again.")
+                    st.session_state.stage = 'idle'
+                    st.session_state.pptxgenjs_code = None
+                    add_message("assistant", "⚠️ Presentation could not be built. Please type your topic again.")
 
         except Exception as e:
             import traceback

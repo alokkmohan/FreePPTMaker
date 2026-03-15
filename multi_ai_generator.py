@@ -443,6 +443,7 @@ IMPORTANT RULES:
         language: str = "English",
         error_context: str = "",
         num_slides: int = 10,
+        logo_data: str = None,
     ) -> Dict:
         """Generate PptxGenJS JavaScript code for a presentation."""
         global _last_ai_source
@@ -457,6 +458,10 @@ IMPORTANT RULES:
         error_section = ""
         if error_context:
             error_section = f"\n\nPREVIOUS ATTEMPT FAILED WITH ERROR:\n{error_context}\nFix the error and generate correct code.\n"
+
+        logo_section = ""
+        if logo_data:
+            logo_section = f'\nLOGO: Add logo to top-right of every slide (including title and thank you) using:\nslide.addImage({{data: "{logo_data}", x: 11.8, y: 0.2, w: 1.3, h: 0.5}});\n'
 
         bg = colors["BG"]
         card = colors["CARD"]
@@ -476,7 +481,7 @@ IMPORTANT RULES:
             "Key Topic A (4-BOX): Main aspect details",
             "Key Topic B (2-COL): Another major aspect",
             "Timeline (2-COL): Key events and dates",
-            "Statistics/Facts (2-COL): Key numbers and data",
+            "Statistics/Facts (TABLE): Key data in a comparison table",
             "Challenges (4-BOX): Problems and challenges",
             "Solutions/Strategies (2-COL): How to address challenges",
             "Case Studies (4-BOX): Real examples",
@@ -532,6 +537,13 @@ slide.addShape(pptx.shapes.ROUNDED_RECTANGLE,{{x:0.4,y:1.1,w:6.1,h:5.8,fill:{{co
 slide.addText([{{text:"Left Heading\\n",options:{{fontSize:13,bold:true,color:"{title_c}",fontFace:"Calibri"}}}},{{text:"- Point 1\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 2\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 3\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 4\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 5\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 6\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 7\\n",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}},{{text:"- Point 8",options:{{fontSize:13,color:"{body_c}",fontFace:"Calibri"}}}}],{{x:0.5,y:1.15,w:5.9,h:5.65,fontFace:"Calibri",valign:"top",shrinkText:true}});
 (repeat with x:7.0 for right column)
 
+TABLE LAYOUT (for statistics/comparison slides): A slide with a data table.
+slide.addTable([
+  [{{text:"Header1",options:{{bold:true,color:"{title_c}",fill:"{accent}",fontSize:13,fontFace:"Calibri"}}}},{{text:"Header2",options:{{bold:true,color:"{title_c}",fill:"{accent}",fontSize:13,fontFace:"Calibri"}}}},{{text:"Header3",options:{{bold:true,color:"{title_c}",fill:"{accent}",fontSize:13,fontFace:"Calibri"}}}}],
+  [{{text:"Row1Col1",options:{{color:"{body_c}",fill:"{card}",fontSize:12,fontFace:"Calibri"}}}},{{text:"Row1Col2",options:{{color:"{body_c}",fill:"{card}",fontSize:12,fontFace:"Calibri"}}}},{{text:"Row1Col3",options:{{color:"{body_c}",fill:"{card}",fontSize:12,fontFace:"Calibri"}}}}],
+  [{{text:"Row2Col1",options:{{color:"{body_c}",fill:"{card_alt}",fontSize:12,fontFace:"Calibri"}}}},{{text:"Row2Col2",options:{{color:"{body_c}",fill:"{card_alt}",fontSize:12,fontFace:"Calibri"}}}},{{text:"Row2Col3",options:{{color:"{body_c}",fill:"{card_alt}",fontSize:12,fontFace:"Calibri"}}}}],
+],{{x:0.5,y:1.1,w:12.3,h:5.8,rowH:0.45,fontSize:12}});
+
 Slide structure ({num_slides} slides total):
 1. TITLE SLIDE: Title at top-center, subtitle below it. Use this exact layout:
    slide1.addText("Real Title About {topic}",{{x:0.5,y:1.2,w:12.3,h:1.5,fontSize:40,bold:true,color:"{title_c}",fontFace:"Calibri",align:"center"}});
@@ -543,7 +555,7 @@ Slide structure ({num_slides} slides total):
 
 IMPORTANT: Generate EXACTLY {num_slides} slides. No more, no less.
 REMEMBER: NO emojis. All text in {language}. Real specific content about "{topic}". Complete sentences in bullets.
-{error_section}
+{logo_section}{error_section}
 Output ONLY JavaScript code. No markdown, no backticks, no explanations."""
 
         mistral_api_key = get_secret("MISTRAL_API_KEY") or "sXgAOYTxA51tQ0N1C4O5ppFnELJisujD"

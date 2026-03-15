@@ -557,7 +557,7 @@ st.markdown('<div class="content-container">', unsafe_allow_html=True)
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 if 'stage' not in st.session_state:
-    st.session_state.stage = 'idle'  # idle, ask_name, ask_designation, awaiting_topic, awaiting_theme, awaiting_slides, confirming, generating, done
+    st.session_state.stage = 'idle'  # idle, ask_name, ask_designation, awaiting_topic, awaiting_theme, awaiting_slides, awaiting_logo, confirming, generating, done
     # Start with welcome message first, ask name later if needed
 if 'presenter_name' not in st.session_state:
     st.session_state.presenter_name = None
@@ -593,6 +593,35 @@ if 'chart_data' not in st.session_state:
     st.session_state.chart_data = None  # Stores {'df': DataFrame, 'filename': str}
 if 'chart_settings' not in st.session_state:
     st.session_state.chart_settings = None  # Stores {'chart_type': str, 'columns': list}
+
+def generate_slide_thumbnails(ppt_path):
+    """Convert PPTX to slide thumbnail images. Returns list of image paths."""
+    import glob
+    try:
+        preview_dir = ppt_path.replace('.pptx', '_preview')
+        os.makedirs(preview_dir, exist_ok=True)
+        # Check if already generated
+        existing = sorted(glob.glob(os.path.join(preview_dir, 'slide-*.png')))
+        if existing:
+            return existing
+        # Convert PPTX to PDF
+        r1 = subprocess.run(
+            ['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', preview_dir, ppt_path],
+            capture_output=True, timeout=90
+        )
+        pdf_name = os.path.splitext(os.path.basename(ppt_path))[0] + '.pdf'
+        pdf_path = os.path.join(preview_dir, pdf_name)
+        if not os.path.exists(pdf_path):
+            return []
+        # Convert PDF to images
+        subprocess.run(
+            ['pdftoppm', '-r', '96', '-png', pdf_path, os.path.join(preview_dir, 'slide')],
+            capture_output=True, timeout=60
+        )
+        return sorted(glob.glob(os.path.join(preview_dir, 'slide-*.png')))
+    except Exception:
+        return []
+
 
 # Helper functions
 def add_message(role, content):
@@ -1002,6 +1031,9 @@ language = st.selectbox("Language", ["English", "Hindi", "Gujarati", "Tamil", "B
 st.session_state.language = language
 # Bullets per slide is now flexible (4-6) based on content needs - AI decides automatically
 st.session_state.bullets_per_slide = 5  # Default/average for compatibility
+
+if 'logo_data' not in st.session_state:
+    st.session_state.logo_data = None
 
 # Display chat messages
 for msg in st.session_state.messages:
@@ -1693,16 +1725,27 @@ if user_input:
         chosen = valid.get(choice)
         if chosen:
             st.session_state.slide_count = chosen
+            st.session_state.stage = 'awaiting_logo'
+            add_message("assistant", f"**{chosen} slides** selected!\n\nUpload your company/NGO logo to add it on every slide (top-right corner), or type **skip**:")
+            st.rerun()
+        else:
+            add_message("assistant", "Please type: **5**, **8**, **10**, **15**, or **20**")
+            st.rerun()
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # LOGO UPLOAD STEP (after slide count, before generating)
+    # ═══════════════════════════════════════════════════════════════════════════
+    if st.session_state.stage == 'awaiting_logo':
+        if user_input.lower().strip() in ('skip', 'no', 'nahi', 'nhi', '0'):
+            st.session_state.logo_data = None
             st.session_state.stage = 'generating'
             st.session_state.parsed_slides = []
             st.session_state.pptxgenjs_code = None
             topic = st.session_state.get('pending_topic', '')
             st.session_state.topic = topic
             theme = st.session_state.get('theme', 'modern')
-            add_message("assistant", f"**{chosen} slides** — Generating your **{theme.capitalize()}** presentation on **{topic}**...")
-            st.rerun()
-        else:
-            add_message("assistant", "Please type: **5**, **8**, **10**, **15**, or **20**")
+            chosen = st.session_state.get('slide_count', 10)
+            add_message("assistant", f"No logo — Generating your **{theme.capitalize()}** presentation on **{topic}** ({chosen} slides)...")
             st.rerun()
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -1839,6 +1882,7 @@ if user_input:
                 web_context=web_ctx,
                 language=language,
                 num_slides=st.session_state.get('slide_count', 10),
+                logo_data=st.session_state.get('logo_data'),
             )
 
             js_code = js_result.get('output', '')
@@ -1928,6 +1972,42 @@ if user_input:
             st.session_state.stage = 'generating'
             st.rerun()
 
+# Logo upload widget (shown when awaiting logo)
+if st.session_state.stage == 'awaiting_logo':
+    with st.chat_message("assistant"):
+        st.markdown("**Upload your logo (optional)**\n\nLogo will appear on the top-right corner of every slide.")
+        logo_file = st.file_uploader("Upload logo PNG or JPG", type=["png", "jpg", "jpeg"], key="logo_upload_widget")
+        col_upload, col_skip = st.columns([2, 1])
+        with col_upload:
+            if logo_file:
+                import base64 as _b64
+                logo_b64 = _b64.b64encode(logo_file.read()).decode()
+                logo_ext = logo_file.name.split('.')[-1].lower()
+                mime = "image/png" if logo_ext == "png" else "image/jpeg"
+                st.session_state.logo_data = f"data:{mime};base64,{logo_b64}"
+                if st.button("Use this logo & Generate", type="primary", use_container_width=True):
+                    st.session_state.stage = 'generating'
+                    st.session_state.parsed_slides = []
+                    st.session_state.pptxgenjs_code = None
+                    topic = st.session_state.get('pending_topic', '')
+                    st.session_state.topic = topic
+                    theme = st.session_state.get('theme', 'modern')
+                    chosen = st.session_state.get('slide_count', 10)
+                    add_message("assistant", f"Logo added! Generating your **{theme.capitalize()}** presentation on **{topic}** ({chosen} slides)...")
+                    st.rerun()
+        with col_skip:
+            if st.button("Skip", use_container_width=True):
+                st.session_state.logo_data = None
+                st.session_state.stage = 'generating'
+                st.session_state.parsed_slides = []
+                st.session_state.pptxgenjs_code = None
+                topic = st.session_state.get('pending_topic', '')
+                st.session_state.topic = topic
+                theme = st.session_state.get('theme', 'modern')
+                chosen = st.session_state.get('slide_count', 10)
+                add_message("assistant", f"Generating your **{theme.capitalize()}** presentation on **{topic}** ({chosen} slides)...")
+                st.rerun()
+
 # Generation process
 if st.session_state.stage == 'generating':
     with st.chat_message("assistant"):
@@ -1950,6 +2030,7 @@ if st.session_state.stage == 'generating':
                     topic=topic, theme=theme, language=language,
                     web_context=st.session_state.get('google_context', ''),
                     num_slides=st.session_state.get('slide_count', 10),
+                    logo_data=st.session_state.get('logo_data'),
                 )
                 js_code = js_result.get('output', '')
                 if js_code:
@@ -2047,47 +2128,29 @@ if st.session_state.stage == 'preview':
         with st.expander("📝 View Full AI Generated Content", expanded=False):
             st.text_area("AI Output", full_ai_output, height=300, disabled=True, label_visibility="collapsed")
 
-    # ─────────────────────────────────────────────────────────────────────────────
-    # 📊 SLIDE PREVIEW SECTION - Visual Thumbnails (3 per row)
-    # ─────────────────────────────────────────────────────────────────────────────
+    # ─── Slide Preview Thumbnails ───
     st.markdown("---")
-    st.markdown("### 📊 Slide Preview")
+    st.markdown("### Slide Preview")
 
-    if slides:
-        # Display slides in a 3-column grid
-        cols_per_row = 3
-        for row_start in range(0, len(slides), cols_per_row):
-            cols = st.columns(cols_per_row)
-            for col_idx, slide_idx in enumerate(range(row_start, min(row_start + cols_per_row, len(slides)))):
-                slide = slides[slide_idx]
-                slide_num = slide.get('slide_number', slide_idx + 1)
-                title = slide.get('title', slide.get('main_title', f'Slide {slide_num}'))
-                bullets = slide.get('bullets', [])
+    if ppt_path and os.path.exists(ppt_path):
+        with st.spinner("Generating slide previews..."):
+            thumb_key = f"thumbs_{ppt_path}"
+            if thumb_key not in st.session_state:
+                st.session_state[thumb_key] = generate_slide_thumbnails(ppt_path)
+            thumbs = st.session_state[thumb_key]
 
-                with cols[col_idx]:
-                    if slide_num == 1:
-                        main_title = slide.get('main_title') or st.session_state.get('topic', 'Presentation')
-                        tagline = slide.get('tagline', '')
-                        subtitle = slide.get('subtitle', '')
-                        st.markdown(f"""
-                        <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 16px; border-radius: 12px; margin-bottom: 12px; min-height: 180px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
-                            <div style="font-size: 10px; opacity: 0.8; margin-bottom: 8px;">SLIDE {slide_num}</div>
-                            <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px; line-height: 1.3;">{main_title[:50]}{'...' if len(main_title) > 50 else ''}</div>
-                            {f'<div style="font-size: 11px; opacity: 0.9; margin-bottom: 4px;">{tagline[:40]}{"..." if len(tagline) > 40 else ""}</div>' if tagline else ''}
-                            {f'<div style="font-size: 10px; opacity: 0.7;">{subtitle[:35]}{"..." if len(subtitle) > 35 else ""}</div>' if subtitle else ''}
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        bullet_preview = ''.join([f'<div style="font-size: 10px; color: #555; margin: 2px 0; line-height: 1.2;">• {b[:45]}{"..." if len(b) > 45 else ""}</div>' for b in bullets[:3]])
-                        st.markdown(f"""
-                        <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); padding: 16px; border-radius: 12px; margin-bottom: 12px; min-height: 180px; border: 2px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                            <div style="font-size: 10px; color: #6366f1; font-weight: bold; margin-bottom: 6px;">SLIDE {slide_num}</div>
-                            <div style="font-size: 12px; font-weight: bold; color: #1e293b; margin-bottom: 10px; line-height: 1.3;">{title[:40]}{'...' if len(title) > 40 else ''}</div>
-                            {bullet_preview if bullets else '<div style="font-size: 10px; color: #6366f1; font-style: italic;">✨ AI-generated content in downloaded PPT</div>'}
-                        </div>
-                        """, unsafe_allow_html=True)
+        if thumbs:
+            cols_per_row = 3
+            for row_start in range(0, len(thumbs), cols_per_row):
+                cols = st.columns(cols_per_row)
+                for ci, img_path in enumerate(thumbs[row_start:row_start+cols_per_row]):
+                    with cols[ci]:
+                        slide_num = row_start + ci + 1
+                        st.image(img_path, caption=f"Slide {slide_num}", use_container_width=True)
+        else:
+            st.info("Preview not available. Download the PPT to view.")
     else:
-        st.warning("No slides found in preview.")
+        st.info("No presentation generated yet.")
 
     # ─────────────────────────────────────────────────────────────────────────────
     # 💬 GUIDED CHAT INSTRUCTION
@@ -2166,6 +2229,52 @@ if st.session_state.stage == 'preview':
             st.session_state.file_contents = []
             st.rerun()
 
+    # ─── Edit Single Slide ───
+    with st.expander("Edit a Slide", expanded=False):
+        slide_count = st.session_state.get('slide_count', 10)
+        edit_col1, edit_col2 = st.columns([1, 3])
+        with edit_col1:
+            edit_slide_num = st.number_input("Slide #", min_value=1, max_value=slide_count, value=1, step=1, key="edit_slide_num")
+        with edit_col2:
+            edit_instruction = st.text_input("What to change?", placeholder="e.g. Add more points about renewable energy", key="edit_instruction")
+
+        if st.button("Apply Changes", key="apply_edit", type="primary"):
+            if edit_instruction.strip():
+                with st.spinner(f"Updating slide {edit_slide_num}..."):
+                    topic = st.session_state.get('topic', '')
+                    theme = st.session_state.get('theme', 'modern')
+                    language = st.session_state.get('language', 'English')
+                    num_slides = st.session_state.get('slide_count', 10)
+
+                    # Regenerate entire PPT with instruction for specific slide
+                    generator = MultiAIGenerator()
+                    edit_context = f"IMPORTANT: For slide {edit_slide_num}, apply this change: {edit_instruction}"
+                    js_result = generator.generate_pptxgenjs_code(
+                        topic=topic, theme=theme, language=language,
+                        num_slides=num_slides,
+                        error_context=edit_context,
+                        logo_data=st.session_state.get('logo_data'),
+                    )
+                    js_code = js_result.get('output', '')
+                    if js_code:
+                        st.session_state.pptxgenjs_code = js_code
+                        content = st.session_state.get('parsed_slides', [])
+                        success, new_path = generate_ppt(content, topic, theme)
+                        if success:
+                            st.session_state.ppt_path = new_path
+                            # Clear thumbnail cache
+                            for k in list(st.session_state.keys()):
+                                if k.startswith('thumbs_'):
+                                    del st.session_state[k]
+                            st.success(f"Slide {edit_slide_num} updated!")
+                            st.rerun()
+                        else:
+                            st.error("Failed to regenerate PPT.")
+                    else:
+                        st.error("AI failed to generate updated content.")
+            else:
+                st.warning("Please enter what you want to change.")
+
     # Store that we're in preview mode for chat handling
     st.session_state.in_preview_mode = True
 
@@ -2193,6 +2302,7 @@ if st.session_state.stage == 'regenerating':
                 theme=theme,
                 language=language,
                 num_slides=st.session_state.get('slide_count', 10),
+                logo_data=st.session_state.get('logo_data'),
             )
 
             js_code = js_result.get('output', '')

@@ -444,7 +444,6 @@ IMPORTANT RULES:
         error_context: str = "",
         num_slides: int = 10,
         logo_data: str = None,
-        add_images: bool = False,
     ) -> Dict:
         """Generate PptxGenJS JavaScript code for a presentation."""
         global _last_ai_source
@@ -463,16 +462,6 @@ IMPORTANT RULES:
         logo_section = ""
         if logo_data:
             logo_section = f'\nLOGO: Add logo to top-right of every slide (including title and thank you) using:\nslide.addImage({{data: "{logo_data}", x: 11.8, y: 0.2, w: 1.3, h: 0.5}});\n'
-
-        image_section = ""
-        if add_images:
-            image_section = (
-                "\nIMAGES: For each content slide (slide 2 to second-last), add a small decorative image at bottom-right "
-                "using a unique picsum URL. Example for slide2:\n"
-                "slide2.addImage({path:'https://picsum.photos/seed/slide2topic/320/200', x:9.9, y:5.05, w:3.2, h:2.2});\n"
-                "Use a unique seed word related to the slide topic for each slide (e.g. 'overview', 'history', 'future').\n"
-                "Keep text boxes width to max 9.5 inches on slides with images so text does not overlap the image.\n"
-            )
 
         bg = colors["BG"]
         card = colors["CARD"]
@@ -519,7 +508,9 @@ Write actual meaningful sentences about the topic in {language}.
 
 The code receives a `pptx` object (LAYOUT_WIDE 13.33x7.5 inches). Do NOT use require(). Do NOT call writeFile().
 CRITICAL: Do NOT declare `const pptx`, `let pptx`, or `var pptx`. The pptx variable is already provided. Use it directly.
-Use `let slide = pptx.addSlide()` for each slide. Do NOT re-declare slide variable names across slides (use slide1, slide2, etc.).
+CRITICAL: EVERY slide MUST start with: let slide1 = pptx.addSlide(); (use slide1, slide2, slide3... for each slide)
+NEVER call pptx.addShape() or pptx.addText() directly. ALWAYS call it on the slide variable: slide1.addShape(), slide1.addText()
+NEVER chain: pptx.addSlide().addShape() — ALWAYS assign to a variable first: let slide1 = pptx.addSlide(); then slide1.addShape()
 Language: {language}
 
 Colors: BG="{bg}", Card="{card}", Title="{title_c}", Body="{body_c}", Accent="{accent}", Teal="{teal}", Gold="{gold}"
@@ -566,7 +557,7 @@ Slide structure ({num_slides} slides total):
 
 IMPORTANT: Generate EXACTLY {num_slides} slides. No more, no less.
 REMEMBER: NO emojis. All text in {language}. Real specific content about "{topic}". Complete sentences in bullets.
-{logo_section}{image_section}{error_section}
+{logo_section}{error_section}
 Output ONLY JavaScript code. No markdown, no backticks, no explanations."""
 
         import requests, re as _re
@@ -591,18 +582,11 @@ Output ONLY JavaScript code. No markdown, no backticks, no explanations."""
                 "max_tokens": 16000,
             },
             {
-                "name": "DeepSeek",
-                "url": "https://api.deepseek.com/v1/chat/completions",
-                "key": get_secret("DEEPSEEK_API_KEY"),
-                "model": "deepseek-chat",
-                "max_tokens": 16000,
-            },
-            {
                 "name": "Groq",
                 "url": "https://api.groq.com/openai/v1/chat/completions",
                 "key": get_secret("GROQ_API_KEY"),
-                "model": "llama-3.1-70b-versatile",
-                "max_tokens": 8000,
+                "model": "llama-3.3-70b-versatile",
+                "max_tokens": 16000,
             },
         ]
 

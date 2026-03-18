@@ -1093,6 +1093,56 @@ if st.session_state.messages:
     </script>
     """, unsafe_allow_html=True)
 
+# ─── Visual Theme Picker (shown when awaiting_theme) ───
+if st.session_state.stage == 'awaiting_theme':
+    _themes_ui = [
+        ("Modern",    "#F5F7FA", "#1565C0", "#FFFFFF", "#1C3557"),
+        ("Dark",      "#0D1B2A", "#E84545", "#1B2E42", "#FFFFFF"),
+        ("Light",     "#FFFFFF", "#0072C6", "#F0F4F8", "#1A1A2E"),
+        ("Corporate", "#0A2342", "#F4A100", "#1B3A6B", "#FFFFFF"),
+        ("Nature",    "#F0F7F0", "#2E7D32", "#FFFFFF",  "#1B5E20"),
+        ("Bold",      "#1A0000", "#E53935", "#2D0A0A", "#FFFFFF"),
+        ("Purple",    "#F3E5F5", "#7B1FA2", "#FFFFFF",  "#4A148C"),
+    ]
+    st.markdown("**Choose a theme:**")
+    _tcols = st.columns(7)
+    for _ti, (_tname, _tbg, _tacc, _tcard, _ttitle) in enumerate(_themes_ui):
+        with _tcols[_ti]:
+            # Mini slide thumbnail using HTML
+            st.markdown(f"""
+            <div style="background:{_tbg};border-radius:6px;padding:4px;cursor:pointer;
+                 border:2px solid {_tacc};width:100%;box-sizing:border-box;">
+              <div style="background:{_tacc};height:4px;border-radius:2px;margin-bottom:4px;"></div>
+              <div style="color:{_ttitle};font-size:7px;font-weight:bold;text-align:center;
+                   margin-bottom:3px;font-family:Calibri;">Title</div>
+              <div style="display:flex;gap:2px;">
+                <div style="background:{_tcard};border-radius:2px;flex:1;height:18px;
+                     border:1px solid {_tacc};opacity:0.8;"></div>
+                <div style="background:{_tcard};border-radius:2px;flex:1;height:18px;
+                     border:1px solid {_tacc};opacity:0.8;"></div>
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button(_tname, key=f"theme_btn_{_ti}", use_container_width=True):
+                add_message("user", _tname)
+                st.session_state.theme = _tname.lower()
+                st.session_state.stage = 'awaiting_slides'
+                add_message("assistant", f"Theme: **{_tname}** selected!\n\nHow many slides?\n\n**5** | **8** | **10** | **15** | **20**\n\nType a number or click:")
+                st.rerun()
+    # Also show slide count buttons if awaiting_slides
+    st.markdown("")
+
+# ─── Slide Count Quick Buttons (shown when awaiting_slides) ───
+if st.session_state.stage == 'awaiting_slides':
+    _scols = st.columns(5)
+    for _si, _sn in enumerate([5, 8, 10, 15, 20]):
+        if _scols[_si].button(f"{_sn} Slides", key=f"slide_btn_{_sn}", use_container_width=True):
+            add_message("user", str(_sn))
+            st.session_state.slide_count = _sn
+            st.session_state.stage = 'awaiting_logo'
+            add_message("assistant", f"**{_sn} slides** selected!\n\nUpload your logo (top-right on every slide) or type **skip**:")
+            st.rerun()
+
 # Chat input (fixed at bottom by Streamlit)
 user_input = st.chat_input("Send topic, paste content (Hindi/English)...", key="main_chat_input")
 
@@ -2262,6 +2312,24 @@ if st.session_state.stage == 'preview':
             st.session_state.file_contents = []
             st.rerun()
 
+    # ─── WhatsApp Share ───
+    import urllib.parse as _urlparse
+    _topic_name = (st.session_state.get('topic') or st.session_state.get('pending_topic') or 'my presentation').strip()
+    if not _topic_name or _topic_name.lower() == 'none':
+        _topic_name = 'my presentation'
+    _wa_msg = (
+        f"I just created a professional PPT on '{_topic_name}' using AI PPT Generator!\n\n"
+        f"Create your own free presentation at: https://aipptmaker.streamlit.app\n\n"
+        f"(To share the file directly, download the PPT first, then attach it on WhatsApp)"
+    )
+    _wa_url = f"https://wa.me/?text={_urlparse.quote(_wa_msg)}"
+    st.markdown(
+        f'<a href="{_wa_url}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">'
+        f'<button style="background:#25D366;color:white;border:none;padding:8px 18px;border-radius:6px;'
+        f'font-size:14px;cursor:pointer;width:100%;margin-top:8px;">Share on WhatsApp</button></a>',
+        unsafe_allow_html=True
+    )
+
     # ─── Edit Single Slide ───
     with st.expander("Edit a Slide", expanded=False):
         slide_count = st.session_state.get('slide_count', 10)
@@ -2374,20 +2442,44 @@ if st.session_state.stage == 'regenerating':
 
 # Simple welcome message (clean chatbot style - no buttons)
 if not st.session_state.messages and st.session_state.stage == 'idle':
-    welcome_msg = """**Welcome to AI PPT Generator!** 🎉
+    welcome_msg = """**Welcome to AI PPT Generator!**
 
 I can help you create professional PowerPoint presentations in minutes.
 
 **Here's how to get started:**
 
-📤 **Upload a document** - Click the ➕ button above and upload PDF, Word, or PowerPoint files
+Upload a document - Click the + button above and upload PDF, Word, or PowerPoint files
 
-📋 **Paste your content** - Copy and paste any text, article, or notes directly in the chat
+Paste your content - Copy and paste any text, article, or notes directly in the chat
 
-✍️ **Enter a topic** - Just type a topic like "AI in Healthcare" or "Digital India" and I'll create a full presentation
+Enter a topic - Just type a topic like "AI in Healthcare" or "Digital India" and I'll create a full presentation
 
-**What would you like to do?** Just type below or use the buttons above! 👇"""
+**What would you like to do?** Just type below or pick a trending topic!"""
     st.session_state.messages.append({"role": "assistant", "content": welcome_msg})
+    st.rerun()
+
+# ─── Trending Topic Suggestions (idle stage only) ───
+if st.session_state.stage == 'idle' and not st.session_state.get('file_content'):
+    trending_topics = [
+        "Artificial Intelligence", "Climate Change", "Digital India",
+        "Startup Ecosystem", "Mental Health Awareness", "Women Empowerment",
+        "Blockchain Technology", "Electric Vehicles", "Yoga & Wellness",
+        "Space Exploration", "Cybersecurity", "Financial Literacy",
+    ]
+    st.markdown("**Trending Topics — Click to create:**")
+    cols = st.columns(4)
+    for i, t in enumerate(trending_topics):
+        if cols[i % 4].button(t, key=f"trend_{i}", use_container_width=True):
+            st.session_state['_trending_pick'] = t
+            st.rerun()
+
+if st.session_state.get('_trending_pick'):
+    _picked = st.session_state.pop('_trending_pick')
+    add_message("user", _picked)
+    st.session_state.stage = 'awaiting_theme'
+    st.session_state.topic = _picked
+    st.session_state.pending_topic = _picked
+    add_message("assistant", f"Great topic! Which theme would you like?\n\n1. Modern (light, professional)\n2. Dark (dark background)\n3. Light (clean white)\n4. Corporate (navy blue)\n5. Nature (green)\n6. Bold (red)\n7. Purple (creative)")
     st.rerun()
 
 # ============ VISITOR STATS + FOOTER ============

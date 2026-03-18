@@ -563,6 +563,9 @@ Slide structure ({num_slides} slides total):
 
 IMPORTANT: Generate EXACTLY {num_slides} slides. No more, no less.
 REMEMBER: NO emojis. All text in {language}. Real specific content about "{topic}". Complete sentences in bullets.
+
+SPEAKER NOTES: After every slide's content, add speaker notes using addNotes(). Write 2-3 meaningful sentences a presenter would say for that slide.
+Example: slide1.addNotes("Welcome everyone. Today we will explore {topic} in detail covering key aspects, history, challenges and future outlook.");
 {logo_section}{error_section}
 Output ONLY JavaScript code. No markdown, no backticks, no explanations."""
 

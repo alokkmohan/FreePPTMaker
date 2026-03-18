@@ -49,7 +49,7 @@ google_cse_id = os.getenv("GOOGLE_CSE_ID")
 st.set_page_config(
     page_title="FREE PPT Maker - AI Presentation Generator",
     page_icon="📊",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="collapsed"
 )
 
@@ -258,21 +258,21 @@ st.markdown("""
 
     .header-container {
         background: var(--accent-gradient);
-        padding: 16px 24px;
-        border-radius: 0 0 20px 20px;
-        margin-bottom: 28px;
+        padding: 14px 32px;
+        border-radius: 0 0 16px 16px;
+        margin-bottom: 16px;
         box-shadow: var(--shadow-lg);
         text-align: center;
-        width: 100%;
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
         z-index: 9999;
+        width: 100%;
     }
 
     .header-title {
-        font-size: 32px;
+        font-size: 28px;
         font-weight: 900;
         color: #ffffff !important;
         margin: 0;
@@ -284,8 +284,23 @@ st.markdown("""
     .header-subtitle {
         font-size: 12px;
         color: rgba(255,255,255,0.85);
-        margin-top: 4px;
+        margin-top: 3px;
         font-weight: 400;
+    }
+
+    .section-card {
+        background: var(--card-bg, #f8f9fb);
+        border: 1px solid var(--border-color, #e0e4ea);
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+    }
+
+    .section-title {
+        font-size: 15px;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: var(--text-primary, #1a1a2e);
     }
 
     /* ═══════════════════════════════════════════════════════════════════
@@ -556,12 +571,303 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 🌈 COLORFUL HEADER SECTION
+# HOME PAGE (ilovepdf-style) — shown only when stage == 'idle'
+# CHAT PAGE — shown when stage != 'idle'
 # ═══════════════════════════════════════════════════════════════════════════
 
-st.markdown('<div class="main-container">', unsafe_allow_html=True)
-st.markdown('<div class="header-container"><h1 class="header-title">FREE PPT Generator</h1><div class="header-subtitle">AI-Powered Presentation Maker | No Login Required</div></div>', unsafe_allow_html=True)
-st.markdown('<div class="content-container">', unsafe_allow_html=True)
+# -- Initialize session state early so home page can read it --
+if 'stage' not in st.session_state:
+    st.session_state.stage = 'idle'
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+
+_is_home = st.session_state.stage in ('idle', 'bulk_mode', 'branding_mode')
+
+# ── TOP NAVBAR ──
+st.markdown(f"""
+<style>
+.hp-navbar {{
+    background: linear-gradient(135deg,#1565C0 0%,#7B1FA2 100%);
+    padding: 14px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+}}
+.hp-logo {{ font-size: 22px; font-weight: 900; color: #fff; letter-spacing: 1px; }}
+.hp-logo span {{ color: #FFD600; }}
+.hp-nav-links {{ display: flex; gap: 24px; }}
+.hp-nav-links a {{ color: rgba(255,255,255,0.85); text-decoration: none; font-size: 14px; font-weight: 500; }}
+.hp-nav-links a:hover {{ color: #fff; }}
+.hp-hero {{
+    background: linear-gradient(135deg,#f0f4ff 0%,#f8f0ff 100%);
+    text-align: center;
+    padding: 20px 20px 28px 20px;
+    margin-top: 52px;
+}}
+.hp-hero-title {{
+    font-size: 36px; font-weight: 900;
+    color: #1a1a2e; margin-bottom: 10px; line-height: 1.2;
+}}
+.hp-hero-sub {{
+    font-size: 16px; color: #555; margin-bottom: 24px;
+}}
+.hp-section-title {{
+    font-size: 14px; font-weight: 700; color: #888;
+    letter-spacing: 1px; text-transform: uppercase;
+    padding: 18px 0 10px 0; text-align: center;
+}}
+/* Style Streamlit buttons as feature cards */
+div[data-testid="stButton"] button[kind="secondary"] {{
+    background: #fff !important;
+    border: 1.5px solid #e8eaf0 !important;
+    border-radius: 14px !important;
+    padding: 16px 12px !important;
+    text-align: center !important;
+    min-height: 130px !important;
+    white-space: pre-wrap !important;
+    line-height: 1.5 !important;
+    color: #1a1a2e !important;
+    font-size: 13px !important;
+    transition: box-shadow 0.2s, border-color 0.2s !important;
+}}
+div[data-testid="stButton"] button[kind="secondary"]:hover {{
+    box-shadow: 0 6px 24px rgba(21,101,192,0.15) !important;
+    border-color: #1565C0 !important;
+    background: #f0f4ff !important;
+}}
+
+.hp-card {{
+    background: #fff;
+    border: 1.5px solid #e8eaf0;
+    border-radius: 14px;
+    padding: 20px 16px 14px 16px;
+    text-align: center;
+    transition: box-shadow 0.2s, border-color 0.2s;
+    cursor: pointer;
+    margin-bottom: 14px;
+    min-height: 130px;
+}}
+.hp-card:hover {{ box-shadow: 0 6px 24px rgba(21,101,192,0.12); border-color: #1565C0; }}
+.hp-card-icon {{ font-size: 36px; margin-bottom: 8px; display: block; }}
+.hp-card-title {{ font-size: 15px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }}
+.hp-card-desc {{ font-size: 12px; color: #777; line-height: 1.4; }}
+.hp-stats-bar {{
+    background: #fff; border-top: 1px solid #e8eaf0;
+    padding: 10px 40px; display: flex; gap: 32px;
+    justify-content: center; align-items: center;
+    font-size: 13px; color: #555;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+}}
+.hp-stat-val {{ font-weight: 700; color: #1565C0; }}
+</style>
+<div class="hp-navbar">
+  <div class="hp-logo">PPT<span>AI</span></div>
+  <div class="hp-nav-links">
+    <a href="#">Home</a>
+    <a href="#">Features</a>
+    <a href="#">How It Works</a>
+    <a href="#">Free</a>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+if _is_home:
+    # ── HERO SECTION ──
+    st.markdown("""
+    <div class="hp-hero">
+      <div class="hp-hero-title">Every PPT tool you need in one place</div>
+      <div class="hp-hero-sub">AI-Powered Presentation Maker — 100% Free. No Login Required.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── TOPIC INPUT ──
+    _hero_col1, _hero_col2, _hero_col3 = st.columns([1, 3, 1])
+    with _hero_col2:
+        _quick_topic = st.text_input("Topic", placeholder="Enter topic e.g. Climate Change, Digital India...", label_visibility="collapsed", key="home_topic_input")
+        if st.button("Create PPT Now →", type="primary", use_container_width=True, key="home_create_btn"):
+            if _quick_topic.strip():
+                st.session_state.messages = []
+                st.session_state.stage = 'awaiting_theme'
+                st.session_state.topic = _quick_topic.strip()
+                st.session_state.pending_topic = _quick_topic.strip()
+                add_message("user", _quick_topic.strip())
+                add_message("assistant", "Great topic! Which theme would you like?")
+                st.rerun()
+
+    # ── FEATURE CARDS GRID ──
+    st.markdown('<div class="hp-section-title">All Features</div>', unsafe_allow_html=True)
+
+    _features = [
+        ("📝", "Create from Topic",     "Type any topic, get a full professional PPT in minutes",       "topic"),
+        ("📊", "Bulk Generation",        "Upload CSV, generate multiple PPTs at once & download ZIP",    "bulk"),
+        ("🏢", "Custom Branding",        "Add company name, logo & accent color to every slide",         "branding"),
+        ("📄", "PDF / Word to PPT",      "Upload PDF or Word document, convert to presentation",         "upload"),
+        ("🎨", "7 Themes",               "Modern, Dark, Light, Corporate, Nature, Bold, Purple",          "theme"),
+        ("🌍", "8 Languages",            "English, Hindi, Gujarati, Tamil, Bengali & more",               "lang"),
+        ("🔢", "Custom Slide Count",     "Choose 5, 8, 10, 15, or 20 slides as per your need",           "slides"),
+        ("🗒️", "Speaker Notes",         "Auto-generated presenter notes for every slide",                "notes"),
+        ("✏️", "Edit Any Slide",         "Modify content of any individual slide after generation",       "edit"),
+        ("💚", "WhatsApp Share",         "Share your presentation link directly on WhatsApp",             "share"),
+        ("📑", "PDF Download",           "Download presentation as PDF alongside PPT",                    "pdf"),
+        ("🔥", "Trending Topics",        "12 popular trending topics — one click to start",               "trending"),
+    ]
+
+    _rows = [_features[i:i+4] for i in range(0, len(_features), 4)]
+    for _row in _rows:
+        _cols = st.columns(4)
+        for _ci, (_icon, _title, _desc, _key) in enumerate(_row):
+            with _cols[_ci]:
+                # Full card as button using CSS trick
+                _clicked = st.button(
+                    f"{_icon}\n\n**{_title}**\n\n{_desc}",
+                    key=f"feat_{_key}",
+                    use_container_width=True,
+                )
+                if _clicked:
+                    st.session_state.messages = []
+                    st.session_state.ppt_path = None
+                    if _key == "bulk":
+                        st.session_state.stage = 'bulk_mode'
+                        st.session_state['_scroll_to'] = 'section_bulk'
+                    elif _key == "branding":
+                        st.session_state.stage = 'branding_mode'
+                        st.session_state['_scroll_to'] = 'section_branding'
+                    elif _key == "upload":
+                        st.session_state.stage = 'awaiting_topic'
+                        add_message("assistant", "Upload your PDF or Word document using the + button, or paste your content directly here.")
+                        st.session_state['_scroll_to'] = 'section_chat'
+                    elif _key in ("theme", "slides", "lang", "notes", "edit", "share", "pdf", "trending"):
+                        st.session_state.stage = 'awaiting_topic'
+                        add_message("assistant", f"What topic would you like to create a PPT on? I'll apply the best settings for **{_title}**.")
+                        st.session_state['_scroll_to'] = 'section_chat'
+                    else:
+                        st.session_state.stage = 'awaiting_topic'
+                        add_message("assistant", "What topic would you like to create a PPT on?")
+                        st.session_state['_scroll_to'] = 'section_chat'
+                    st.rerun()
+
+    # ── AUTO-SCROLL JS ──
+    _scroll_target = st.session_state.pop('_scroll_to', None)
+    if _scroll_target:
+        import streamlit.components.v1 as _comp
+        _comp.html(f"""
+        <script>
+        setTimeout(function() {{
+            var el = document.getElementById('{_scroll_target}');
+            if (el) el.scrollIntoView({{behavior:'smooth', block:'start'}});
+            else window.scrollBy(0, 400);
+        }}, 300);
+        </script>
+        """, height=0)
+
+    # ── BULK MODE ──
+    if st.session_state.get('stage') == 'bulk_mode':
+        st.markdown('<div id="section_bulk"></div>', unsafe_allow_html=True)
+        st.markdown("---")
+        st.markdown("### 📊 Bulk PPT Generation")
+        st.caption("Upload a CSV with columns: **Topic, Theme, Slides, Language**")
+        bulk_csv = st.file_uploader("Upload CSV", type=["csv"], key="bulk_csv_upload")
+        if bulk_csv:
+            import pandas as _pd, io as _io
+            try:
+                _df = _pd.read_csv(_io.BytesIO(bulk_csv.read()))
+                _df.columns = [c.strip().lower() for c in _df.columns]
+                if 'topic' not in _df.columns:
+                    st.error("CSV must have a 'Topic' column")
+                else:
+                    if 'theme'    not in _df.columns: _df['theme']    = 'modern'
+                    if 'slides'   not in _df.columns: _df['slides']   = 10
+                    if 'language' not in _df.columns: _df['language'] = 'English'
+                    st.dataframe(_df[['topic','theme','slides','language']].head(10), use_container_width=True)
+                    st.caption(f"{len(_df)} topics found (max 10 processed)")
+                    if st.button("Generate All PPTs", key="bulk_gen_btn", type="primary"):
+                        import zipfile as _zipfile, io as _io2
+                        from multi_ai_generator import MultiAIGenerator as _MAI
+                        _gen = _MAI()
+                        _zip_buf = _io2.BytesIO()
+                        _rows2 = _df.head(10).to_dict('records')
+                        _prog = st.progress(0)
+                        _stat = st.empty()
+                        _errors = []
+                        with _zipfile.ZipFile(_zip_buf, 'w') as _zf:
+                            for _idx, _row in enumerate(_rows2):
+                                _t  = str(_row.get('topic','Topic')).strip()
+                                _th = str(_row.get('theme','modern')).strip().lower()
+                                _sl = int(_row.get('slides', 10))
+                                _la = str(_row.get('language','English')).strip()
+                                _stat.info(f"Generating {_idx+1}/{len(_rows2)}: **{_t}**...")
+                                try:
+                                    _res = _gen.generate_pptxgenjs_code(topic=_t, theme=_th, num_slides=_sl, language=_la)
+                                    _js  = _res.get('output','')
+                                    if _js:
+                                        _out = f"/tmp/bulk_{_idx}_{_t[:20].replace(' ','_')}.pptx"
+                                        _ok, _r = run_pptxgenjs(_js, _out)
+                                        if _ok and os.path.exists(_out):
+                                            with open(_out,'rb') as _f:
+                                                _zf.writestr(f"{_t[:40].replace(' ','_')}.pptx", _f.read())
+                                        else:
+                                            _errors.append(f"{_t}: error")
+                                    else:
+                                        _errors.append(f"{_t}: AI error")
+                                except Exception as _e:
+                                    _errors.append(f"{_t}: {str(_e)[:30]}")
+                                _prog.progress((_idx+1)/len(_rows2))
+                        _zip_buf.seek(0)
+                        _stat.empty()
+                        st.download_button("Download All PPTs (ZIP)", _zip_buf.read(),
+                            file_name="bulk_presentations.zip", mime="application/zip", type="primary")
+                        if _errors:
+                            st.warning("Some failed: " + " | ".join(_errors))
+                        else:
+                            st.success(f"All {len(_rows2)} PPTs ready!")
+            except Exception as _e:
+                st.error(f"CSV error: {_e}")
+        if st.button("Back to Home", key="bulk_back"):
+            st.session_state.stage = 'idle'
+            st.rerun()
+
+    # ── BRANDING MODE ──
+    elif st.session_state.get('stage') == 'branding_mode':
+        st.markdown('<div id="section_branding"></div>', unsafe_allow_html=True)
+        st.markdown("---")
+        st.markdown("### 🏢 Custom Branding")
+        _bc1, _bc2 = st.columns(2)
+        with _bc1:
+            brand_company = st.text_input("Company / NGO Name", placeholder="e.g. Acme Corp", key="brand_company_input")
+            brand_tagline = st.text_input("Tagline (optional)", placeholder="e.g. Innovation Driven", key="brand_tagline_input")
+        with _bc2:
+            brand_color = st.color_picker("Accent Color", value="#1565C0", key="brand_color_input")
+            st.caption("This color will be used as the accent/highlight color on all slides")
+        _bsave, _bback = st.columns(2)
+        with _bsave:
+            if st.button("Save Branding", type="primary", use_container_width=True, key="save_brand_btn"):
+                st.session_state.brand_company = brand_company.strip()
+                st.session_state.brand_tagline = brand_tagline.strip()
+                st.session_state.brand_accent  = brand_color.lstrip('#')
+                st.success(f"Branding saved! Company: {brand_company} will appear on all slides.")
+        with _bback:
+            if st.button("Back to Home", use_container_width=True, key="brand_back"):
+                st.session_state.stage = 'idle'
+                st.rerun()
+        if st.session_state.get('brand_company'):
+            st.info(f"Active branding: **{st.session_state.brand_company}** | Accent: #{st.session_state.get('brand_accent','')}")
+            if st.button("Now Create PPT →", type="primary", key="brand_create"):
+                st.session_state.stage = 'awaiting_topic'
+                add_message("assistant", "What topic would you like to create a PPT on? (Branding will be applied)")
+                st.rerun()
+
+    st.markdown('<div style="height:60px"></div>', unsafe_allow_html=True)
+
+else:
+    # ── CHAT PAGE HEADER (compact, shown during PPT creation) ──
+    st.markdown("""
+    <div class="header-container">
+      <h1 class="header-title">FREE PPT Generator</h1>
+      <div class="header-subtitle">AI-Powered Presentation Maker | No Login Required</div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown('<div class="main-container"><div class="content-container">', unsafe_allow_html=True)
 
 
 # Initialize session state
@@ -1970,6 +2276,8 @@ if user_input:
                 language=language,
                 num_slides=st.session_state.get('slide_count', 10),
                 logo_data=st.session_state.get('logo_data'),
+                company_name=st.session_state.get('brand_company', ''),
+                brand_accent=st.session_state.get('brand_accent', ''),
             )
 
             js_code = js_result.get('output', '')
@@ -2118,6 +2426,8 @@ if st.session_state.stage == 'generating':
                     web_context=st.session_state.get('google_context', ''),
                     num_slides=st.session_state.get('slide_count', 10),
                     logo_data=st.session_state.get('logo_data'),
+                    company_name=st.session_state.get('brand_company', ''),
+                    brand_accent=st.session_state.get('brand_accent', ''),
                 )
                 js_code = js_result.get('output', '')
                 if js_code:
@@ -2355,6 +2665,8 @@ if st.session_state.stage == 'preview':
                         num_slides=num_slides,
                         error_context=edit_context,
                         logo_data=st.session_state.get('logo_data'),
+                        company_name=st.session_state.get('brand_company', ''),
+                        brand_accent=st.session_state.get('brand_accent', ''),
                     )
                     js_code = js_result.get('output', '')
                     if js_code:
@@ -2404,6 +2716,8 @@ if st.session_state.stage == 'regenerating':
                 language=language,
                 num_slides=st.session_state.get('slide_count', 10),
                 logo_data=st.session_state.get('logo_data'),
+                company_name=st.session_state.get('brand_company', ''),
+                brand_accent=st.session_state.get('brand_accent', ''),
             )
 
             js_code = js_result.get('output', '')
@@ -2509,10 +2823,7 @@ total_ppts = total_users  # PPTs Created = Users count
 # Footer with user counter
 st.markdown(f'''
 <div class="footer-container">
-    <span>Made with AI</span>
-    <span class="footer-stat">Users: {total_users}</span>
     <span class="footer-stat">PPTs Created: {total_ppts}</span>
-    <span>FREE PPT Generator</span>
 </div>
 ''', unsafe_allow_html=True)
 

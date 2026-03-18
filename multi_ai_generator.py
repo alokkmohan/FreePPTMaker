@@ -450,6 +450,8 @@ IMPORTANT RULES:
         error_context: str = "",
         num_slides: int = 10,
         logo_data: str = None,
+        company_name: str = "",
+        brand_accent: str = "",
     ) -> Dict:
         """Generate PptxGenJS JavaScript code for a presentation."""
         global _last_ai_source
@@ -468,6 +470,15 @@ IMPORTANT RULES:
         logo_section = ""
         if logo_data:
             logo_section = f'\nLOGO: Add logo to top-right of every slide (including title and thank you) using:\nslide.addImage({{data: "{logo_data}", x: 11.8, y: 0.2, w: 1.3, h: 0.5}});\n'
+
+        # Override accent color if custom brand color provided
+        if brand_accent and len(brand_accent) == 6:
+            accent = brand_accent
+            teal   = brand_accent  # use same brand color for teal too
+
+        company_section = ""
+        if company_name:
+            company_section = f'\nBRANDING: Add company name "{company_name}" as a small footer on every slide (bottom-left) using:\nslide.addText("{company_name}",{{x:0.3,y:7.1,w:4,h:0.3,fontSize:8,color:"{colors["MUTED"]}",fontFace:"Calibri",align:"left"}});\n'
 
         bg = colors["BG"]
         card = colors["CARD"]
@@ -566,7 +577,7 @@ REMEMBER: NO emojis. All text in {language}. Real specific content about "{topic
 
 SPEAKER NOTES: After every slide's content, add speaker notes using addNotes(). Write 2-3 meaningful sentences a presenter would say for that slide.
 Example: slide1.addNotes("Welcome everyone. Today we will explore {topic} in detail covering key aspects, history, challenges and future outlook.");
-{logo_section}{error_section}
+{logo_section}{company_section}{error_section}
 Output ONLY JavaScript code. No markdown, no backticks, no explanations."""
 
         import requests, re as _re

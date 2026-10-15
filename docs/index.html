@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreePPTMaker — Free AI PPT Maker</title>
+  <meta name="description" content="Create PowerPoint presentations free with AI. Topic or document to PPT in 8 languages, with themes, branding and bulk generation.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23e5322d'/%3E%3Ctext x='16' y='23' font-family='Arial' font-weight='700' font-size='19' fill='white' text-anchor='middle'%3EP%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-in">
+      <a class="logo" href="./"><span class="logo-mark">P</span><span>FreePPT<b>Maker</b></span></a>
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="create" role="tab">Create PPT</button>
+        <button class="tab" data-tab="brand" role="tab">Branding</button>
+        <button class="tab" data-tab="bulk" role="tab">Bulk</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- ───────── CREATE ───────── -->
+    <section id="panel-create" class="panel">
+      <div class="hero">
+        <h1>Make a presentation in seconds</h1>
+        <p>Type a topic or upload a document. AI writes the slides and you download a ready .pptx file. Free, no sign-up.</p>
+      </div>
+
+      <form id="create-form" class="card form" autocomplete="off">
+        <label class="field">
+          <span>Topic</span>
+          <textarea id="topic" rows="2" maxlength="500" placeholder="e.g. Artificial Intelligence in Education"></textarea>
+        </label>
+        <div class="chips" id="trending"></div>
+
+        <div class="attach">
+          <label class="btn ghost small" for="files">📎 Attach document or data</label>
+          <input id="files" type="file" multiple accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.xls" hidden>
+          <span class="hint">PDF, DOCX, TXT (content) · CSV, XLSX (chart)</span>
+        </div>
+        <div id="attached" class="attached"></div>
+        <label id="chart-type-row" class="field inline" hidden>
+          <span>Chart type</span>
+          <select id="chart-type"><option value="bar">Bar</option><option value="line">Line</option><option value="pie">Pie</option></select>
+        </label>
+
+        <div class="grid3">
+          <label class="field"><span>Language</span>
+            <select id="lang">
+              <option>English</option><option>Hindi</option><option>Gujarati</option><option>Tamil</option>
+              <option>Bengali</option><option>Marathi</option><option>Telugu</option><option>Kannada</option>
+            </select>
+          </label>
+          <label class="field"><span>Slides</span>
+            <select id="slides"><option>5</option><option selected>8</option><option>10</option><option>12</option><option>15</option><option>20</option></select>
+          </label>
+          <label class="field"><span>Tone</span>
+            <select id="tone"><option>Professional</option><option>Educational</option><option>Persuasive</option><option>Simple &amp; friendly</option><option>Inspirational</option></select>
+          </label>
+        </div>
+
+        <details class="more">
+          <summary>More options</summary>
+          <label class="field"><span>Audience</span><input id="audience" maxlength="100" placeholder="e.g. School students, investors, government officers"></label>
+          <label class="field"><span>Extra instructions</span><input id="extra" maxlength="300" placeholder="e.g. Focus on rural India, add a case study"></label>
+        </details>
+
+        <div class="field"><span>Theme</span><div id="themes" class="themes"></div></div>
+
+        <label class="check"><input id="images" type="checkbox"> Add AI images to slides <small>(slower)</small></label>
+
+        <button id="generate" class="btn primary big" type="submit">Generate PPT</button>
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+      </form>
+
+      <!-- result -->
+      <section id="result" class="result" hidden>
+        <div class="result-head">
+          <div class="result-meta">
+            <input id="deck-title" class="title-input" aria-label="Presentation title">
+            <input id="deck-subtitle" class="sub-input" aria-label="Subtitle" placeholder="Subtitle">
+          </div>
+          <div class="result-actions">
+            <button id="download" class="btn primary">⬇ Download PPTX</button>
+            <button id="regenerate" class="btn ghost">↻ Regenerate</button>
+            <a id="share" class="btn ghost" target="_blank" rel="noopener">Share on WhatsApp</a>
+          </div>
+        </div>
+
+        <div class="field"><span>Change theme (instant)</span><div id="result-themes" class="themes small"></div></div>
+
+        <div id="editor" class="card editor" hidden>
+          <div class="editor-head">
+            <b id="editor-title">Edit slide</b>
+            <div class="editor-tools">
+              <button id="move-up" class="btn ghost small" title="Move up">↑</button>
+              <button id="move-down" class="btn ghost small" title="Move down">↓</button>
+              <button id="delete-slide" class="btn ghost small danger">Delete</button>
+              <button id="close-editor" class="btn ghost small" aria-label="Close">✕</button>
+            </div>
+          </div>
+          <div class="editor-row">
+            <input id="edit-instruction" maxlength="300" placeholder="e.g. Make it a timeline · Add an example · Shorter bullets · Convert to Hindi">
+            <button id="apply-edit" class="btn primary">Apply with AI</button>
+          </div>
+          <div id="edit-notes" class="notes"></div>
+        </div>
+
+        <p class="hint">Click any slide to edit it with AI. Speaker notes are included in the PPTX.</p>
+        <div id="preview" class="preview"></div>
+      </section>
+    </section>
+
+    <!-- ───────── BRANDING ───────── -->
+    <section id="panel-brand" class="panel" hidden>
+      <div class="hero small"><h1>Your branding</h1><p>Saved in this browser and applied to every PPT you create.</p></div>
+      <form id="brand-form" class="card form" autocomplete="off">
+        <div class="grid2">
+          <label class="field"><span>Company / organisation</span><input id="b-company" maxlength="80" placeholder="e.g. Acme Corp"></label>
+          <label class="field"><span>Tagline</span><input id="b-tagline" maxlength="80" placeholder="e.g. Innovation Driven"></label>
+          <label class="field"><span>Presenter name</span><input id="b-presenter" maxlength="60"></label>
+          <label class="field"><span>Designation</span><input id="b-designation" maxlength="80"></label>
+        </div>
+        <div class="grid2">
+          <div class="field"><span>Accent colour</span>
+            <div class="color-row"><input id="b-accent" type="color" value="#1565c0"><label class="check"><input id="b-use-accent" type="checkbox"> Use instead of theme colour</label></div>
+          </div>
+          <div class="field"><span>Logo (PNG/JPG)</span>
+            <div class="logo-row"><img id="b-logo-preview" alt="" hidden><label class="btn ghost small" for="b-logo">Upload logo</label><input id="b-logo" type="file" accept="image/png,image/jpeg" hidden><button id="b-logo-remove" type="button" class="btn ghost small" hidden>Remove</button></div>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn primary" type="submit">Save branding</button>
+          <button id="b-clear" class="btn ghost" type="button">Clear all</button>
+          <span id="brand-status" class="hint"></span>
+        </div>
+      </form>
+    </section>
+
+    <!-- ───────── BULK ───────── -->
+    <section id="panel-bulk" class="panel" hidden>
+      <div class="hero small"><h1>Bulk PPT generation</h1><p>Upload a CSV with columns <code>Topic, Theme, Slides, Language</code>. Up to 10 presentations, downloaded as one ZIP.</p></div>
+      <div class="card form">
+        <div class="row">
+          <label class="btn ghost" for="bulk-file">Upload CSV</label>
+          <input id="bulk-file" type="file" accept=".csv" hidden>
+          <button id="bulk-sample" class="btn ghost" type="button">Download sample CSV</button>
+        </div>
+        <div id="bulk-table" class="table-wrap"></div>
+        <button id="bulk-go" class="btn primary big" type="button" hidden>Generate all</button>
+        <div id="bulk-status" class="status" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot wrap">FreePPTMaker · Free AI presentation maker · Slides are created in your browser</footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/themes.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/docs.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/preview.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
